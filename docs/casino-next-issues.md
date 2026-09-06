@@ -1,85 +1,66 @@
 # 賭場後續議題交接
 
-更新：Issue #8 的 21 點與圖片牌桌現已實作；最新契約、驗證與尚待部署事項見
-[Issue #8 驗證與交接](casino-issue8-validation.md)。以下保留 #7 完成時的歷史交接，
-其中「目前僅支援骰子」描述是 #8 開發前的基準，不是現在功能狀態。
+下一張實作票是 [#9：戰績統計與管理查帳](https://github.com/icez114514/icez-discord-bot/issues/9)。
+从最新 main 接續；#8 實作提交為 `2679d60`，本文件收尾提交位於其後。
+父規格：[水晶賭場正式開發規格 #6](https://github.com/icez114514/icez-discord-bot/issues/6)。
 
-Issue #7 的正式實作基準是 main 的 `6087b67`；既有水晶功能已先保存為
-`eddedc6`。請從最新 main 接續，不要以舊原型分支重建 Bot。
+## 開始前
 
-下一票：[Issue #8：21 點與圖片牌桌](https://github.com/icez114514/icez-discord-bot/issues/8)。
-[Issue #9：戰績統計與管理查帳](https://github.com/icez114514/icez-discord-bot/issues/9)
-也只依賴 #7，可在協調共用資料契約後獨立開發。
-完整玩法以 [父規格 #6](https://github.com/icez114514/icez-discord-bot/issues/6) 為準。
+1. 確認本地最新 main 並保存既有未提交變更；功能基準包含 #7 與 #8，原型不是目前 Bot 基準。
+2. 閱讀 #9 的驗收條件、[操作說明](casino.md) 與 [#8 驗證紀錄](casino-issue8-validation.md)。
+3. 沿用父規格已確認的 TDD 邊界：公開操作／查詢契約、Discord interaction 替身、隔離 PostgreSQL schema。
+4. 完成查詢與權限後跑相關測試、完整測試及 Standards／Spec 審查；未執行或 skip 的 DB 測試如實列出。
 
-## 已可沿用
+## 已完成並可沿用
 
-- `casino_commands.py`：CasinoFeature 註冊 /賭場、OwnedView 主人檢查、
-  SettingsView／BetModal、ResultView 三按鈕、render 的圖片失敗文字回退。
-- `casino_store.py`：CasinoStore 沿用 CrystalStore 連線與帳戶列鎖；
-  preferences／settings／choose、start／replay／leave／recover／ledger。
-- `casino_rules.py`：精確整數 Bet、輸入驗證及三骰規則。
-- `casino_schema.sql`：偏好、牌局與流水；跨玩家帳戶共用，不按伺服器拆帳。
-- `database.py` 的 init／migrate 已接入 CasinoStore.initialize；
-  Bot 啟動只 check，正式遷移需要明確執行。
-- `tests/test_casino_database.py`：隔離 PostgreSQL schema、固定骰序、
-  COMMIT 前後故障注入、並行、恢復及 binary COPY 備份還原。
-  `tests/test_casino_ui.py` 提供 interaction 替身。
+- CasinoStore 支援 `dice` 與 `blackjack`；start／play／replay／recover／expire_pending 均使用持久牌局。
+- CrystalStore 帳戶跨伺服器共用；帳戶列鎖、每人一個 active 局、每個結算面板一個後續局與唯一返還仍有效。
+- CasinoFeature 提供大廳、下注、PlayView、ResultView、主人檢查、Modal 與圖片失敗文字回退。
+- 每次開啟大廳從六張 Mei JPEG 隨機選圖；casino_images 僅接收已遮蔽暗牌的 Game 投影。
+- Bot 啟動預載素材並掃描到期局；init／migrate 明確執行增量遷移，啟動 check 不會自動遷移。
+- tests/test_casino_database.py、tests/test_blackjack_database.py 有真實交易、並行、故障及備份還原測試。
+  tests/test_casino_ui.py、tests/test_blackjack_ui.py 提供 Discord 替身與圖片故障／亂序測試。
 
-## #8 必須擴充的現有邊界
+## #9 查詢契約
 
-目前 start 僅接受 game='dice'，recover／settle_transaction 僅結算骰子；
-LobbyView 的 21 點停用。應在持久狀態、恢復與驗收完成後才開啟入口。
+`casino_games.game` 為遊戲識別；查詢同時涵蓋兩款遊戲，其他已記錄識別亦應採相同查詢契約。
+既有欄位包括 user_id、status、outcome、base、multiplier、wager、returned、
+balance_after、created_at、finished_at、reason，以及 version、parent_id、dismissed。
 
-目前 schema 的 wager 約束是 `wager = base * multiplier`，ledger 的
-kind 只有 stake／payout／refund 且 `UNIQUE(game_id, kind)`。
-這些是骰子初版契約，不能直接套用兩次扣款的 21 點加倍。
-以可重入 ALTER 遷移區分原始下注與累計下注，並提供額外扣款的唯一操作識別；
-既有骰子牌局與流水必須完整保留。只修改 CREATE TABLE IF NOT EXISTS
-不會更新已存在的資料表。
+- 原下注 = base × multiplier；wager 是累計下注，21 點加倍後為原注兩倍。
+- 正常完成局 = status='settled'；outcome 為 win／loss／tie。
+  active 與 void／退款另列，不能虛增正常局數、投注量或胜率。
+- returned 包含本金；玩家淨盈虧 = returned - wager。莊家淨額為相反數。
+- casino_ledger.kind 有 stake／double／payout／refund；amount 帶正負號，double 為額外原注的負數。
+  每局每種 kind 唯一，payout／refund 合計最多一筆；每局流水合計應等於 returned - wager。
+- 每筆流水保存 balance_before／balance_after；簽到可能穿插，不能把前一筆賭場末餘額當成下一筆初餘額。
+- dismissed 只表示玩家離開結果頁，不表示刪除歷史。歷史沒有 TTL 或自動清除。
+- Game 為遊戲畫面投影，未包含所有查詢欄位；#9 可新增專用查詢投影。
+  cards 含私密牌組與暗牌，紀錄／管理查詢不得直接輸出 active 局 cards 或剩餘牌組。
 
-需新增持久牌組／雙方手牌／回合／期限等狀態，讓重啟使用原局與原期限。
-維持帳戶列鎖、跨遊戲單一 active 局、一次性操作、唯一後續局及終局返還去重。
-再來一局仍使用原始 Bet；異常退款需涵蓋加倍的全部扣款。
-一般逾時應正常停牌結算，不可退款。
+## #9 接入位置與權限
 
-圖片由已提交的牌局版本產生，避免舊合圖覆蓋新狀態。
-目前 Game 投影是骰子用資料，不應把未揭露的 21 點暗牌或剩餘牌組送入
-公開圖片／文字回覆。UI 逾時與 120 秒牌局期限是不同概念。
+從 LobbyView 新增我的紀錄／莊家統計入口。私人歷史使用另發 ephemeral，
+保留公開大廳；公開莊家統計不含他人明細。授權者的管理入口另發私人訊息。
 
-## #9 共用查詢契約
+Bot 擁有者或明確指定 ID 才可查帳，一般伺服器管理員不自動授權。
+每次按鈕、Modal 與分頁重驗當下權限，涵蓋撤權與舊面板。
+沿用現有 /賭場 註冊，不新增獨立查帳指令。具體功能以 #9 為準。
 
-資料庫 games 已有 game、user_id、status、outcome、base、multiplier、
-wager、returned、balance_after、created_at、finished_at、reason。
-目前 Game dataclass 未包含全部查詢欄位，可新增專用查詢投影；
-不要因目前只有骰子就將查詢固定成單一遊戲。
+## 已驗證基準
 
-ledger.amount 帶正負號，kind 為 stake／payout／refund；
-每筆均有 balance_before／balance_after。簽到可能穿插一局的兩筆金流，
-不能假设上一筆賭場流水的末餘額就是下一筆的初餘額。
-正常終局與 active、void 應分開統計，系統莊家淨額為玩家合計的相反數。
+#8 完整測試 75 項通過，含 34 項真實 PostgreSQL，沒有 skip。
+審查修正後最終 discovery 為 77 項：43 項非 DB 通過、34 項 DB 明列 skip；
+這 34 項已在上述完整測試驗證，修正沒有更改 DB 實作。型別與雙軸複查通過。
+詳細條件與圖像量測見 [#8 驗證紀錄](casino-issue8-validation.md)。
 
-#8 會涉及累計下注與額外扣款遷移，兩票並行時需先協調 schema／ledger
-欄位與操作種類。#9 可以先用已存在的骰子結算與作廢資料實作查詢與授權，
-不必等 21 點上線。
+Windows 使用專案 `.venv/Scripts/python.exe`；系統 Python 可能缺少依賴。
+PowerShell 設 `$env:RUN_DB_TESTS='1'` 後執行
+`rtk .venv/Scripts/python.exe -m unittest discover -s tests -v`。
+僅使用測試自行建立的隔離 schema，避免寫入 public。
 
-## 驗證與待辦
+## 部署驗收獨立追蹤
 
-[操作說明](casino.md) 與 [實際測試／審查紀錄](casino-validation.md)
-已保存本票證據：36 項非 DB 測試與 23 項真實 PostgreSQL 測試分次通過、
-mypy 通過，Standards／Spec 審查無實作發現。
-測試紀錄明列最初舊替身錯誤、修正與重跑範圍。
-
-接續請沿用父規格已確認的 TDD 邊界：操作契約、interaction 替身、
-隔離 PostgreSQL。固定牌序與時鐘，覆蓋天然、軟 A、首兩張加倍、逾時、
-舊面板競爭、未知提交、圖片失敗及暗牌遮蔽。
-使用 `RUN_DB_TESTS=1 python -m unittest discover -s tests -v` 執行完整驗證；
-PowerShell 先設定 `$env:RUN_DB_TESTS='1'`。
-
-尚待部署階段及 #8 的實機驗收：
-- 明確執行並核對正式資料庫備份與增量遷移。
-- 測試 Discord 伺服器的手機／桌面圖片、按鈕與 ephemeral 行為。
-- #8 記錄合圖／更新延遲及測試條件；正式美術素材的驗收仍需實際完成。
-
-#7 沒有啟動正式 Bot、對 public 做資料遷移，或完成 Discord 實機驗收。
-這些待辦保留在父議題與後續開發票，避免將本地替身測試當成部署驗收。
+[#10：正式部署與 Discord 實機驗收](https://github.com/icez114514/icez-discord-bot/issues/10)
+承接正式備份／還原、增量遷移、手機／桌面、真實更新延遲及正式素材驗收。
+這些尚未執行，不因 #8 實作結案而視為通過；不阻擋 #9 程式開發。
