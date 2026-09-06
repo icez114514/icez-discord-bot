@@ -19,6 +19,7 @@ from discord.ext import tasks
 from casino_rules import CasinoError, parse_integer
 from blackjack import total
 from casino_store import CasinoStore, Game, Preferences
+from casino_records import CasinoRecords, Record, Summary
 from casino_images import renderer
 from database import DatabaseError
 
@@ -86,6 +87,95 @@ class LobbyView(OwnedView):
         super().__init__(feature, owner_id)
         self.button("21 點", "blackjack", style=discord.ButtonStyle.primary)
         self.button("18 豆仔", "settings", style=discord.ButtonStyle.primary)
+        self.button("我的紀錄", "records")
+        self.button("莊家統計", "house")
+
+
+class RecordsView(OwnedView):
+    def __init__(self, feature, owner_id, *, house=False, user_id=None, game=None,
+                 game_id=None, page=0, detail=False, audit=False, has_next=False):
+        super().__init__(feature, owner_id)
+        self.has_next = has_next
+        self.house = house
+        self.user_id = None if house else (owner_id if user_id is None and not audit else user_id)
+        self.game_filter = game
+        self.game_id = game_id
+        self.page = page
+        self.detail = detail
+        self.audit = audit
+        self.button("上一頁", "previous", disabled=page == 0)
+        self.button("下一頁", "next", disabled=not has_next)
+        if not house and game_id is None:
+            self.button("統計" if detail else "牌局明細", "toggle")
+        self.button("遊戲篩選", "filter")
+
+
+    async def interaction_check(self, interaction):
+        if not await super().interaction_check(interaction):
+            return False
+        if self.is_finished():
+            await interaction.response.send_message("此查詢頁已失效，請使用最新頁面或重新開啟紀錄。", ephemeral=True)
+            return False
+        if self.audit and not await self.feature.is_auditor(interaction):
+            await interaction.response.send_message("目前沒有查帳權限。", ephemeral=True)
+            return False
+        return True
+
+
+class AuditView(OwnedView):
+    async def interaction_check(self, interaction):
+        if not await super().interaction_check(interaction):
+            return False
+        if self.is_finished() or not await self.feature.is_auditor(interaction):
+            await interaction.response.send_message("目前沒有查帳權限或入口已失效。", ephemeral=True)
+            return False
+        return True
+
+    def __init__(self, feature, owner_id):
+        super().__init__(feature, owner_id)
+        self.button("查玩家", "audit_player")
+        self.button("查牌局", "audit_game")
+
+
+class AuditModal(discord.ui.Modal):
+    def __init__(self, panel, kind):
+        super().__init__(title="管理查帳")
+        self.panel = panel
+        self.kind = kind
+        self.value: discord.ui.TextInput = discord.ui.TextInput(
+            label="玩家 ID" if kind == "audit_player" else "牌局 UUID", max_length=36)
+        self.add_item(self.value)
+
+    async def on_submit(self, interaction):
+        if not await self.panel.interaction_check(interaction):
+            return
+        value = self.value.value.strip()
+        try:
+            user_id, game_id = None, None
+            if self.kind == "audit_player":
+                if not value.isascii() or not value.isdecimal() or not 0 < int(value) < 2**64:
+                    raise ValueError()
+                user_id = int(value)
+            else:
+                game_id = UUID(value)
+        except ValueError:
+            await interaction.response.send_message("請輸入有效的玩家 ID 或牌局 UUID。", ephemeral=True)
+            return
+        await self.panel.feature.show_records(interaction, RecordsView(
+            self.panel.feature, self.panel.owner_id, user_id=user_id, game_id=game_id, audit=True, detail=True))
+
+
+class QueryModal(discord.ui.Modal):
+    def __init__(self, panel):
+        super().__init__(title="遊戲篩選")
+        self.panel = panel
+        self.value: discord.ui.TextInput = discord.ui.TextInput(
+            label="遊戲識別（dice／blackjack；留空全部）", required=False, max_length=100,
+            default=panel.game_filter)
+        self.add_item(self.value)
+
+    async def on_submit(self, interaction):
+        await self.panel.feature.records_action(interaction, self.panel, "apply_filter", self.value.value.strip())
 
 
 class SettingsView(OwnedView):
@@ -240,10 +330,20 @@ class CasinoFeature:
             logging.warning("Casino delivery failed; reopen /casino to recover. No financial operation retried.")
 
     async def act(self, interaction, view: OwnedView, action: str, value=None):
+        if isinstance(view, AuditView):
+            if await view.interaction_check(interaction) and action in ("audit_player", "audit_game"):
+                await interaction.response.send_modal(AuditModal(view, action))
+            return
+        if isinstance(view, RecordsView):
+            await self.records_action(interaction, view, action, value)
+            return
         if not await view.interaction_check(interaction):
             return
         if action.startswith("custom:") and isinstance(view, SettingsView):
             await interaction.response.send_modal(BetModal(view, action.split(":")[1]))
+            return
+        if isinstance(view, LobbyView) and action in ("records", "house"):
+            await self.show_records(interaction, RecordsView(self, view.owner_id, house=action == "house"))
             return
         await interaction.response.defer()
         async with self.owner_lock(view.owner_id):
@@ -297,6 +397,110 @@ class CasinoFeature:
         embed.add_field(name="水晶餘額", value="尚無帳戶，請先 /水晶 簽到。" if balance is None else money(balance), inline=False)
         embed.set_footer(text="面板僅限本人操作；面板逾時請重新 /賭場。")
         await self.render(interaction, embed, LobbyView(self, interaction.user.id), dealer=True)
+        if await self.is_auditor(interaction):
+            await interaction.followup.send("管理查帳（僅限授權者）", view=AuditView(self, interaction.user.id),
+                ephemeral=True, allowed_mentions=discord.AllowedMentions.none())
+
+    async def is_auditor(self, interaction) -> bool:
+        # Read current configuration, never remember a grant in a view or Modal.
+        ids = os.getenv("CASINO_AUDITOR_IDS", "").replace(",", " ").split()
+        if str(interaction.user.id) in ids:
+            return True
+        client = getattr(interaction, "client", None)
+        if client is None:
+            return False
+        try:
+            app = await asyncio.wait_for(client.application_info(), timeout=1.5)
+            owner_id = app.team.owner_id if app.team is not None else app.owner.id
+            return interaction.user.id == owner_id
+        except (discord.HTTPException, asyncio.TimeoutError):
+            return False
+
+    async def records_action(self, interaction, view: RecordsView, action: str, value=None):
+        if not await view.interaction_check(interaction):
+            return
+        if action == "filter":
+            await interaction.response.send_modal(QueryModal(view))
+            return
+        await interaction.response.defer()
+        async with view.lock:
+            if view.is_finished() or (view.audit and not await self.is_auditor(interaction)):
+                await interaction.followup.send("此查詢頁已失效或權限已撤銷。", ephemeral=True)
+                return
+            page, detail, game = view.page, view.detail, view.game_filter
+            if action == "next" and view.has_next:
+                page += 1
+            elif action == "previous" and page > 0:
+                page -= 1
+            elif action == "toggle" and not view.house and view.game_id is None:
+                page, detail = 0, not detail
+            elif action == "apply_filter":
+                page, game = 0, value or None
+            else:
+                await interaction.followup.send("此查詢操作已失效。", ephemeral=True)
+                return
+            replacement = RecordsView(self, view.owner_id, house=view.house, user_id=view.user_id,
+                game=game, game_id=view.game_id, page=page, detail=detail, audit=view.audit)
+            if await self.show_records(interaction, replacement, edit=True):
+                view.stop()
+
+    async def show_records(self, interaction, view: RecordsView, *, edit=False):
+        if not edit:
+            await interaction.response.defer(ephemeral=not view.house, thinking=True)
+        try:
+            if view.audit and not await self.is_auditor(interaction):
+                await interaction.followup.send("目前沒有查帳權限。", ephemeral=True)
+                return False
+            records = CasinoRecords(self.storage())
+            summary_rows: tuple[Summary, ...] = ()
+            detail_rows: tuple[Record, ...] = ()
+            if view.detail:
+                history = await records.history(user_id=view.user_id, game=view.game_filter, game_id=view.game_id, page=view.page)
+                detail_rows, has_next = history.rows, history.has_next
+            else:
+                summary = await records.summary(user_id=view.user_id, game=view.game_filter, page=view.page)
+                summary_rows, has_next = summary.rows, summary.has_next
+            embed = discord.Embed(title="莊家統計" if view.house else ("管理查帳" if view.audit else "我的紀錄"), color=COLOR)
+            for row in summary_rows:
+                status = {"settled": "正常完成", "active": "進行中（另列）", "void": "作廢退款（另列）"}[row.status]
+                amounts = (f"收取 {money(row.wager)}／支出 {money(row.returned)}／淨額 {money(-row.net)}"
+                           if view.house else
+                           f"累計下注 {money(row.wager)}／返還含本金 {money(row.returned)}／淨盈虧 {money(row.net)}")
+                embed.add_field(name=f"{row.game} · {status}", inline=False,
+                                value=f"{row.count} 局 · 勝 {row.losses if view.house else row.wins}／負 {row.wins if view.house else row.losses}／平 {row.ties}\n{amounts}")
+            if view.detail:
+                for record in detail_rows:
+                    embed.description = (f"玩家 {record.user_id} · 遊戲 {record.game}\n牌局 {record.id}\n"
+                        f"狀態 {record.status} · 結果 {record.outcome or '待結算'}\n"
+                        f"開始 <t:{int(record.created_at.timestamp())}:f>\n"
+                        + (f"結束 <t:{int(record.finished_at.timestamp())}:f>\n" if record.finished_at else "")
+                        + (f"原因 {record.reason}" if record.reason else ""))
+                    embed.add_field(name="原下注", value=money(record.original_wager))
+                    embed.add_field(name="累計下注", value=money(record.wager))
+                    embed.add_field(name="退款" if record.status == "void" else "返還（含本金）", value=money(record.returned))
+                    embed.add_field(name="在途淨額（未結算）" if record.status == "active" else "淨盈虧", value=money(record.net))
+                    for entry in record.entries:
+                        embed.add_field(name=f"流水 · {entry.kind}", inline=False,
+                            value=f"金額 {money(entry.amount)}\n餘額 {money(entry.before)} → {money(entry.after)}")
+            if not summary_rows and not detail_rows:
+                embed.description = "沒有符合條件的紀錄。"
+            embed.set_footer(text=f"第 {view.page + 1} 頁 · 進行中與作廢不計正常局數；金額依流水重算。")
+            if view.audit and not await self.is_auditor(interaction):
+                await interaction.followup.send("查帳權限已撤銷。", ephemeral=True)
+                return False
+            view.has_next = has_next
+            for button in view.children:
+                if isinstance(button, ActionButton) and button.action == "next":
+                    button.disabled = not has_next
+            if edit:
+                await interaction.edit_original_response(embed=embed, view=view,
+                    allowed_mentions=discord.AllowedMentions.none())
+            else:
+                await interaction.followup.send(embed=embed, view=view, ephemeral=not view.house,
+                    allowed_mentions=discord.AllowedMentions.none())
+            return True
+        except DatabaseError:
+            await interaction.followup.send(UNAVAILABLE, ephemeral=True)
 
     async def show_settings(self, interaction, prefs, game_type='dice'):
         balance = await self.storage().balance(interaction.user.id)

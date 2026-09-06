@@ -23,7 +23,7 @@ class CasinoUITests(unittest.IsolatedAsyncioTestCase):
     async def test_lobby_has_two_games_and_owner_guard(self):
         feature = CasinoFeature(None)
         view = LobbyView(feature, 123)
-        self.assertEqual([b.label for b in view.children], ['21 點', '18 豆仔'])
+        self.assertEqual([b.label for b in view.children], ['21 點', '18 豆仔', '我的紀錄', '莊家統計'])
         self.assertFalse(view.children[0].disabled)
         stranger = interaction(456)
         self.assertFalse(await view.interaction_check(stranger))
