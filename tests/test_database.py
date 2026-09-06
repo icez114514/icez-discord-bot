@@ -26,6 +26,7 @@ class DatabaseTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.schema = "crystal_test_" + uuid.uuid4().hex
         self.store = CrystalStore(read_database_url(), schema=self.schema)
+        self.addAsyncCleanup(self.store.close)
         async with self.store.connection() as conn:
             await conn.execute(sql.SQL("CREATE SCHEMA {}").format(sql.Identifier(self.schema)))
         self.addAsyncCleanup(self.drop_schema)
@@ -57,6 +58,8 @@ class DatabaseTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_concurrent_first_claim_across_store_instances(self):
         stores = [CrystalStore(read_database_url(), schema=self.schema) for _ in range(5)]
+        for store in stores:
+            self.addAsyncCleanup(store.close)
         results = await asyncio.gather(*[
             store.claim(123, "simultaneous", lambda: 7) for store in stores
         ])
@@ -127,6 +130,7 @@ class DatabaseTests(unittest.IsolatedAsyncioTestCase):
     async def test_missing_table_has_actionable_error(self):
         empty_schema = "crystal_test_" + uuid.uuid4().hex
         missing = CrystalStore(read_database_url(), schema=empty_schema)
+        self.addAsyncCleanup(missing.close)
         with self.assertRaisesRegex(DatabaseError, "database init"):
             await missing.check()
 
@@ -163,6 +167,8 @@ class DatabaseTests(unittest.IsolatedAsyncioTestCase):
     async def test_huge_import_exact_addition_and_ranking(self):
         huge = 10**100
         await self.store.import_accounts([Account(123, huge), Account(124, huge + 2)], dry_run=False)
+        for store in stores:
+            self.addAsyncCleanup(store.close)
         results = await asyncio.gather(*[self.store.claim(123, "huge", lambda: 1) for _ in range(3)])
         self.assertEqual(sum(r.reward is not None for r in results), 1)
         self.assertEqual({r.balance for r in results}, {huge + 1})

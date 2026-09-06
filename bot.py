@@ -81,12 +81,13 @@ def create_bot(guild_id: int | None = None, store: CrystalStore | None = None) -
 
 
 async def main(token: str, guild_id: int | None) -> None:
-    store = CrystalStore(read_database_url())
-    await store.check()
-    await CasinoStore(store).check()
-    bot = create_bot(guild_id, store)
-    async with bot:
-        await bot.start(token)
+    async with CrystalStore(read_database_url()) as store:
+        await store.check()
+        await CasinoStore(store).check()
+        bot = create_bot(guild_id, store)
+        async with bot:
+            await bot.start(token)
+
 
 
 if __name__ == "__main__":

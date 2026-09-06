@@ -13,6 +13,8 @@ import psycopg
 from dotenv import load_dotenv
 from psycopg import sql
 from psycopg.conninfo import conninfo_to_dict
+from psycopg.rows import tuple_row
+from psycopg_pool import AsyncConnectionPool, PoolTimeout, PoolClosed, TooManyRequests
 
 from crystal_rules import can_claim
 from legacy_merge import load_exact, merge_files
@@ -23,6 +25,10 @@ MAX_ID = 2**64 - 1
 
 class DatabaseError(RuntimeError):
     """A safe error suitable for a terminal or user response."""
+
+
+class DatabaseBusy(DatabaseError):
+    """A bounded wait for database capacity expired."""
 
 
 @dataclass(frozen=True)
@@ -67,15 +73,61 @@ class CrystalStore:
         self._params = connection_parameters(dsn)
         self.schema = schema
         self.table = sql.Identifier(schema, "crystal_accounts")
+        self._pool = AsyncConnectionPool(
+            kwargs=self._params, min_size=1, max_size=4, timeout=5,
+            open=False, name="crystal-db",
+        )
+        self._open_lock = asyncio.Lock()
+        self._opened = False
+        self._closed = False
+
+    async def open(self):
+        async with self._open_lock:
+            if self._closed:
+                raise DatabaseError("Database store is closed.")
+            if not self._opened:
+                try:
+                    await self._pool.open(wait=True, timeout=15)
+                except (psycopg.Error, PoolTimeout):
+                    await self._pool.close()
+                    self._closed = True
+                    raise DatabaseError("Database connection unavailable; credentials are not logged.") from None
+                except BaseException:
+                    await self._pool.close()
+                    self._closed = True
+                    raise
+                self._opened = True
+        return self
+
+    async def close(self):
+        async with self._open_lock:
+            self._closed = True
+            await self._pool.close()
+
+    async def __aenter__(self):
+        return await self.open()
+
+    async def __aexit__(self, exc_type, exc, tb):
+        await self.close()
 
     @asynccontextmanager
     async def connection(self, *, read_only: bool = False):
         try:
-            async with await psycopg.AsyncConnection.connect(**self._params) as conn:
+            await self.open()
+            async with self._pool.connection() as conn:
+                # Connection-local Python state must not leak between consumers.
+                conn.row_factory = tuple_row
+                await conn.set_autocommit(False)
+                await conn.set_isolation_level(psycopg.IsolationLevel.READ_COMMITTED)
                 await conn.set_read_only(read_only)
-                await conn.execute("SET LOCAL statement_timeout = '10s'")
-                await conn.execute("SET LOCAL lock_timeout = '5s'")
+                await conn.set_deferrable(False)
+                await conn.execute(
+                    "SELECT set_config('statement_timeout', '10s', true), "
+                    "set_config('lock_timeout', '5s', true)"
+                )
                 yield conn
+        except (PoolTimeout, PoolClosed, TooManyRequests):
+            raise DatabaseBusy("Database is busy. Please try again shortly.") from None
         except psycopg.errors.UndefinedTable:
             raise DatabaseError("Crystal tables are missing. Run: python -m database init") from None
         except psycopg.errors.UniqueViolation:
@@ -226,21 +278,22 @@ async def run_cli(args: argparse.Namespace) -> None:
         return
     accounts = parse_import(args.file) if args.command == "import" else None
     store = CrystalStore(read_database_url())
-    if args.command == "init":
-        await store.initialize()
-        await CasinoStore(store).initialize()
-        print("Crystal schema initialized. Existing accounts were preserved.")
-    elif args.command == "migrate":
-        await store.migrate()
-        await CasinoStore(store).initialize()
-        print("Crystal balance schema migrated to exact non-negative NUMERIC.")
-    elif args.command == "check":
-        encrypted = await store.check()
-        await CasinoStore(store).check()
-        print(f"Database and crystal schema OK; SSL: {encrypted}. Read-only check.")
-    else:
-        count = await store.import_accounts(accounts, dry_run=not args.apply)
-        print(f"{'Imported' if args.apply else 'Dry-run OK:'} {count} account(s).")
+    async with store:
+        if args.command == "init":
+            await store.initialize()
+            await CasinoStore(store).initialize()
+            print("Crystal schema initialized. Existing accounts were preserved.")
+        elif args.command == "migrate":
+            await store.migrate()
+            await CasinoStore(store).initialize()
+            print("Crystal balance schema migrated to exact non-negative NUMERIC.")
+        elif args.command == "check":
+            encrypted = await store.check()
+            await CasinoStore(store).check()
+            print(f"Database and crystal schema OK; SSL: {encrypted}. Read-only check.")
+        else:
+            count = await store.import_accounts(accounts, dry_run=not args.apply)
+            print(f"{'Imported' if args.apply else 'Dry-run OK:'} {count} account(s).")
 
 
 def cli() -> None:

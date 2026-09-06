@@ -23,6 +23,7 @@ class CasinoDatabaseTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.schema = "casino_test_" + uuid.uuid4().hex
         self.crystals = CrystalStore(read_database_url(), schema=self.schema)
+        self.addAsyncCleanup(self.crystals.close)
         async with self.crystals.connection() as conn:
             await conn.execute(sql.SQL("CREATE SCHEMA {}").format(sql.Identifier(self.schema)))
         self.addAsyncCleanup(self.drop_schema)
@@ -162,6 +163,8 @@ class CasinoDatabaseTests(unittest.IsolatedAsyncioTestCase):
         prefs = await self.casino.choose(124, prefs.token, base=huge, multiplier=1, custom=True)
         stores = [CasinoStore(CrystalStore(read_database_url(), schema=self.schema),
                               roll=lambda: (1, 2, 3, 6, 6, 6)) for _ in range(3)]
+        for store in stores:
+            self.addAsyncCleanup(store.crystals.close)
         results = await asyncio.gather(*(s.start(124, prefs.token) for s in stores),
                                       self.crystals.claim(124, 'daily', lambda: 7))
         self.assertEqual(len({g.id for g in results[:3]}), 1)
@@ -247,6 +250,7 @@ class CasinoDatabaseTests(unittest.IsolatedAsyncioTestCase):
 
                 other = CasinoStore(CrystalStore(read_database_url(), schema=self.schema),
                                     roll=lambda: (_ for _ in ()).throw(AssertionError('Recovery must not reroll')))
+                self.addAsyncCleanup(other.crystals.close)
                 if transaction == 1 and phase == 'before':
                     self.assertIsNone(await other.recover(123))
                     self.assertEqual(await other.balance(123), before)
@@ -297,6 +301,7 @@ class CasinoDatabaseTests(unittest.IsolatedAsyncioTestCase):
                     backup[table] = b''.join(chunks)
         restored_schema = 'casino_test_' + uuid.uuid4().hex
         restored_crystals = CrystalStore(read_database_url(), schema=restored_schema)
+        self.addAsyncCleanup(restored_crystals.close)
         async with original() as conn:
             await conn.execute(sql.SQL('CREATE SCHEMA {}').format(sql.Identifier(restored_schema)))
 

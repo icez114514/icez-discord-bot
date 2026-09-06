@@ -180,6 +180,7 @@ class BlackjackDatabaseTests(unittest.IsolatedAsyncioTestCase):
                     backup[table] = b''.join(chunks)
         schema = 'casino_test_' + uuid.uuid4().hex
         crystals = CrystalStore(read_database_url(), schema=schema)
+        self.addAsyncCleanup(crystals.close)
         async with crystals.connection() as conn:
             await conn.execute(sql.SQL('CREATE SCHEMA {}').format(sql.Identifier(schema)))
         async def cleanup():

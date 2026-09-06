@@ -3,3 +3,4 @@ Pillow==12.3.0
 python-dotenv==1.2.3
 psycopg[binary]==3.3.5; sys_platform == "win32"
 psycopg==3.3.5; sys_platform != "win32"
+psycopg-pool==3.3.1
