@@ -218,6 +218,8 @@ def parse_import(path: Path) -> list[Account]:
 
 
 async def run_cli(args: argparse.Namespace) -> None:
+    from casino_store import CasinoStore
+
     if args.command == "merge-legacy":
         report = merge_files(args.crystals, args.bank, args.output)
         print(json.dumps(report, ensure_ascii=True))
@@ -226,12 +228,15 @@ async def run_cli(args: argparse.Namespace) -> None:
     store = CrystalStore(read_database_url())
     if args.command == "init":
         await store.initialize()
+        await CasinoStore(store).initialize()
         print("Crystal schema initialized. Existing accounts were preserved.")
     elif args.command == "migrate":
         await store.migrate()
+        await CasinoStore(store).initialize()
         print("Crystal balance schema migrated to exact non-negative NUMERIC.")
     elif args.command == "check":
         encrypted = await store.check()
+        await CasinoStore(store).check()
         print(f"Database and crystal schema OK; SSL: {encrypted}. Read-only check.")
     else:
         count = await store.import_accounts(accounts, dry_run=not args.apply)

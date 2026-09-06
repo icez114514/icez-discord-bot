@@ -8,6 +8,8 @@ import discord
 from discord import app_commands
 from dotenv import load_dotenv
 
+from casino_commands import CasinoFeature
+from casino_store import CasinoStore
 from crystal_commands import CrystalFeature
 from database import CrystalStore, DatabaseError, read_database_url
 from runtime import configure_event_loop
@@ -28,6 +30,8 @@ class TestBot(discord.Client):
         self.guild_id = guild_id
         self.crystals = CrystalFeature(store)
         self.crystals.register(self.tree)
+        self.casino = CasinoFeature(CasinoStore(store) if store is not None else None)
+        self.casino.register(self.tree)
 
     async def on_message(self, message: discord.Message) -> None:
         await self.crystals.on_message(message)
@@ -75,6 +79,7 @@ def create_bot(guild_id: int | None = None, store: CrystalStore | None = None) -
 async def main(token: str, guild_id: int | None) -> None:
     store = CrystalStore(read_database_url())
     await store.check()
+    await CasinoStore(store).check()
     bot = create_bot(guild_id, store)
     async with bot:
         await bot.start(token)

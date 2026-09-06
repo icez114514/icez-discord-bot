@@ -131,6 +131,7 @@ class ImportTests(unittest.TestCase):
 class CommandTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.store = SimpleNamespace(
+            schema='public',
             claim=AsyncMock(return_value=ClaimResult(17, 7)),
             leaderboard=AsyncMock(return_value=[]),
         )
@@ -140,7 +141,7 @@ class CommandTests(unittest.IsolatedAsyncioTestCase):
         client = bot.create_bot(store=self.store)
         async with client:
             commands = client.tree.get_commands()
-            self.assertEqual({c.name for c in commands}, {"ping", "水晶"})
+            self.assertEqual({c.name for c in commands}, {"ping", "水晶", "賭場"})
             command = client.tree.get_command("水晶")
             option = command.parameters[0]
             self.assertEqual(option.display_name, "操作")

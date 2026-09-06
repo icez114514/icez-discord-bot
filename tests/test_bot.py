@@ -44,7 +44,7 @@ class BotTests(unittest.IsolatedAsyncioTestCase):
             with patch.object(client.tree, "sync", new_callable=AsyncMock, return_value=[]) as sync:
                 await client.setup_hook()
                 sync.assert_awaited_once_with()
-                self.assertEqual(sorted(c.name for c in client.tree.get_commands()), ["ping", "水晶"])
+                self.assertEqual(sorted(c.name for c in client.tree.get_commands()), ["ping", "水晶", "賭場"])
 
     async def test_guild_sync(self):
         client = bot.create_bot(123)
@@ -53,7 +53,7 @@ class BotTests(unittest.IsolatedAsyncioTestCase):
                 await client.setup_hook()
                 guild = sync.call_args.kwargs["guild"]
                 self.assertEqual(guild.id, 123)
-                self.assertEqual(sorted(c.name for c in client.tree.get_commands(guild=guild)), ["ping", "水晶"])
+                self.assertEqual(sorted(c.name for c in client.tree.get_commands(guild=guild)), ["ping", "水晶", "賭場"])
 
     async def test_ping(self):
         send = AsyncMock()

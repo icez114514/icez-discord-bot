@@ -202,3 +202,7 @@ Discord 手動驗收：
 5. 檢查粉色 Embed、圖片與名稱顯示；名稱不應觸發提及。
 
 API 依據：[discord.py Intents](https://discordpy.readthedocs.io/en/stable/intents.html)、[Psycopg 非同步連線](https://www.psycopg.org/psycopg3/docs/advanced/async.html)。
+
+## 水晶賭場
+
+公開 /賭場 已提供 18 豆仔；21 點入口暫時停用。啟用前請執行增量遷移，詳見 [賭場操作與故障恢復](docs/casino.md)。
