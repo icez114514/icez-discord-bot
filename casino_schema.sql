@@ -42,3 +42,7 @@ CREATE TABLE IF NOT EXISTS {ledger} (
     UNIQUE(game_id, kind)
 );
 CREATE UNIQUE INDEX IF NOT EXISTS casino_one_return ON {ledger}(game_id) WHERE kind IN ('payout', 'refund');
+ALTER TABLE {games} ADD COLUMN IF NOT EXISTS cards JSONB;
+ALTER TABLE {games} ADD COLUMN IF NOT EXISTS deadline TIMESTAMPTZ;
+ALTER TABLE {ledger} DROP CONSTRAINT IF EXISTS casino_ledger_kind_check;
+ALTER TABLE {ledger} ADD CONSTRAINT casino_ledger_kind_check CHECK (kind IN ('stake', 'double', 'payout', 'refund'));

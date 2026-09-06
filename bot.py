@@ -37,6 +37,7 @@ class TestBot(discord.Client):
         await self.crystals.on_message(message)
 
     async def setup_hook(self) -> None:
+        await self.casino.start_background()
         if self.guild_id is not None:
             guild = discord.Object(id=self.guild_id)
             self.tree.copy_global_to(guild=guild)
@@ -50,6 +51,9 @@ class TestBot(discord.Client):
         if self.user is not None:
             logging.info("Logged in as %s (ID: %s)", self.user, self.user.id)
 
+    async def close(self) -> None:
+        await self.casino.stop_background()
+        await super().close()
 
 async def ping(interaction: discord.Interaction) -> None:
     latency_ms = round(interaction.client.latency * 1000)

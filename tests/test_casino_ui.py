@@ -20,11 +20,11 @@ def interaction(user_id=123):
 
 
 class CasinoUITests(unittest.IsolatedAsyncioTestCase):
-    async def test_lobby_has_two_games_blackjack_disabled_and_owner_guard(self):
+    async def test_lobby_has_two_games_and_owner_guard(self):
         feature = CasinoFeature(None)
         view = LobbyView(feature, 123)
-        self.assertEqual([b.label for b in view.children], ['21 點（尚未開放）', '18 豆仔'])
-        self.assertTrue(view.children[0].disabled)
+        self.assertEqual([b.label for b in view.children], ['21 點', '18 豆仔'])
+        self.assertFalse(view.children[0].disabled)
         stranger = interaction(456)
         self.assertFalse(await view.interaction_check(stranger))
         self.assertTrue(stranger.response.send_message.call_args.kwargs['ephemeral'])
@@ -63,4 +63,4 @@ class CasinoUITests(unittest.IsolatedAsyncioTestCase):
         from unittest.mock import patch
         import os
         with patch.dict(os.environ, {'CASINO_DEALER_IMAGE': ''}):
-            self.assertTrue(CasinoFeature(None).dealer_path.endswith('Mei (1).jpg'))
+            self.assertEqual(CasinoFeature(None).dealer_path, '')
