@@ -1,3 +1,4 @@
+from casino_store import LobbySnapshot
 """Private query delivery and authorization at Discord interaction boundaries."""
 
 import unittest
@@ -66,7 +67,7 @@ class RecordsUITests(unittest.IsolatedAsyncioTestCase):
         feature.render = AsyncMock()
         with patch.dict(os.environ, {'CASINO_AUDITOR_IDS': '123'}):
             event = interaction()
-            await feature.show_lobby(event)
+            await feature.show_lobby(event, LobbySnapshot(None))
             entry = event.followup.send.call_args.kwargs
             self.assertTrue(entry['ephemeral'])
             self.assertIsInstance(entry['view'], AuditView)
@@ -92,7 +93,7 @@ class RecordsUITests(unittest.IsolatedAsyncioTestCase):
                 self.assertFalse(revoked_modal.response.defer.called)
             ordinary = interaction()
             ordinary.user.guild_permissions = type('Permissions', (), {'administrator': True})()
-            await feature.show_lobby(ordinary)
+            await feature.show_lobby(ordinary, LobbySnapshot(None))
             self.assertFalse(ordinary.followup.send.called)
 
     async def test_owner_is_authorized_but_other_app_team_members_are_not(self):

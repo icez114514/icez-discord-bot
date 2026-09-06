@@ -5,12 +5,14 @@ import logging
 import discord
 from discord import app_commands
 
+from latency import discord_update, mark_status, operation
 from crystal_rules import DOUBLE_ROLE_ID, daily_reward, is_crystal_message, level_for_roles
-from database import Account, ClaimResult, CrystalStore, DatabaseError
+from database import Account, ClaimResult, CrystalStore, DatabaseError, DatabaseBusy
 
 COLOR = 0xDC9FB4
 THUMBNAIL = "https://i.imgur.com/tvAkopu.png"
 DATABASE_UNAVAILABLE = "水晶資料庫暫時無法使用，請稍後重試；若剛才已成功領取，重試只會顯示餘額。"
+DATABASE_BUSY = "水晶資料庫目前忙碌，請稍後再試。"
 SERVER_ONLY = "請在伺服器中使用水晶功能。"
 
 
@@ -72,30 +74,38 @@ class CrystalFeature:
         async def crystal(interaction: discord.Interaction, action: str = "daily") -> None:
             await self.slash(interaction, action)
 
+    @operation("crystal.slash")
     async def slash(self, interaction: discord.Interaction, action: str = "daily") -> None:
         if interaction.guild is None or interaction.user.bot:
-            await interaction.response.send_message(SERVER_ONLY, ephemeral=True)
+            await discord_update(interaction.response.send_message(SERVER_ONLY, ephemeral=True))
             return
-        await interaction.response.defer(thinking=True)
+        await discord_update(interaction.response.defer(thinking=True))
         try:
             embed = await self.render(interaction.user, action)
-        except DatabaseError:
+        except DatabaseError as error:
+            mark_status("busy" if isinstance(error, DatabaseBusy) else "database_error")
             logging.warning("Crystal database operation failed; details suppressed.")
-            await interaction.edit_original_response(content=DATABASE_UNAVAILABLE)
+            await discord_update(interaction.edit_original_response(content=DATABASE_BUSY if isinstance(error, DatabaseBusy) else DATABASE_UNAVAILABLE))
             return
-        await interaction.edit_original_response(embed=embed, allowed_mentions=discord.AllowedMentions.none())
+        await discord_update(interaction.edit_original_response(embed=embed, allowed_mentions=discord.AllowedMentions.none()))
 
     async def on_message(self, message: discord.Message) -> None:
         if (message.guild is None or message.author.bot or message.webhook_id is not None
                 or not is_crystal_message(message.content)):
             return
+        await self._respond_message(message)
+
+    @operation("crystal.message")
+    async def _respond_message(self, message: discord.Message) -> None:
         try:
             try:
                 embed = await self.render(message.author, "daily")
-            except DatabaseError:
+            except DatabaseError as error:
+                mark_status("busy" if isinstance(error, DatabaseBusy) else "database_error")
                 logging.warning("Crystal database operation failed; details suppressed.")
-                await message.channel.send(DATABASE_UNAVAILABLE, allowed_mentions=discord.AllowedMentions.none())
+                await discord_update(message.channel.send(DATABASE_BUSY if isinstance(error, DatabaseBusy) else DATABASE_UNAVAILABLE, allowed_mentions=discord.AllowedMentions.none()))
                 return
-            await message.channel.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
+            await discord_update(message.channel.send(embed=embed, allowed_mentions=discord.AllowedMentions.none()))
         except discord.HTTPException:
+            mark_status("delivery_error")
             logging.warning("Crystal response delivery failed; no reward retry was attempted.")

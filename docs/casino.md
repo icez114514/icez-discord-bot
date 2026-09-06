@@ -129,3 +129,31 @@ Bot 應用程式擁有者（團隊應用程式為團隊擁有者）亦可查帳�
 
 本功能沿用 #8 schema，不需要新增資料欄位或遷移；從舊版本升級仍須依上方執行 migrate。
 查詢不呼叫恢復或結算，不改變帳戶、牌局、期限或流水。
+
+
+## 連線池與延遲修正（2026-09-06）
+
+本次效能更新不需要資料遷移。先安裝 `python -m pip install -r requirements.txt`，
+停止並重新啟動 Bot。每個程序的 CrystalStore 共用一個 psycopg_pool 連線池，
+水晶、賭場、查帳與逾時工作均透過同一個 store 借用；最少 1、最多 4 條連線，
+取得連線最多等待 5 秒，啟動預熱最多等待 15 秒。Bot 與 CLI 退出時關池。
+`python bot.py --check` 只驗證本機設定；`python -m database check` 才連線查驗。
+
+大廳恢復／清理、返回／修改下注的來源驗證與狀態更新在同一交易內完成。
+設定畫面的偏好與餘額來自同一操作快照，開局與加倍仍鎖帳戶重新檢查餘額。
+交易結束才合圖與更新 Discord；池滿時回覆忙碌，不重試整筆下注或派彩。
+失效連線會丟棄並補建；觸發失效的操作可能收到暫時不可用，使用 /賭場 查證即可。
+
+`Operation timing` 以 action 區分開局／下注／返回等固定操作類別，並以隨機 id 關聯 owner_wait_ms、db_ms、pool_wait_ms、compose_ms、
+update_ms、auth_ms 與 total_ms；db_ms 包含等待、交易設定及提交／回滾，pool_wait_ms 是其中一部分，
+不可將兩者相加。update_ms 含 Discord 確認／傳送、訊息更新鎖等待、編輯及文字回退；auth_ms 是即時權限檢查耗時。
+`bot.database_startup` 記錄含预熱與 schema 查驗的冷啟動。
+connection=cold 表示啟動或該 store 首次借用，warm 表示已暖機；不代表外部網路或圖片快取一定命中。
+首次借用若在啟動查驗時完成，之後玩家操作會標示 warm。背景逾時工作也有獨立關聯 id。
+日誌不記錄操作 token、連線字串、玩家識別、暗牌或餘額明細。授權結果不快取。
+
+量測與完整限制見 [casino-latency-validation.md](casino-latency-validation.md)。
+要重新量測，執行 `python benchmark_casino.py --optimized --samples 20 --output latency-after.json`；
+只使用隨機隔離 schema，完成後刪除測試資料。基準模式需搭配修正前版本，
+不可在新版用未加 --optimized 的結果當成修正前效能。
+回退時還原程式版本並重啟 Bot，不修改水晶、牌局或流水資料。

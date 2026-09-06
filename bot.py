@@ -13,6 +13,7 @@ from casino_store import CasinoStore
 from crystal_commands import CrystalFeature
 from database import CrystalStore, DatabaseError, read_database_url
 from runtime import configure_event_loop
+from latency import operation, measure, mark_cold
 
 
 logging.basicConfig(
@@ -80,13 +81,24 @@ def create_bot(guild_id: int | None = None, store: CrystalStore | None = None) -
     return bot
 
 
+@operation('bot.database_startup')
+async def prepare_database(store):
+    mark_cold()
+    with measure('db_ms'):
+        await store.open()
+    await store.check()
+    await CasinoStore(store).check()
+
+
 async def main(token: str, guild_id: int | None) -> None:
-    async with CrystalStore(read_database_url()) as store:
-        await store.check()
-        await CasinoStore(store).check()
+    store = CrystalStore(read_database_url())
+    try:
+        await prepare_database(store)
         bot = create_bot(guild_id, store)
         async with bot:
             await bot.start(token)
+    finally:
+        await store.close()
 
 
 

@@ -3,7 +3,7 @@ import asyncio
 import os
 import unittest
 from uuid import uuid4
-from psycopg import sql
+from psycopg import sql, IsolationLevel
 from psycopg.rows import dict_row
 from database import CrystalStore, DatabaseError, read_database_url
 from runtime import configure_event_loop
@@ -20,12 +20,14 @@ class PoolTests(unittest.IsolatedAsyncioTestCase):
         await self.store.open()
 
     async def test_reuse_resets_row_factory_and_read_only(self):
-        async with self.store.connection(read_only=True) as conn:
+        async with self.store.connection(read_only=True, isolation_level=IsolationLevel.REPEATABLE_READ) as conn:
             first = conn
+            self.assertEqual(await (await conn.execute("SHOW transaction_isolation")).fetchone(), ("repeatable read",))
             conn.row_factory = dict_row
             self.assertEqual(await (await conn.execute("SELECT 7 AS value")).fetchone(), {"value": 7})
         async with self.store.connection() as conn:
             self.assertIs(conn, first)
+            self.assertEqual(await (await conn.execute("SHOW transaction_isolation")).fetchone(), ("read committed",))
             self.assertEqual(await (await conn.execute("SELECT 8")).fetchone(), (8,))
             self.assertEqual(await (await conn.execute("SHOW transaction_read_only")).fetchone(), ("off",))
             self.assertEqual(await (await conn.execute("SHOW statement_timeout")).fetchone(), ("10s",))

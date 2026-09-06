@@ -18,13 +18,15 @@ from discord.ext import tasks
 
 from casino_rules import CasinoError, parse_integer
 from blackjack import total
-from casino_store import CasinoStore, Game, Preferences
+from casino_store import CasinoStore, Game, Preferences, LobbySnapshot
 from casino_records import CasinoRecords, Record, Summary
 from casino_images import renderer
-from database import DatabaseError
+from database import DatabaseError, DatabaseBusy
+from latency import discord_update, mark_status, mark_action, operation, timed, measured_lock, add_time, correlation_id
 
 COLOR = 0xDC9FB4
 UNAVAILABLE = "賭場資料庫暫時無法確認操作結果，請重新使用 /賭場 查證；請勿假定未扣款。"
+BUSY = "賭場目前忙碌，請稍後再試；若已有牌局，請使用 /賭場 查證。"
 OWNER_ONLY = "這是其他玩家的面板，請使用 /賭場 開啟自己的大廳。"
 
 
@@ -64,7 +66,7 @@ class OwnedView(discord.ui.View):
 
     async def interaction_check(self, interaction):
         if interaction.user.id != self.owner_id:
-            await interaction.response.send_message(OWNER_ONLY, ephemeral=True)
+            await discord_update(interaction.response.send_message(OWNER_ONLY, ephemeral=True))
             return False
         return True
 
@@ -114,10 +116,10 @@ class RecordsView(OwnedView):
         if not await super().interaction_check(interaction):
             return False
         if self.is_finished():
-            await interaction.response.send_message("此查詢頁已失效，請使用最新頁面或重新開啟紀錄。", ephemeral=True)
+            await discord_update(interaction.response.send_message("此查詢頁已失效，請使用最新頁面或重新開啟紀錄。", ephemeral=True))
             return False
         if self.audit and not await self.feature.is_auditor(interaction):
-            await interaction.response.send_message("目前沒有查帳權限。", ephemeral=True)
+            await discord_update(interaction.response.send_message("目前沒有查帳權限。", ephemeral=True))
             return False
         return True
 
@@ -127,7 +129,7 @@ class AuditView(OwnedView):
         if not await super().interaction_check(interaction):
             return False
         if self.is_finished() or not await self.feature.is_auditor(interaction):
-            await interaction.response.send_message("目前沒有查帳權限或入口已失效。", ephemeral=True)
+            await discord_update(interaction.response.send_message("目前沒有查帳權限或入口已失效。", ephemeral=True))
             return False
         return True
 
@@ -159,7 +161,7 @@ class AuditModal(discord.ui.Modal):
             else:
                 game_id = UUID(value)
         except ValueError:
-            await interaction.response.send_message("請輸入有效的玩家 ID 或牌局 UUID。", ephemeral=True)
+            await discord_update(interaction.response.send_message("請輸入有效的玩家 ID 或牌局 UUID。", ephemeral=True))
             return
         await self.panel.feature.show_records(interaction, RecordsView(
             self.panel.feature, self.panel.owner_id, user_id=user_id, game_id=game_id, audit=True, detail=True))
@@ -277,15 +279,17 @@ class CasinoFeature:
         except Exception:
             logging.warning('Casino expiry check failed; will retry from persisted state.')
 
+    @operation("casino.expire_once")
     async def expire_once(self):
         results = await self.storage().expire_pending()
         for game in results:
-            async with self.owner_lock(game.user_id):
+            async with measured_lock(self.owner_lock(game.user_id)):
                 target = self.active_messages.get(game.user_id)
                 if target is not None and target.game_id == game.id:
                     try:
                         await self.show_result(target.interaction, game)
                     except discord.HTTPException:
+                        mark_status("delivery_error")
                         logging.warning('Casino expiry delivery failed; settlement is durable.')
         for user_id, target in list(self.active_messages.items()):
             if time.monotonic() - target.shown_at > 600:
@@ -309,30 +313,35 @@ class CasinoFeature:
             raise DatabaseError("Casino storage is not configured")
         return self.store
 
+    @operation("casino.slash")
     async def slash(self, interaction):
         if interaction.guild is None or interaction.user.bot:
-            await interaction.response.send_message("請在伺服器中使用賭場。", ephemeral=True)
+            await discord_update(interaction.response.send_message("請在伺服器中使用賭場。", ephemeral=True))
             return
-        await interaction.response.defer(thinking=True)
-        async with self.owner_lock(interaction.user.id):
+        await discord_update(interaction.response.defer(thinking=True))
+        async with measured_lock(self.owner_lock(interaction.user.id)):
             await self._slash(interaction)
 
     async def _slash(self, interaction):
         try:
-            game = await self.storage().recover(interaction.user.id)
-            if game is not None:
+            game = await self.storage().open_panel(interaction.user.id)
+            if isinstance(game, Game):
                 await self.show_result(interaction, game)
             else:
-                await self.show_lobby(interaction)
+                await self.show_lobby(interaction, game)
         except (CasinoError, DatabaseError) as error:
-            await interaction.edit_original_response(content=str(error) if isinstance(error, CasinoError) else UNAVAILABLE)
+            mark_status("rejected" if isinstance(error, CasinoError) else "database_error")
+            await discord_update(interaction.edit_original_response(content=str(error) if isinstance(error, CasinoError) else BUSY if isinstance(error, DatabaseBusy) else UNAVAILABLE))
         except discord.HTTPException:
+            mark_status("delivery_error")
             logging.warning("Casino delivery failed; reopen /casino to recover. No financial operation retried.")
 
+    @operation("casino.act")
     async def act(self, interaction, view: OwnedView, action: str, value=None):
+        mark_action(action)
         if isinstance(view, AuditView):
             if await view.interaction_check(interaction) and action in ("audit_player", "audit_game"):
-                await interaction.response.send_modal(AuditModal(view, action))
+                await discord_update(interaction.response.send_modal(AuditModal(view, action)))
             return
         if isinstance(view, RecordsView):
             await self.records_action(interaction, view, action, value)
@@ -340,13 +349,13 @@ class CasinoFeature:
         if not await view.interaction_check(interaction):
             return
         if action.startswith("custom:") and isinstance(view, SettingsView):
-            await interaction.response.send_modal(BetModal(view, action.split(":")[1]))
+            await discord_update(interaction.response.send_modal(BetModal(view, action.split(":")[1])))
             return
         if isinstance(view, LobbyView) and action in ("records", "house"):
             await self.show_records(interaction, RecordsView(self, view.owner_id, house=action == "house"))
             return
-        await interaction.response.defer()
-        async with self.owner_lock(view.owner_id):
+        await discord_update(interaction.response.defer())
+        async with measured_lock(self.owner_lock(view.owner_id)):
             try:
                 store = self.storage()
                 uid = view.owner_id
@@ -362,45 +371,46 @@ class CasinoFeature:
                 elif action in ("settings", "blackjack", "lobby"):
                     game_type = 'blackjack' if action == 'blackjack' else (
                         view.game.game if isinstance(view, ResultView) else 'dice')
-                    if isinstance(view, ResultView):
-                        await store.leave(uid, game_id=view.game.id)
-                    elif isinstance(view, SettingsView):
-                        await store.leave(uid, token=view.prefs.token)
+                    source = ({'game_id': view.game.id} if isinstance(view, ResultView) else
+                              {'token': view.prefs.token} if isinstance(view, SettingsView) else {})
+                    panel = await store.open_panel(uid, settings=action != 'lobby', **source)
+                    if isinstance(panel, Game):
+                        await self.show_result(interaction, panel)
+                    elif isinstance(panel, LobbySnapshot):
+                        await self.show_lobby(interaction, panel)
                     else:
-                        recovered = await store.recover(uid)
-                        if recovered is not None:
-                            await self.show_result(interaction, recovered)
-                            return
-                    if action in ('settings', 'blackjack'):
-                        await self.show_settings(interaction, await store.settings(uid), game_type)
-                    else:
-                        await self.show_lobby(interaction)
+                        await self.show_settings(interaction, panel, game_type)
                 else:
                     if not isinstance(view, SettingsView):
                         raise CasinoError('此操作不適用目前面板。')
                     custom = action.startswith("submit:")
                     field, raw = action.split(":") if not custom else (action.split(":")[1], value)
-                    prefs = await store.choose(uid, view.prefs.token, **{field: parse_integer(raw)}, custom=custom)
+                    prefs = await store.choose_settings(uid, view.prefs.token, **{field: parse_integer(raw)}, custom=custom)
                     await self.show_settings(interaction, prefs, view.game_type)
             except CasinoError as error:
-                await interaction.followup.send(str(error), ephemeral=True)
+                mark_status("rejected")
+                await discord_update(interaction.followup.send(str(error), ephemeral=True))
+            except DatabaseBusy:
+                mark_status("busy")
+                await discord_update(interaction.followup.send(BUSY, ephemeral=True))
             except DatabaseError:
-                await interaction.followup.send(UNAVAILABLE, ephemeral=True)
+                mark_status("database_error")
+                await discord_update(interaction.followup.send(UNAVAILABLE, ephemeral=True))
             except discord.HTTPException:
+                mark_status("delivery_error")
                 logging.warning("Casino delivery failed; no financial operation retried.")
 
-    async def show_lobby(self, interaction):
-        balance = await self.storage().balance(interaction.user.id)
-        if balance is not None:
-            await self.storage().leave(interaction.user.id)
+    async def show_lobby(self, interaction, panel: LobbySnapshot):
+        balance = panel.balance
         embed = discord.Embed(title="水晶賭場", description="荷官歡迎你。請先選擇遊戲，再設定下注。", color=COLOR)
         embed.add_field(name="水晶餘額", value="尚無帳戶，請先 /水晶 簽到。" if balance is None else money(balance), inline=False)
         embed.set_footer(text="面板僅限本人操作；面板逾時請重新 /賭場。")
         await self.render(interaction, embed, LobbyView(self, interaction.user.id), dealer=True)
         if await self.is_auditor(interaction):
-            await interaction.followup.send("管理查帳（僅限授權者）", view=AuditView(self, interaction.user.id),
-                ephemeral=True, allowed_mentions=discord.AllowedMentions.none())
+            await discord_update(interaction.followup.send("管理查帳（僅限授權者）", view=AuditView(self, interaction.user.id),
+                ephemeral=True, allowed_mentions=discord.AllowedMentions.none()))
 
+    @timed('auth_ms')
     async def is_auditor(self, interaction) -> bool:
         # Read current configuration, never remember a grant in a view or Modal.
         ids = os.getenv("CASINO_AUDITOR_IDS", "").replace(",", " ").split()
@@ -416,16 +426,18 @@ class CasinoFeature:
         except (discord.HTTPException, asyncio.TimeoutError):
             return False
 
+    @operation("casino.records_action")
     async def records_action(self, interaction, view: RecordsView, action: str, value=None):
+        mark_action(action)
         if not await view.interaction_check(interaction):
             return
         if action == "filter":
-            await interaction.response.send_modal(QueryModal(view))
+            await discord_update(interaction.response.send_modal(QueryModal(view)))
             return
-        await interaction.response.defer()
+        await discord_update(interaction.response.defer())
         async with view.lock:
             if view.is_finished() or (view.audit and not await self.is_auditor(interaction)):
-                await interaction.followup.send("此查詢頁已失效或權限已撤銷。", ephemeral=True)
+                await discord_update(interaction.followup.send("此查詢頁已失效或權限已撤銷。", ephemeral=True))
                 return
             page, detail, game = view.page, view.detail, view.game_filter
             if action == "next" and view.has_next:
@@ -437,19 +449,20 @@ class CasinoFeature:
             elif action == "apply_filter":
                 page, game = 0, value or None
             else:
-                await interaction.followup.send("此查詢操作已失效。", ephemeral=True)
+                await discord_update(interaction.followup.send("此查詢操作已失效。", ephemeral=True))
                 return
             replacement = RecordsView(self, view.owner_id, house=view.house, user_id=view.user_id,
                 game=game, game_id=view.game_id, page=page, detail=detail, audit=view.audit)
             if await self.show_records(interaction, replacement, edit=True):
                 view.stop()
 
+    @operation("casino.show_records")
     async def show_records(self, interaction, view: RecordsView, *, edit=False):
         if not edit:
-            await interaction.response.defer(ephemeral=not view.house, thinking=True)
+            await discord_update(interaction.response.defer(ephemeral=not view.house, thinking=True))
         try:
             if view.audit and not await self.is_auditor(interaction):
-                await interaction.followup.send("目前沒有查帳權限。", ephemeral=True)
+                await discord_update(interaction.followup.send("目前沒有查帳權限。", ephemeral=True))
                 return False
             records = CasinoRecords(self.storage())
             summary_rows: tuple[Summary, ...] = ()
@@ -486,24 +499,25 @@ class CasinoFeature:
                 embed.description = "沒有符合條件的紀錄。"
             embed.set_footer(text=f"第 {view.page + 1} 頁 · 進行中與作廢不計正常局數；金額依流水重算。")
             if view.audit and not await self.is_auditor(interaction):
-                await interaction.followup.send("查帳權限已撤銷。", ephemeral=True)
+                await discord_update(interaction.followup.send("查帳權限已撤銷。", ephemeral=True))
                 return False
             view.has_next = has_next
             for button in view.children:
                 if isinstance(button, ActionButton) and button.action == "next":
                     button.disabled = not has_next
             if edit:
-                await interaction.edit_original_response(embed=embed, view=view,
-                    allowed_mentions=discord.AllowedMentions.none())
+                await discord_update(interaction.edit_original_response(embed=embed, view=view,
+                    allowed_mentions=discord.AllowedMentions.none()))
             else:
-                await interaction.followup.send(embed=embed, view=view, ephemeral=not view.house,
-                    allowed_mentions=discord.AllowedMentions.none())
+                await discord_update(interaction.followup.send(embed=embed, view=view, ephemeral=not view.house,
+                    allowed_mentions=discord.AllowedMentions.none()))
             return True
-        except DatabaseError:
-            await interaction.followup.send(UNAVAILABLE, ephemeral=True)
+        except DatabaseError as error:
+            mark_status("busy" if isinstance(error, DatabaseBusy) else "database_error")
+            await discord_update(interaction.followup.send(BUSY if isinstance(error, DatabaseBusy) else UNAVAILABLE, ephemeral=True))
 
-    async def show_settings(self, interaction, prefs, game_type='dice'):
-        balance = await self.storage().balance(interaction.user.id)
+    async def show_settings(self, interaction, panel, game_type='dice'):
+        prefs, balance = panel.preferences, panel.balance
         embed = discord.Embed(title=('21 點' if game_type == 'blackjack' else '18 豆仔') + ' · 下注設定', color=COLOR)
         embed.add_field(name="基本下注", value=money(prefs.bet.base))
         embed.add_field(name="倍率", value=money(prefs.bet.multiplier))
@@ -589,6 +603,7 @@ class CasinoFeature:
             except OSError:
                 embed.description += "\n荷官圖片暫時無法載入。"
         composed = time.perf_counter()
+        add_time("compose_ms", composed-started)
         try:
             async with delivery.lock:
                 if revision != delivery.revision:
@@ -597,6 +612,7 @@ class CasinoFeature:
                     message = await interaction.edit_original_response(content=None, embed=embed, view=view, attachments=attachments,
                                                                       allowed_mentions=discord.AllowedMentions.none())
                 except discord.HTTPException:
+                    mark_status("delivery_error")
                     if not attachments:
                         raise
                     embed.set_image(url=None)
@@ -605,9 +621,10 @@ class CasinoFeature:
                                                                       allowed_mentions=discord.AllowedMentions.none())
                 if isinstance(getattr(message, 'id', None), int):
                     self.deliveries[message.id] = delivery
-                logging.info('Casino render compose_ms=%.1f update_ms=%.1f version=%s',
-                             (composed-started)*1000, (time.perf_counter()-composed)*1000, delivery.version)
+                logging.info('Casino render correlation=%s compose_ms=%.1f update_ms=%.1f version=%s',
+                             correlation_id(), (composed-started)*1000, (time.perf_counter()-composed)*1000, delivery.version)
                 return True
         finally:
+            add_time("update_ms", time.perf_counter()-composed)
             for attachment in attachments:
                 attachment.close()

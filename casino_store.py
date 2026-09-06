@@ -25,6 +25,17 @@ class Preferences:
 
 
 @dataclass(frozen=True)
+class LobbySnapshot:
+    balance: int | None
+
+
+@dataclass(frozen=True)
+class SettingsSnapshot:
+    preferences: Preferences
+    balance: int
+
+
+@dataclass(frozen=True)
 class Game:
     id: UUID
     user_id: int
@@ -136,13 +147,41 @@ class CasinoStore:
             row = await (await self.execute(conn, 'SELECT * FROM {preferences} WHERE user_id=%s', (user_id,))).fetchone()
             return read_preferences(row) if row else Preferences(Bet(), None, None, None)
 
+    async def open_panel(self, user_id: int, *, settings=False, game_id=None, token=None):
+        """Validate the source and return a committed panel snapshot in one checkout."""
+        async with self.crystals.connection() as conn:
+            account = await (await self.execute(conn,
+                'SELECT balance FROM {accounts} WHERE user_id=%s FOR UPDATE', (user_id,))).fetchone()
+            if account is None:
+                if settings or game_id is not None or token is not None:
+                    raise CasinoError('尚無水晶帳戶，請先使用 /水晶 簽到。')
+                return LobbySnapshot(None)
+            balance = int(account['balance'])
+            if game_id is not None or token is not None:
+                await self.validate_departure(conn, user_id, game_id=game_id, token=token)
+            else:
+                row = await (await self.execute(conn, """SELECT * FROM {games} WHERE user_id=%s
+                    AND (status='active' OR NOT dismissed)
+                    ORDER BY (status='active') DESC,created_at DESC LIMIT 1 FOR UPDATE""", (user_id,))).fetchone()
+                if row is not None:
+                    return await self.resolve_game(conn, row, balance)
+            if settings:
+                prefs = await self.new_settings(conn, user_id)
+                return SettingsSnapshot(prefs, balance)
+            await self.execute(conn, 'UPDATE {preferences} SET token=NULL WHERE user_id=%s', (user_id,))
+            return LobbySnapshot(balance)
+
+    async def new_settings(self, conn, user_id):
+        row = await (await self.execute(conn, """INSERT INTO {preferences}(user_id,token)
+            VALUES (%s,%s) ON CONFLICT (user_id) DO UPDATE SET token=EXCLUDED.token
+            RETURNING *""", (user_id, uuid4()))).fetchone()
+        return read_preferences(row)
+
     async def settings(self, user_id: int) -> Preferences:
         async with self.crystals.connection() as conn:
             await self.lock_account(conn, user_id)
             await self.require_idle(conn, user_id)
-            await self.execute(conn, 'INSERT INTO {preferences}(user_id) VALUES (%s) ON CONFLICT DO NOTHING', (user_id,))
-            row = await (await self.execute(conn, 'UPDATE {preferences} SET token=%s WHERE user_id=%s RETURNING *', (uuid4(), user_id))).fetchone()
-        return read_preferences(row)
+            return await self.new_settings(conn, user_id)
 
     async def require_idle(self, conn, user_id):
         row = await (await self.execute(conn, "SELECT id FROM {games} WHERE user_id=%s AND status='active'", (user_id,))).fetchone()
@@ -150,8 +189,12 @@ class CasinoStore:
             raise CasinoError('已有進行中的牌局，請使用 /賭場 恢復。')
 
     async def choose(self, user_id: int, token: UUID | None, *, base=None, multiplier=None, custom=False) -> Preferences:
+        snapshot = await self.choose_settings(user_id, token, base=base, multiplier=multiplier, custom=custom)
+        return snapshot.preferences
+
+    async def choose_settings(self, user_id: int, token: UUID | None, *, base=None, multiplier=None, custom=False) -> SettingsSnapshot:
         async with self.crystals.connection() as conn:
-            await self.lock_account(conn, user_id)
+            balance = await self.lock_account(conn, user_id)
             row = await (await self.execute(conn, 'SELECT * FROM {preferences} WHERE user_id=%s', (user_id,))).fetchone()
             if row is None or token is None or row['token'] != token:
                 raise CasinoError('此設定面板已失效，請使用 /賭場。')
@@ -160,7 +203,7 @@ class CasinoStore:
                 custom_base=%s, custom_multiplier=%s, token=%s WHERE user_id=%s RETURNING *''',
                 (bet.base, bet.multiplier, base if custom and base is not None else row['custom_base'],
                  multiplier if custom and multiplier is not None else row['custom_multiplier'], uuid4(), user_id))).fetchone()
-        return read_preferences(row)
+        return SettingsSnapshot(read_preferences(row), balance)
 
     async def replay(self, user_id: int, game_id: UUID) -> Game:
         return await self.start(user_id, uuid5(NAMESPACE_URL, 'casino:replay:' + str(game_id)), parent_id=game_id)
@@ -227,17 +270,20 @@ class CasinoStore:
     async def leave(self, user_id: int, *, game_id=None, token=None):
         async with self.crystals.connection() as conn:
             await self.lock_account(conn, user_id)
-            await self.require_idle(conn, user_id)
-            if game_id is not None:
-                row = await (await self.execute(conn, 'SELECT dismissed FROM {games} WHERE id=%s AND user_id=%s', (game_id, user_id))).fetchone()
-                if row is None or row['dismissed']:
-                    raise CasinoError('此結算面板已失效，請使用 /賭場。')
-                await self.execute(conn, 'UPDATE {games} SET dismissed=TRUE WHERE id=%s', (game_id,))
-            if token is not None:
-                row = await (await self.execute(conn, 'SELECT token FROM {preferences} WHERE user_id=%s', (user_id,))).fetchone()
-                if row is None or row['token'] != token:
-                    raise CasinoError('此設定面板已失效，請使用 /賭場。')
+            await self.validate_departure(conn, user_id, game_id=game_id, token=token)
             await self.execute(conn, 'UPDATE {preferences} SET token=NULL WHERE user_id=%s', (user_id,))
+
+    async def validate_departure(self, conn, user_id, *, game_id=None, token=None):
+        await self.require_idle(conn, user_id)
+        if game_id is not None:
+            row = await (await self.execute(conn, 'SELECT dismissed FROM {games} WHERE id=%s AND user_id=%s', (game_id, user_id))).fetchone()
+            if row is None or row['dismissed']:
+                raise CasinoError('此結算面板已失效，請使用 /賭場。')
+            await self.execute(conn, 'UPDATE {games} SET dismissed=TRUE WHERE id=%s', (game_id,))
+        if token is not None:
+            row = await (await self.execute(conn, 'SELECT token FROM {preferences} WHERE user_id=%s', (user_id,))).fetchone()
+            if row is None or row['token'] != token:
+                raise CasinoError('此設定面板已失效，請使用 /賭場。')
 
     async def settle(self, user_id: int, game_id: UUID) -> Game:
         try:
@@ -255,23 +301,28 @@ class CasinoStore:
             row = await (await self.execute(conn, 'SELECT * FROM {games} WHERE id=%s AND user_id=%s FOR UPDATE', (game_id, user_id))).fetchone()
             if row is None:
                 raise CasinoError('找不到你的牌局。')
-            if row['status'] == 'active':
-                if row['game'] == 'blackjack':
-                    return await self.resolve_blackjack(conn, row, balance)
-                if row['game'] != 'dice':
-                    raise CasinoError('此牌局需要對應遊戲的恢復功能，未執行退款。')
-                try:
-                    result = outcome(row['dice'][:3], row['dice'][3:])
-                    returned = int(row['wager']) * {'win': 2, 'tie': 1, 'loss': 0}[result]
-                    status, kind, reason = 'settled', 'payout', None
-                except (ValueError, TypeError, KeyError):
-                    result, returned = 'void', int(row['wager'])
-                    status, kind, reason = 'void', 'refund', 'invalid_persisted_dice'
-                await self.transfer(conn, user_id, game_id, kind, returned, balance)
-                row = await (await self.execute(conn, '''UPDATE {games} SET status=%s,outcome=%s,
-                    returned=%s,balance_after=%s,version=version+1,finished_at=clock_timestamp(),reason=%s
-                    WHERE id=%s RETURNING *''', (status, result, returned, balance + returned, reason, game_id))).fetchone()
+            return await self.resolve_game(conn, row, balance)
+
+    async def resolve_game(self, conn, row, balance):
+        user_id, game_id = int(row['user_id']), row['id']
+        if row['status'] == 'active':
+            if row['game'] == 'blackjack':
+                return await self.resolve_blackjack(conn, row, balance)
+            if row['game'] != 'dice':
+                raise CasinoError('此牌局需要對應遊戲的恢復功能，未執行退款。')
+            try:
+                result = outcome(row['dice'][:3], row['dice'][3:])
+                returned = int(row['wager']) * {'win': 2, 'tie': 1, 'loss': 0}[result]
+                status, kind, reason = 'settled', 'payout', None
+            except (ValueError, TypeError, KeyError):
+                result, returned = 'void', int(row['wager'])
+                status, kind, reason = 'void', 'refund', 'invalid_persisted_dice'
+            await self.transfer(conn, user_id, game_id, kind, returned, balance)
+            row = await (await self.execute(conn, '''UPDATE {games} SET status=%s,outcome=%s,
+                returned=%s,balance_after=%s,version=version+1,finished_at=clock_timestamp(),reason=%s
+                WHERE id=%s RETURNING *''', (status, result, returned, balance + returned, reason, game_id))).fetchone()
         return read_game(row)
+
 
     async def play(self, user_id: int, game_id: UUID, version: int, action: str) -> Game:
         try:

@@ -4,7 +4,7 @@ import argparse
 import asyncio
 import json
 import os
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, AsyncExitStack
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
@@ -16,6 +16,7 @@ from psycopg.conninfo import conninfo_to_dict
 from psycopg.rows import tuple_row
 from psycopg_pool import AsyncConnectionPool, PoolTimeout, PoolClosed, TooManyRequests
 
+from latency import measure, mark_cold
 from crystal_rules import can_claim
 from legacy_merge import load_exact, merge_files
 from runtime import configure_event_loop
@@ -80,6 +81,7 @@ class CrystalStore:
         self._open_lock = asyncio.Lock()
         self._opened = False
         self._closed = False
+        self._first_checkout = True
 
     async def open(self):
         async with self._open_lock:
@@ -111,29 +113,37 @@ class CrystalStore:
         await self.close()
 
     @asynccontextmanager
-    async def connection(self, *, read_only: bool = False):
-        try:
-            await self.open()
-            async with self._pool.connection() as conn:
-                # Connection-local Python state must not leak between consumers.
-                conn.row_factory = tuple_row
-                await conn.set_autocommit(False)
-                await conn.set_isolation_level(psycopg.IsolationLevel.READ_COMMITTED)
-                await conn.set_read_only(read_only)
-                await conn.set_deferrable(False)
-                await conn.execute(
-                    "SELECT set_config('statement_timeout', '10s', true), "
-                    "set_config('lock_timeout', '5s', true)"
-                )
-                yield conn
-        except (PoolTimeout, PoolClosed, TooManyRequests):
-            raise DatabaseBusy("Database is busy. Please try again shortly.") from None
-        except psycopg.errors.UndefinedTable:
-            raise DatabaseError("Crystal tables are missing. Run: python -m database init") from None
-        except psycopg.errors.UniqueViolation:
-            raise DatabaseError("Import conflict: an account already exists. No accounts were imported.") from None
-        except psycopg.Error:
-            raise DatabaseError("Database operation failed. Check the connection and retry; credentials are not logged.") from None
+    async def connection(self, *, read_only: bool = False,
+                         isolation_level: psycopg.IsolationLevel = psycopg.IsolationLevel.READ_COMMITTED):
+        with measure('db_ms'):
+            try:
+                await self.open()
+                if self._first_checkout:
+                    mark_cold()
+                    self._first_checkout = False
+                async with AsyncExitStack() as stack:
+                    with measure('pool_wait_ms'):
+                        conn = await stack.enter_async_context(self._pool.connection())
+                    # Connection-local Python state must not leak between consumers.
+                    conn.row_factory = tuple_row
+                    await conn.set_autocommit(False)
+                    await conn.set_isolation_level(isolation_level)
+                    await conn.set_read_only(read_only)
+                    await conn.set_deferrable(False)
+                    await conn.execute(
+                        "SELECT set_config('statement_timeout', '10s', true), "
+                        "set_config('lock_timeout', '5s', true)"
+                    )
+                    yield conn
+            except (PoolTimeout, PoolClosed, TooManyRequests):
+                raise DatabaseBusy("Database is busy. Please try again shortly.") from None
+            except psycopg.errors.UndefinedTable:
+                raise DatabaseError("Crystal tables are missing. Run: python -m database init") from None
+            except psycopg.errors.UniqueViolation:
+                raise DatabaseError("Import conflict: an account already exists. No accounts were imported.") from None
+            except psycopg.Error:
+                raise DatabaseError("Database operation failed. Check the connection and retry; credentials are not logged.") from None
+
 
     async def initialize(self) -> None:
         async with self.connection() as conn:
@@ -292,6 +302,7 @@ async def run_cli(args: argparse.Namespace) -> None:
             await CasinoStore(store).check()
             print(f"Database and crystal schema OK; SSL: {encrypted}. Read-only check.")
         else:
+            assert accounts is not None
             count = await store.import_accounts(accounts, dry_run=not args.apply)
             print(f"{'Imported' if args.apply else 'Dry-run OK:'} {count} account(s).")
 

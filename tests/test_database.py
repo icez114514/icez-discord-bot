@@ -167,8 +167,6 @@ class DatabaseTests(unittest.IsolatedAsyncioTestCase):
     async def test_huge_import_exact_addition_and_ranking(self):
         huge = 10**100
         await self.store.import_accounts([Account(123, huge), Account(124, huge + 2)], dry_run=False)
-        for store in stores:
-            self.addAsyncCleanup(store.close)
         results = await asyncio.gather(*[self.store.claim(123, "huge", lambda: 1) for _ in range(3)])
         self.assertEqual(sum(r.reward is not None for r in results), 1)
         self.assertEqual({r.balance for r in results}, {huge + 1})

@@ -38,6 +38,89 @@ class CasinoDatabaseTests(unittest.IsolatedAsyncioTestCase):
         async with self.crystals.connection() as conn:
             await conn.execute(sql.SQL("DROP SCHEMA {} CASCADE").format(sql.Identifier(self.schema)))
 
+    async def test_panel_cannot_leave_active_game_with_old_sources(self):
+        cards = [4, 8, 5, 20] + [c for c in range(52) if c not in (4, 8, 5, 20)]
+        casino = CasinoStore(self.crystals, deck=lambda: cards)
+        settings = await casino.open_panel(123, settings=True)
+        game = await casino.start(123, settings.preferences.token, game='blackjack')
+        self.assertEqual(game.status, 'active')
+        for destination in (False, True):
+            for source in ({'game_id': game.id}, {'token': settings.preferences.token}):
+                with self.assertRaises(CasinoError):
+                    await casino.open_panel(123, settings=destination, **source)
+        self.assertEqual(await casino.open_panel(123), game)
+        self.assertEqual(len(await casino.ledger(123, game.id)), 1)
+
+    async def test_panel_transition_commit_failure_does_not_partially_dismiss(self):
+        from contextlib import asynccontextmanager
+        from database import DatabaseError
+        prefs = await self.casino.settings(123)
+        game = await self.casino.start(123, prefs.token)
+        original = self.crystals.connection
+        @asynccontextmanager
+        async def fail(**kwargs):
+            async with original(**kwargs) as conn:
+                yield conn
+                raise DatabaseError('Injected pre-commit failure')
+        self.crystals.connection = fail
+        try:
+            with self.assertRaises(DatabaseError):
+                await self.casino.open_panel(123, settings=True, game_id=game.id)
+        finally:
+            self.crystals.connection = original
+        self.assertEqual(await self.casino.open_panel(123), game)
+        self.assertEqual(len(await self.casino.ledger(123, game.id)), 2)
+
+    async def test_panel_snapshots_and_transitions_are_atomic(self):
+        from casino_store import LobbySnapshot, SettingsSnapshot
+        lobby = await self.casino.open_panel(123)
+        self.assertEqual(lobby, LobbySnapshot(1000))
+        self.assertEqual(await self.casino.open_panel(999), LobbySnapshot(None))
+        settings = await self.casino.open_panel(123, settings=True)
+        self.assertIsInstance(settings, SettingsSnapshot)
+        await self.crystals.claim(123, 'name', lambda: 7)
+        changed = await self.casino.choose_settings(123, settings.preferences.token, base=246, custom=True)
+        self.assertEqual((changed.balance, changed.preferences.custom_base), (1007, 246))
+        with self.assertRaises(CasinoError):
+            await self.casino.open_panel(123, token=settings.preferences.token)
+        game = await self.casino.start(123, changed.preferences.token)
+        self.assertEqual((await self.casino.open_panel(123)).id, game.id)
+        adjusted = await self.casino.open_panel(123, settings=True, game_id=game.id)
+        self.assertEqual(adjusted.balance, game.balance_after)
+        with self.assertRaises(CasinoError):
+            await self.casino.replay(123, game.id)
+        await self.casino.open_panel(123, token=adjusted.preferences.token)
+        with self.assertRaises(CasinoError):
+            await self.casino.start(123, adjusted.preferences.token)
+
+    async def test_panel_uses_one_checkout_and_returns_it_before_delivery(self):
+        from contextlib import asynccontextmanager
+        from unittest.mock import AsyncMock
+        from casino_commands import CasinoFeature
+        from types import SimpleNamespace
+        original = self.crystals.connection
+        calls, held = [], []
+        @asynccontextmanager
+        async def counted(**kwargs):
+            calls.append(kwargs)
+            async with original(**kwargs) as conn:
+                held.append(conn)
+                try:
+                    yield conn
+                finally:
+                    held.pop()
+        self.crystals.connection = counted
+        panel = await self.casino.open_panel(123, settings=True)
+        self.assertEqual(len(calls), 1)
+        panel = await self.casino.choose_settings(123, panel.preferences.token, base=20)
+        self.assertEqual(len(calls), 2)
+        feature = CasinoFeature(self.casino)
+        async def deliver(*args, **kwargs):
+            self.assertFalse(held)
+            self.assertEqual(len(calls), 2)
+        feature.render = AsyncMock(side_effect=deliver)
+        await feature.show_settings(SimpleNamespace(user=SimpleNamespace(id=123)), panel)
+
     async def test_win_persists_exact_balance_result_and_ledger(self):
         prefs = await self.casino.settings(123)
         prefs = await self.casino.choose(123, prefs.token, base=100)

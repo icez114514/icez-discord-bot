@@ -9,6 +9,8 @@ from datetime import datetime
 from typing import Generic, TypeVar
 from uuid import UUID
 
+from psycopg import IsolationLevel
+
 from casino_store import CasinoStore, Entry
 
 
@@ -99,9 +101,9 @@ class CasinoRecords:
         if page < 0:
             raise ValueError('Negative page')
         where, params = filters(user_id, game, game_id)
-        async with self.store.crystals.connection(read_only=True) as conn:
+        async with self.store.crystals.connection(
+                read_only=True, isolation_level=IsolationLevel.REPEATABLE_READ) as conn:
             # A settlement between the two reads must not mix active state with a payout.
-            await conn.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ')
             rows = await (await self.store.execute(conn, '''
                 SELECT g.id,g.user_id,g.game,g.status,g.outcome,g.base*g.multiplier AS original_wager,
                     g.created_at,g.finished_at,g.reason
