@@ -340,7 +340,7 @@ class CasinoFeature:
         channel_name = (getattr(getattr(interaction, 'channel', None), 'name', None) or '').casefold()
         if not any(word in channel_name for word in ('簽到', '測試', '賭場', '指令', 'test')):
             await discord_update(interaction.response.send_message(
-                '請在頻道名稱包含「簽到」、「測試」、「賭場」、「指令」或「test」的頻道使用 /賭場。',
+                '請至指令頻道使用',
                 ephemeral=True))
             return
         if not await self.acknowledge(interaction, thinking=True):
