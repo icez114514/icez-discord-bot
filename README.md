@@ -147,11 +147,11 @@ PyNaCl 或 davey 未安裝的語音警告不影響此 Bot 的文字功能。
 ```bash
 pkg update
 pkg upgrade
-pkg install python git tmux libpq clang make pkg-config nano
+pkg install python python-pip python-pillow git tmux postgresql clang make pkg-config nano util-linux
 cd ~
 git clone https://github.com/icez114514/icez-discord-bot.git
 cd icez-discord-bot
-python -m venv .venv
+python -m venv --system-site-packages .venv
 .venv/bin/python -m pip install -r requirements.txt
 cp -n .env.example .env
 nano .env
@@ -206,3 +206,21 @@ API 依據：[discord.py Intents](https://discordpy.readthedocs.io/en/stable/int
 ## 水晶賭場
 
 公開 /賭場 已提供 18 豆仔；21 點入口暫時停用。啟用前請執行增量遷移，詳見 [賭場操作與故障恢復](docs/casino.md)。
+
+
+## Termux 一鍵更新與重啟
+
+從另一個 Termux 分頁執行，勿在 `discordbot` tmux 工作階段內執行：
+
+```bash
+bash ~/icez-discord-bot/update_bot.sh
+```
+
+首次取得腳本前先在專案目錄執行 `git pull --ff-only`；若缺少 `flock`，執行 `pkg install util-linux`。
+腳本只管理專案目錄內、單一 pane 的 `discordbot` 工作階段。檢查本機修改與分支後，
+以 Ctrl+C 停止 Bot，再執行 fast-forward pull、依賴安裝、本機及資料庫檢查，最後重新啟動。
+若無工作階段，會建立；若另有同專案 Bot 執行，會拒絕啟動第二份。
+有未提交檔案、分支分歧或無法溫和停止時不更新；停止後若安裝或檢查失敗則保持停止，
+顯示錯誤，修正後可重跑。不修改 `.env`，不自動執行資料庫初始化或遷移。
+新增資料表的版本需依該次上線說明先處理資料庫。啟動後用 `tmux attach -t discordbot` 確認登入。
+此腳本不提供 Android 開機自啟；手機仍須允許 Termux 背景執行。
