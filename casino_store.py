@@ -214,23 +214,30 @@ class CasinoStore:
         try:
             async with self.crystals.connection() as conn:
                 balance = await self.lock_account(conn, user_id)
-                row = await (await self.execute(conn, 'SELECT * FROM {games} WHERE operation_id=%s AND user_id=%s', (token, user_id))).fetchone()
+                # Account lock is acquired before batching reads: every writer uses this lock.
+                async with conn.pipeline():
+                    existing = await self.execute(conn, 'SELECT * FROM {games} WHERE operation_id=%s AND user_id=%s', (token, user_id))
+                    active = await self.execute(conn, "SELECT id FROM {games} WHERE user_id=%s AND status='active'", (user_id,))
+                    origin = await self.execute(conn,
+                        'SELECT * FROM {preferences} WHERE user_id=%s' if parent_id is None else
+                        'SELECT * FROM {games} WHERE id=%s AND user_id=%s',
+                        (user_id,) if parent_id is None else (parent_id, user_id))
+                row = await existing.fetchone()
                 if row is None:
-                    await self.require_idle(conn, user_id)
+                    if await active.fetchone():
+                        raise CasinoError('已有進行中的牌局，請使用 /賭場 恢復。')
                     if parent_id is None:
-                        pref = await (await self.execute(conn, 'SELECT * FROM {preferences} WHERE user_id=%s', (user_id,))).fetchone()
+                        pref = await origin.fetchone()
                         if pref is None or token is None or pref['token'] != token:
                             raise CasinoError('此設定面板已失效，請使用 /賭場。')
                         bet = Bet(int(pref['base']), int(pref['multiplier']))
                     else:
-                        parent = await (await self.execute(conn, 'SELECT * FROM {games} WHERE id=%s AND user_id=%s', (parent_id, user_id))).fetchone()
+                        parent = await origin.fetchone()
                         if parent is None or parent['status'] == 'active' or parent['dismissed']:
                             raise CasinoError('此結算面板已失效，請使用 /賭場。')
                         bet = Bet(int(parent['base']), int(parent['multiplier']))
                         game = parent['game']
-                        await self.execute(conn, 'UPDATE {games} SET dismissed=TRUE WHERE id=%s', (parent_id,))
                     row = await self.create_game(conn, user_id, token, bet, balance, parent_id, game)
-                    await self.execute(conn, 'UPDATE {preferences} SET token=NULL WHERE user_id=%s', (user_id,))
                 game_id = row['id']
         except DatabaseError:
             # A lost COMMIT acknowledgement is neither a failure nor permission to retry a debit.
@@ -254,18 +261,25 @@ class CasinoStore:
             cards = blackjack.deal(list(self.deck()))
             deadline = self.clock() + timedelta(seconds=120)
         game_id = uuid4()
-        row = await (await self.execute(conn, '''INSERT INTO {games}
-            (id,user_id,game,operation_id,parent_id,base,multiplier,wager,dice,status,balance_after,cards,deadline)
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,'active',%s,%s,%s) RETURNING *''',
-            (game_id, user_id, game, operation_id, parent_id, bet.base, bet.multiplier, bet.total,
-             Jsonb(dice), balance - bet.total, Jsonb(cards), deadline))).fetchone()
-        await self.transfer(conn, user_id, game_id, 'stake', -bet.total, balance)
-        return row
+        # Ordered writes share one protocol flush but remain inside the original debit transaction.
+        async with conn.pipeline():
+            inserted = await self.execute(conn, """INSERT INTO {games}
+                (id,user_id,game,operation_id,parent_id,base,multiplier,wager,dice,status,balance_after,cards,deadline)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,'active',%s,%s,%s) RETURNING *""",
+                (game_id, user_id, game, operation_id, parent_id, bet.base, bet.multiplier, bet.total,
+                 Jsonb(dice), balance - bet.total, Jsonb(cards), deadline))
+            await self.transfer(conn, user_id, game_id, 'stake', -bet.total, balance)
+            await self.execute(conn, 'UPDATE {preferences} SET token=NULL WHERE user_id=%s', (user_id,))
+            if parent_id is not None:
+                await self.execute(conn, 'UPDATE {games} SET dismissed=TRUE WHERE id=%s', (parent_id,))
+        return await inserted.fetchone()
 
     async def transfer(self, conn, user_id, game_id, kind, amount, before):
-        await self.execute(conn, 'UPDATE {accounts} SET balance=%s WHERE user_id=%s', (before + amount, user_id))
-        await self.execute(conn, '''INSERT INTO {ledger}(game_id,user_id,kind,amount,balance_before,balance_after)
-            VALUES (%s,%s,%s,%s,%s,%s)''', (game_id, user_id, kind, amount, before, before + amount))
+        await self.execute(conn, """WITH updated AS (
+            UPDATE {accounts} SET balance=%s WHERE user_id=%s RETURNING user_id,balance
+        ) INSERT INTO {ledger}(game_id,user_id,kind,amount,balance_before,balance_after)
+          SELECT %s,user_id,%s,%s,%s,balance FROM updated""",
+            (before + amount, user_id, game_id, kind, amount, before))
 
     async def leave(self, user_id: int, *, game_id=None, token=None):
         async with self.crystals.connection() as conn:

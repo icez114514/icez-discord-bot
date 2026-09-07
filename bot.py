@@ -8,12 +8,14 @@ import discord
 from discord import app_commands
 from dotenv import load_dotenv
 
+from reward_commands import RewardFeature
+from reward_store import RewardStore
 from casino_commands import CasinoFeature
 from casino_store import CasinoStore
 from crystal_commands import CrystalFeature
 from database import CrystalStore, DatabaseError, read_database_url
 from runtime import configure_event_loop
-from latency import operation, measure, mark_cold
+from latency import LoopMonitor, record_received, configure_timing_logging, operation, measure, mark_cold
 
 
 logging.basicConfig(
@@ -29,15 +31,24 @@ class TestBot(discord.Client):
         super().__init__(intents=intents, allowed_mentions=discord.AllowedMentions.none())
         self.tree = app_commands.CommandTree(self)
         self.guild_id = guild_id
+        self.rewards = RewardFeature(RewardStore(store) if store is not None else None)
         self.crystals = CrystalFeature(store)
         self.crystals.register(self.tree)
         self.casino = CasinoFeature(CasinoStore(store) if store is not None else None)
         self.casino.register(self.tree)
+        self.loop_monitor = LoopMonitor()
+
+    def dispatch(self, event, /, *args, **kwargs):
+        if event == 'interaction' and args:
+            record_received(args[0])
+        super().dispatch(event, *args, **kwargs)
 
     async def on_message(self, message: discord.Message) -> None:
         await self.crystals.on_message(message)
+        await self.rewards.on_message(message)
 
     async def setup_hook(self) -> None:
+        self.loop_monitor.start()
         await self.casino.start_background()
         if self.guild_id is not None:
             guild = discord.Object(id=self.guild_id)
@@ -53,6 +64,7 @@ class TestBot(discord.Client):
             logging.info("Logged in as %s (ID: %s)", self.user, self.user.id)
 
     async def close(self) -> None:
+        await self.loop_monitor.close()
         await self.casino.stop_background()
         await super().close()
 
@@ -88,6 +100,7 @@ async def prepare_database(store):
         await store.open()
     await store.check()
     await CasinoStore(store).check()
+    await RewardStore(store).check()
 
 
 async def main(token: str, guild_id: int | None) -> None:
@@ -117,6 +130,7 @@ if __name__ == "__main__":
             scope = f"test server {guild_id}" if guild_id else "global"
             print(f"Local configuration OK; command sync: {scope}. Credentials and database schema have NOT been checked.")
         else:
+            configure_timing_logging(Path(__file__).resolve().parent / 'logs')
             asyncio.run(main(token, guild_id))
     except (ValueError, DatabaseError) as exc:
         raise SystemExit(str(exc)) from None

@@ -14,6 +14,7 @@ from uuid import uuid4
 def interaction(user_id=123):
     return SimpleNamespace(
         user=SimpleNamespace(id=user_id, bot=False), guild=SimpleNamespace(id=1),
+        channel=SimpleNamespace(name="test"),
         response=SimpleNamespace(send_message=AsyncMock(), defer=AsyncMock(), send_modal=AsyncMock(), is_done=lambda: False),
         followup=SimpleNamespace(send=AsyncMock()), edit_original_response=AsyncMock(),
     )
@@ -59,8 +60,34 @@ class CasinoUITests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(event.edit_original_response.call_args.kwargs['attachments'], [])
         self.assertIsNone(event.edit_original_response.call_args.kwargs['embed'].image.url)
 
-    async def test_blank_dealer_setting_uses_bundled_asset(self):
+    async def test_blank_dealer_setting_uses_default_remote_images(self):
         from unittest.mock import patch
         import os
         with patch.dict(os.environ, {'CASINO_DEALER_IMAGE': ''}):
             self.assertEqual(CasinoFeature(None).dealer_path, '')
+
+class CasinoChannelTests(unittest.IsolatedAsyncioTestCase):
+    async def test_allowed_channel_substrings(self):
+        for name in ('每日簽到', '功能測試區', '芽衣賭場', '機器人指令', 'bot-TEST-room'):
+            with self.subTest(name=name):
+                feature = CasinoFeature(None)
+                feature._slash = AsyncMock()
+                event = interaction()
+                event.channel.name = name
+                await feature.slash(event)
+                event.response.defer.assert_awaited_once()
+                feature._slash.assert_awaited_once()
+
+    async def test_denied_channel_does_not_open_panel(self):
+        for channel in (None, SimpleNamespace(name='general'), SimpleNamespace(name=''),
+                        SimpleNamespace(name='閒聊', parent=SimpleNamespace(name='test'))):
+            with self.subTest(channel=channel):
+                feature = CasinoFeature(None)
+                feature._slash = AsyncMock()
+                event = interaction()
+                event.channel = channel
+                await feature.slash(event)
+                feature._slash.assert_not_awaited()
+                event.response.defer.assert_not_awaited()
+                event.response.send_message.assert_awaited_once()
+                self.assertTrue(event.response.send_message.call_args.kwargs['ephemeral'])

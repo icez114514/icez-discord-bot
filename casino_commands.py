@@ -16,13 +16,16 @@ import discord
 from discord import app_commands
 from discord.ext import tasks
 
-from casino_rules import CasinoError, parse_integer
+from casino_rules import CasinoError, dice_points, parse_integer
 from blackjack import total
 from casino_store import CasinoStore, Game, Preferences, LobbySnapshot
 from casino_records import CasinoRecords, Record, Summary
 from casino_images import renderer
 from database import DatabaseError, DatabaseBusy
-from latency import discord_update, mark_status, mark_action, operation, timed, measured_lock, add_time, correlation_id
+from latency import measure, record_age, timing_logger, discord_update, mark_status, mark_action, operation, timed, measured_lock, add_time, correlation_id
+
+# Unsigned attachment URLs in embeds are refreshed by Discord.
+DEALER_IMAGE_URLS = ('https://cdn.discordapp.com/attachments/1495692135452901496/1546121292745539614/Mei_1.jpg', 'https://cdn.discordapp.com/attachments/1495692135452901496/1546121293353451642/Mei_2.jpg', 'https://cdn.discordapp.com/attachments/1495692135452901496/1546121294054170634/Mei_3.jpg', 'https://cdn.discordapp.com/attachments/1495692135452901496/1546121295106674698/Mei_4.jpg', 'https://cdn.discordapp.com/attachments/1495692135452901496/1546121295765315614/Mei_5.jpg', 'https://cdn.discordapp.com/attachments/1495692135452901496/1546121296457236590/Mei_6.jpg')
 
 COLOR = 0xDC9FB4
 UNAVAILABLE = "賭場資料庫暫時無法確認操作結果，請重新使用 /賭場 查證；請勿假定未扣款。"
@@ -118,9 +121,6 @@ class RecordsView(OwnedView):
         if self.is_finished():
             await discord_update(interaction.response.send_message("此查詢頁已失效，請使用最新頁面或重新開啟紀錄。", ephemeral=True))
             return False
-        if self.audit and not await self.feature.is_auditor(interaction):
-            await discord_update(interaction.response.send_message("目前沒有查帳權限。", ephemeral=True))
-            return False
         return True
 
 
@@ -128,7 +128,7 @@ class AuditView(OwnedView):
     async def interaction_check(self, interaction):
         if not await super().interaction_check(interaction):
             return False
-        if self.is_finished() or not await self.feature.is_auditor(interaction):
+        if self.is_finished():
             await discord_update(interaction.response.send_message("目前沒有查帳權限或入口已失效。", ephemeral=True))
             return False
         return True
@@ -244,10 +244,11 @@ class CasinoFeature:
         self.deliveries: WeakValueDictionary[int, Delivery] = WeakValueDictionary()
         self.owner_locks: WeakValueDictionary[int, asyncio.Lock] = WeakValueDictionary()
         self.active_messages: dict[int, ActiveMessage] = {}
+        self.pending_actions: set[int] = set()
 
     def preload(self):
         renderer(self.asset_directory)
-        paths = [self.dealer_path] if self.dealer_path else Path(__file__).with_name('Mei').glob('*.jpg')
+        paths = [self.dealer_path] if self.dealer_path else []
         for path in paths:
             try:
                 dealer_bytes(str(path))
@@ -313,12 +314,37 @@ class CasinoFeature:
             raise DatabaseError("Casino storage is not configured")
         return self.store
 
+    async def acknowledge(self, interaction, **kwargs):
+        started = time.perf_counter()
+        record_age(interaction, "ack_start_age_ms")
+        try:
+            with measure("ack_http_ms"):
+                await discord_update(interaction.response.defer(**kwargs))
+        except discord.NotFound as error:
+            if error.code != 10062:
+                raise
+            mark_status('expired_interaction')
+            logging.warning('Casino acknowledgement expired (10062), ack_ms=%.1f; '
+                            'operation not started. Reopen /casino.',
+                            (time.perf_counter() - started) * 1000)
+            return False
+        finally:
+            record_age(interaction, "ack_complete_age_ms")
+        return True
+
     @operation("casino.slash")
     async def slash(self, interaction):
         if interaction.guild is None or interaction.user.bot:
             await discord_update(interaction.response.send_message("請在伺服器中使用賭場。", ephemeral=True))
             return
-        await discord_update(interaction.response.defer(thinking=True))
+        channel_name = (getattr(getattr(interaction, 'channel', None), 'name', None) or '').casefold()
+        if not any(word in channel_name for word in ('簽到', '測試', '賭場', '指令', 'test')):
+            await discord_update(interaction.response.send_message(
+                '請在頻道名稱包含「簽到」、「測試」、「賭場」、「指令」或「test」的頻道使用 /賭場。',
+                ephemeral=True))
+            return
+        if not await self.acknowledge(interaction, thinking=True):
+            return
         async with measured_lock(self.owner_lock(interaction.user.id)):
             await self._slash(interaction)
 
@@ -339,8 +365,28 @@ class CasinoFeature:
     @operation("casino.act")
     async def act(self, interaction, view: OwnedView, action: str, value=None):
         mark_action(action)
+        if action not in ('start', 'replay', 'hit', 'stand', 'double'):
+            return await self._act(interaction, view, action, value)
+        if interaction.user.id != view.owner_id:
+            await view.interaction_check(interaction)
+            return
+        if view.owner_id in self.pending_actions:
+            mark_status('duplicate_ignored')
+            await self.acknowledge(interaction)
+            return
+        # Reserve before the first await, including Discord acknowledgement.
+        self.pending_actions.add(view.owner_id)
+        try:
+            return await self._act(interaction, view, action, value)
+        finally:
+            self.pending_actions.discard(view.owner_id)
+
+    async def _act(self, interaction, view: OwnedView, action: str, value=None):
         if isinstance(view, AuditView):
             if await view.interaction_check(interaction) and action in ("audit_player", "audit_game"):
+                if not await self.is_auditor(interaction):
+                    await discord_update(interaction.response.send_message("目前沒有查帳權限。", ephemeral=True))
+                    return
                 await discord_update(interaction.response.send_modal(AuditModal(view, action)))
             return
         if isinstance(view, RecordsView):
@@ -354,7 +400,8 @@ class CasinoFeature:
         if isinstance(view, LobbyView) and action in ("records", "house"):
             await self.show_records(interaction, RecordsView(self, view.owner_id, house=action == "house"))
             return
-        await discord_update(interaction.response.defer())
+        if not await self.acknowledge(interaction):
+            return
         async with measured_lock(self.owner_lock(view.owner_id)):
             try:
                 store = self.storage()
@@ -432,11 +479,15 @@ class CasinoFeature:
         if not await view.interaction_check(interaction):
             return
         if action == "filter":
+            if view.audit and not await self.is_auditor(interaction):
+                await discord_update(interaction.response.send_message("目前沒有查帳權限。", ephemeral=True))
+                return
             await discord_update(interaction.response.send_modal(QueryModal(view)))
             return
-        await discord_update(interaction.response.defer())
+        if not await self.acknowledge(interaction):
+            return
         async with view.lock:
-            if view.is_finished() or (view.audit and not await self.is_auditor(interaction)):
+            if view.is_finished():
                 await discord_update(interaction.followup.send("此查詢頁已失效或權限已撤銷。", ephemeral=True))
                 return
             page, detail, game = view.page, view.detail, view.game_filter
@@ -459,7 +510,8 @@ class CasinoFeature:
     @operation("casino.show_records")
     async def show_records(self, interaction, view: RecordsView, *, edit=False):
         if not edit:
-            await discord_update(interaction.response.defer(ephemeral=not view.house, thinking=True))
+            if not await self.acknowledge(interaction, ephemeral=not view.house, thinking=True):
+                return
         try:
             if view.audit and not await self.is_auditor(interaction):
                 await discord_update(interaction.followup.send("目前沒有查帳權限。", ephemeral=True))
@@ -523,7 +575,7 @@ class CasinoFeature:
         embed.add_field(name="倍率", value=money(prefs.bet.multiplier))
         embed.add_field(name="實際下注", value=money(prefs.bet.total))
         embed.add_field(name="目前餘額", value=money(balance) if balance is not None else "尚無帳戶")
-        embed.set_footer(text="設定與返回不扣款。豹子 > 456 > 對子單點 > 123 > 散骰；同級比總和，不重擲、不抽水。")
+        embed.set_footer(text="設定與返回不扣款。豹子＝骰值×10、456＝7、對子取單點、123＝0、散骰＝−1；同點比總和，不重擲、不抽水。")
         if game_type == 'blackjack':
             embed.set_footer(text='首兩張可加倍；軟 17 停牌；120 秒無有效操作自動停牌。天然勝利返還 2.5 倍，普通勝利 2 倍。')
         await self.render(interaction, embed, SettingsView(self, interaction.user.id, prefs, game_type))
@@ -539,8 +591,8 @@ class CasinoFeature:
             if game.deadline is not None:
                 embed.description += f'\n期限：<t:{int(game.deadline.timestamp())}:R>（到期自動停牌）'
         elif game.status != "void":
-            embed.description = (f"玩家：{' · '.join(map(str, game.dice[:3]))}（總和 {sum(game.dice[:3])}）\n"
-                                 f"莊家：{' · '.join(map(str, game.dice[3:]))}（總和 {sum(game.dice[3:])}）")
+            embed.description = (f"玩家：{' · '.join(map(str, game.dice[:3]))}（{dice_points(game.dice[:3])} 點；總和 {sum(game.dice[:3])}）\n"
+                                 f"莊家：{' · '.join(map(str, game.dice[3:]))}（{dice_points(game.dice[3:])} 點；總和 {sum(game.dice[3:])}）")
         else:
             embed.description = "牌局資料無法恢復，已退回全部下注並保留退款流水。"
         embed.add_field(name="下注", value=money(game.wager))
@@ -565,10 +617,7 @@ class CasinoFeature:
         return await asyncio.to_thread(lambda: renderer(self.asset_directory).render(game))
 
     def lobby_image(self):
-        paths = [self.dealer_path] if self.dealer_path else sorted(str(path) for path in Path(__file__).with_name('Mei').glob('*.jpg'))
-        if not paths:
-            raise OSError('No dealer images')
-        return dealer_bytes(secrets.choice(paths))
+        return dealer_bytes(self.dealer_path)
 
     async def render(self, interaction, embed, view, *, dealer=False, game=None):
         key = getattr(getattr(interaction, 'message', None), 'id', None) or getattr(interaction, 'id', id(interaction))
@@ -595,7 +644,9 @@ class CasinoFeature:
             except Exception:
                 logging.warning('Casino composition failed; using text projection.')
                 embed.description = (embed.description or '') + '\n圖片暫時無法載入。'
-        if dealer:
+        if dealer and not self.dealer_path:
+            embed.set_image(url=secrets.choice(DEALER_IMAGE_URLS))
+        elif dealer:
             try:
                 payload = await asyncio.to_thread(self.lobby_image)
                 attachments = [discord.File(io.BytesIO(payload), filename="dealer.jpg")]
@@ -621,7 +672,7 @@ class CasinoFeature:
                                                                       allowed_mentions=discord.AllowedMentions.none())
                 if isinstance(getattr(message, 'id', None), int):
                     self.deliveries[message.id] = delivery
-                logging.info('Casino render correlation=%s compose_ms=%.1f update_ms=%.1f version=%s',
+                timing_logger.info('Casino render correlation=%s compose_ms=%.1f update_ms=%.1f version=%s',
                              correlation_id(), (composed-started)*1000, (time.perf_counter()-composed)*1000, delivery.version)
                 return True
         finally:

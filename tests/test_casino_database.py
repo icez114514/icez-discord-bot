@@ -38,6 +38,50 @@ class CasinoDatabaseTests(unittest.IsolatedAsyncioTestCase):
         async with self.crystals.connection() as conn:
             await conn.execute(sql.SQL("DROP SCHEMA {} CASCADE").format(sql.Identifier(self.schema)))
 
+    async def test_cancel_during_batched_debit_rolls_back_and_keeps_token(self):
+        prefs = await self.casino.settings(123)
+        execute = self.casino.execute
+        ready = asyncio.Event()
+        async def paused(conn, query, params=()):
+            if 'UPDATE {preferences} SET token=NULL' in query:
+                ready.set()
+                await asyncio.Event().wait()
+            return await execute(conn, query, params)
+        self.casino.execute = paused
+        pending = asyncio.create_task(self.casino.start(123, prefs.token))
+        try:
+            await asyncio.wait_for(ready.wait(), 10)
+            pending.cancel()
+            with self.assertRaises(asyncio.CancelledError):
+                await pending
+        finally:
+            pending.cancel()
+            await asyncio.gather(pending, return_exceptions=True)
+            self.casino.execute = execute
+        self.assertEqual(await self.casino.balance(123), 1000)
+        self.assertEqual((await self.casino.preferences(123)).token, prefs.token)
+        self.assertIsNone(await self.casino.recover(123))
+
+    async def test_pipeline_error_rolls_back_all_debit_writes_and_reuses_connection(self):
+        from database import DatabaseError
+        prefs = await self.casino.settings(123)
+        execute = self.casino.execute
+        async def fail_after_stake(conn, query, params=()):
+            if 'UPDATE {preferences} SET token=NULL' in query:
+                return await conn.execute('SELECT 1/0')
+            return await execute(conn, query, params)
+        self.casino.execute = fail_after_stake
+        try:
+            with self.assertRaises(DatabaseError):
+                await self.casino.start(123, prefs.token)
+        finally:
+            self.casino.execute = execute
+        self.assertEqual(await self.casino.balance(123), 1000)
+        self.assertEqual((await self.casino.preferences(123)).token, prefs.token)
+        self.assertIsNone(await self.casino.recover(123))
+        game = await self.casino.start(123, prefs.token)
+        self.assertEqual(len(await self.casino.ledger(123, game.id)), 2)
+
     async def test_panel_cannot_leave_active_game_with_old_sources(self):
         cards = [4, 8, 5, 20] + [c for c in range(52) if c not in (4, 8, 5, 20)]
         casino = CasinoStore(self.crystals, deck=lambda: cards)

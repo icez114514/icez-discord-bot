@@ -47,6 +47,12 @@ def dice_rank(dice) -> tuple[int, int, int]:
     return (0, 0, total)
 
 
+def dice_points(dice) -> int:
+    """Numeric score from mei-bot gamble.js; sum only breaks equal scores."""
+    category, value, _ = dice_rank(dice)
+    return {4: value * 10, 3: 7, 2: value, 1: 0, 0: -1}[category]
+
+
 def outcome(player, dealer) -> str:
     left, right = dice_rank(player), dice_rank(dealer)
     return "win" if left > right else "loss" if left < right else "tie"

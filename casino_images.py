@@ -7,6 +7,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 from blackjack import total
+from casino_rules import dice_points
 
 
 def font(size):
@@ -96,7 +97,7 @@ class TableRenderer:
             else:
                 dealer = [self.dice[value] for value in game.dice[3:]]
                 player = [self.dice[value] for value in game.dice[:3]]
-                dealer_points, player_points = str(sum(game.dice[3:])), str(sum(game.dice[:3]))
+                dealer_points, player_points = str(dice_points(game.dice[3:])), str(dice_points(game.dice[:3]))
             draw.text((600, 140), 'DEALER  /  ' + dealer_points, font=font(24), fill='#c6d8ce', anchor='mm')
             self.row(image, dealer, 175)
             draw.text((600, 457), 'YOU  /  ' + player_points, font=font(24), fill='#e6d7b5', anchor='mm')

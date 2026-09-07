@@ -16,7 +16,7 @@ class LatencyTests(unittest.IsolatedAsyncioTestCase):
             with measure('db_ms'):
                 await asyncio.sleep(0)
             seen.append(correlation_id())
-        with self.assertLogs(level='INFO') as logs:
+        with self.assertLogs('bot.timing', level='INFO') as logs:
             await asyncio.gather(task('SECRET_SENTINEL'), task('OTHER_SECRET'))
         self.assertEqual(len(set(seen)), 2)
         self.assertEqual(correlation_id(), '-')
@@ -35,7 +35,7 @@ class LatencyTests(unittest.IsolatedAsyncioTestCase):
             async with measured_lock(lock):
                 self.fail('Cancelled waiter acquired lock')
         await lock.acquire()
-        with self.assertLogs(level='INFO') as logs:
+        with self.assertLogs('bot.timing', level='INFO') as logs:
             task = asyncio.create_task(wait())
             await entered.wait()
             task.cancel()
@@ -60,7 +60,7 @@ class LatencyTests(unittest.IsolatedAsyncioTestCase):
         async def send():
             await discord_update(asyncio.sleep(0.02))
             mark_status('busy')
-        with self.assertLogs(level='INFO') as logs:
+        with self.assertLogs('bot.timing', level='INFO') as logs:
             await send()
         text = ' '.join(logs.output)
         self.assertIn('status=busy', text)
@@ -70,8 +70,9 @@ class LatencyTests(unittest.IsolatedAsyncioTestCase):
     async def test_database_startup_has_cold_correlation(self):
         from bot import prepare_database
         store = AsyncMock()
-        with patch('bot.CasinoStore') as casino, self.assertLogs(level='INFO') as logs:
+        with patch('bot.CasinoStore') as casino, patch('bot.RewardStore') as rewards, self.assertLogs('bot.timing', level='INFO') as logs:
             casino.return_value.check = AsyncMock()
+            rewards.return_value.check = AsyncMock()
             await prepare_database(store)
         self.assertIn('operation=bot.database_startup connection=cold', ' '.join(logs.output))
 

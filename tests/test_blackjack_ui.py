@@ -45,27 +45,30 @@ class BlackjackUITests(unittest.IsolatedAsyncioTestCase):
         text = event.edit_original_response.call_args.kwargs['embed'].description
         self.assertIn('6 · 6 · 6', text)
         self.assertIn('1 · 2 · 3', text)
-        self.assertIn('總和 18', text)
-        self.assertIn('總和 6', text)
+        self.assertIn('60 點；總和 18', text)
+        self.assertIn('0 點；總和 6', text)
 
     async def test_each_lobby_open_selects_from_all_six_mei_images(self):
-        from pathlib import Path
+        from casino_commands import DEALER_IMAGE_URLS
         feature = CasinoFeature(None)
+        feature.dealer_path = ''
         event = interaction()
-        selections = []
-        captured = []
-        def choose(paths):
-            selections.append(tuple(paths))
-            return paths[len(selections) - 1]
+        selections, captured = [], []
+        def choose(urls):
+            selections.append(tuple(urls))
+            return urls[len(selections) - 1]
         async def delivered(**kwargs):
-            captured.append(kwargs['attachments'][0].fp.read())
+            self.assertEqual(kwargs['attachments'], [])
+            captured.append(kwargs['embed'].image.url)
         event.edit_original_response.side_effect = delivered
-        with patch('casino_commands.secrets.choice', side_effect=choose):
-            for _ in range(2):
+        with patch('casino_commands.secrets.choice', side_effect=choose), patch(
+                'casino_commands.dealer_bytes', side_effect=AssertionError('Must not read/upload local image')):
+            for _ in range(6):
                 await feature.render(event, __import__('discord').Embed(description='Lobby'), LobbyView(feature, 123), dealer=True)
-        self.assertEqual(len(selections), 2)
-        self.assertEqual({Path(p).name for p in selections[0]}, {f'Mei ({i}).jpg' for i in range(1, 7)})
-        self.assertNotEqual(captured[0], captured[1])
+        self.assertEqual(captured, list(DEALER_IMAGE_URLS))
+        self.assertEqual(len(set(captured)), 6)
+        self.assertTrue(all('?' not in url and url.startswith('https://cdn.discordapp.com/attachments/') for url in captured))
+        self.assertTrue(all(choice == DEALER_IMAGE_URLS for choice in selections))
 
     async def test_background_expiry_updates_original_message_once(self):
         game = hand()
