@@ -30,7 +30,15 @@ tmux() {
             case "${*: -1}" in
                 '#{pane_current_path}') echo "$FIXTURE" ;;
                 '#{pane_current_command}')
-                    if [[ -f "$FIXTURE/stopped" ]]; then echo bash; else echo python; fi ;;
+                    if [[ -f "$FIXTURE/stopped" ]]; then echo /bin/bash
+                    else
+                        case "$SCENARIO" in
+                            existing_relative) echo .venv/bin/python ;;
+                            existing_absolute) echo "$FIXTURE/.venv/bin/python3.12" ;;
+                            unexpected) echo /bin/nano ;;
+                            *) echo python ;;
+                        esac
+                    fi ;;
             esac ;;
         send-keys) [[ "$SCENARIO" == stop_timeout ]] || touch "$FIXTURE/stopped" ;;
     esac
@@ -39,17 +47,17 @@ flock() { return 0; }
 sleep() { return 0; }
 readlink() { return 1; }
 export -f git tmux flock sleep readlink
-for SCENARIO in success existing stop_timeout dirty diverged pull_fail; do
+for SCENARIO in success existing existing_relative existing_absolute unexpected stop_timeout dirty diverged pull_fail; do
     export SCENARIO
     rm -f "$FIXTURE/running" "$FIXTURE/stopped"
-    if [[ "$SCENARIO" == existing || "$SCENARIO" == stop_timeout ]]; then touch "$FIXTURE/running"; fi
+    if [[ "$SCENARIO" == existing* || "$SCENARIO" == unexpected || "$SCENARIO" == stop_timeout ]]; then touch "$FIXTURE/running"; fi
     : > "$CALL_LOG"
     if env -u TMUX bash "$FIXTURE/update_bot.sh" > "$fixture/output" 2>&1; then code=0; else code=$?; fi
-    if [[ "$SCENARIO" == success || "$SCENARIO" == existing ]]; then
+    if [[ "$SCENARIO" == success || "$SCENARIO" == existing* ]]; then
         [[ "$code" == 0 ]]
         grep -q 'git pull --ff-only origin main' "$CALL_LOG"
         grep -q 'python -m database check' "$CALL_LOG"
-        if [[ "$SCENARIO" == existing ]]; then
+        if [[ "$SCENARIO" == existing* ]]; then
             grep -q 'tmux send-keys -t %1 C-c' "$CALL_LOG"
             grep -q 'tmux respawn-pane' "$CALL_LOG"
         else

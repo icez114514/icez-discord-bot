@@ -35,18 +35,18 @@ main() {
         current="$(tmux display-message -p -t "$pane" '#{pane_current_path}')"
         [[ "$current" == "$root" ]] || { echo 'discordbot points to another directory; no restart performed.' >&2; return 1; }
         command="$(tmux display-message -p -t "$pane" '#{pane_current_command}')"
-        case "$command" in
+        case "${command##*/}" in
             python|python3|python3.*)
                 echo 'Stopping Bot with Ctrl+C...'
                 tmux send-keys -t "$pane" C-c
                 for ((i=0; i<30; i++)); do
                     if ! tmux has-session -t "=$session" 2>/dev/null; then pane=''; break; fi
                     command="$(tmux display-message -p -t "$pane" '#{pane_current_command}')"
-                    case "$command" in bash|zsh|fish|sh) break ;; esac
+                    case "${command##*/}" in bash|zsh|fish|sh) break ;; esac
                     sleep 1
                 done
                 if [[ -n "$pane" ]]; then
-                    case "$command" in bash|zsh|fish|sh) ;; *) echo 'Bot did not stop within 30 seconds; update cancelled.' >&2; return 1 ;; esac
+                    case "${command##*/}" in bash|zsh|fish|sh) ;; *) echo 'Bot did not stop within 30 seconds; update cancelled.' >&2; return 1 ;; esac
                 fi
                 ;;
             bash|zsh|fish|sh) ;;
