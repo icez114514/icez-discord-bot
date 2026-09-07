@@ -11,7 +11,7 @@ from psycopg import sql
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
-from casino_rules import Bet, CasinoError, outcome
+from casino_rules import Bet, CasinoError, InsufficientBalance, outcome
 import blackjack
 from database import CrystalStore, DatabaseError
 
@@ -250,7 +250,7 @@ class CasinoStore:
 
     async def create_game(self, conn, user_id, operation_id, bet, balance, parent_id=None, game='dice'):
         if balance < bet.total:
-            raise CasinoError('水晶餘額不足，無法開局。')
+            raise InsufficientBalance('水晶餘額不足，請修改下注金額。')
         dice, cards, deadline = [], None, None
         if game == 'dice':
             dice = list(self.roll())
@@ -362,7 +362,7 @@ class CasinoStore:
                         raise CasinoError('只能在首兩張牌時加倍。')
                     amount = int(row['base']) * int(row['multiplier'])
                     if balance < amount:
-                        raise CasinoError('水晶餘額不足，無法加倍。')
+                        raise InsufficientBalance('水晶餘額不足，無法加倍。')
                     await self.transfer(conn, user_id, game_id, 'double', -amount, balance)
                     balance -= amount
                     row['wager'] += amount

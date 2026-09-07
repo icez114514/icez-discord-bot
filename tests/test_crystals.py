@@ -228,5 +228,6 @@ class CommandTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(repeat.fields), 1)
         ranking = ranking_embed([Account(123, 10), Account(456, 9, "@everyone")])
         self.assertEqual(len(ranking.fields), 2)
-        self.assertIn("123", ranking.fields[0].value)
+        self.assertNotIn("123", ranking.fields[0].value)
+        self.assertIn("名稱暫時無法取得", ranking.fields[0].value)
         self.assertNotIn("@everyone", ranking.fields[1].value)

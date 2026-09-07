@@ -45,8 +45,9 @@ class BlackjackUITests(unittest.IsolatedAsyncioTestCase):
         text = event.edit_original_response.call_args.kwargs['embed'].description
         self.assertIn('6 · 6 · 6', text)
         self.assertIn('1 · 2 · 3', text)
-        self.assertIn('60 點；總和 18', text)
-        self.assertIn('0 點；總和 6', text)
+        self.assertIn('60 點', text)
+        self.assertNotIn('總和', text)
+        self.assertIn('0 點', text)
 
     async def test_each_lobby_open_selects_from_all_six_mei_images(self):
         from casino_commands import DEALER_IMAGE_URLS

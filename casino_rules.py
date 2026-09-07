@@ -7,6 +7,10 @@ class CasinoError(ValueError):
     """An expected, safe-to-display casino rejection."""
 
 
+class InsufficientBalance(CasinoError):
+    """A rejected wager that should be shown on the public owner panel."""
+
+
 @dataclass(frozen=True)
 class Bet:
     base: int = 10

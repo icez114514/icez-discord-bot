@@ -223,7 +223,7 @@ class CrystalStore:
         async with self.connection(read_only=True) as conn:
             cursor = await conn.execute(sql.SQL("""
                 SELECT user_id, balance, display_name FROM {}
-                ORDER BY balance DESC, user_id ASC LIMIT 5
+                ORDER BY balance DESC, user_id ASC LIMIT 10
             """).format(self.table))
             return [Account(int(uid), int(balance), name) for uid, balance, name in await cursor.fetchall()]
 

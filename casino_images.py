@@ -42,8 +42,17 @@ class TableRenderer:
     def card(self, value):
         image = Image.new('RGBA', (144, 200))
         draw = ImageDraw.Draw(image)
-        draw.rounded_rectangle((1, 1, 142, 198), radius=14, fill='#fcf6e9' if value is not None else '#263e68',
-                               outline='#bca16b', width=3)
+        draw.rounded_rectangle((1, 1, 142, 198), radius=9, fill='#fffdf8',
+                               outline='#bcc5bf', width=2)
+        name = 'back.png' if value is None else f'cards/{value}.png'
+        source = Path(__file__).with_name('casino_assets') / 'classic' / name
+        try:
+            with Image.open(source) as artwork:
+                face = ImageOps.contain(artwork.convert('RGBA'), (132, 188), Image.Resampling.LANCZOS)
+            image.alpha_composite(face, ((144-face.width)//2, (200-face.height)//2))
+            return image
+        except (OSError, ValueError):
+            pass  # Keep a usable procedural fallback if packaged artwork is missing.
         if value is None:
             for inset in (15, 25, 35):
                 draw.rounded_rectangle((inset, inset, 143-inset, 199-inset), radius=8, outline='#88a5ce', width=2)

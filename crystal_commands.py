@@ -1,5 +1,6 @@
 """Discord adapters for the shared crystal account operation."""
 
+import asyncio
 import logging
 
 import discord
@@ -34,10 +35,10 @@ def ranking_embed(accounts: list[Account]) -> discord.Embed:
     embed = discord.Embed(title="水晶排行榜", color=COLOR)
     if not accounts:
         embed.description = "目前尚無水晶帳戶。"
-    for index, account in enumerate(accounts[:5], 1):
+    for index, account in enumerate(accounts[:10], 1):
         embed.add_field(
             name=f"#{index}",
-            value=f"{safe_name(account.display_name, account.user_id)}   水晶資產： {account.balance}",
+            value=f"{safe_name((account.display_name or '').strip() or '名稱暫時無法取得', account.user_id)}   水晶資產： {account.balance}",
             inline=False,
         )
     embed.set_thumbnail(url=THUMBNAIL)
@@ -48,11 +49,30 @@ class CrystalFeature:
     def __init__(self, store: CrystalStore | None) -> None:
         self.store = store
 
-    async def render(self, member: discord.Member, action: str) -> discord.Embed:
+    async def render(self, member: discord.Member, action: str, *, guild=None, client=None) -> discord.Embed:
         if self.store is None:
             raise DatabaseError("Crystal storage is not configured.")
         if action == "rank":
-            return ranking_embed(await self.store.leaderboard())
+            accounts = await self.store.leaderboard()
+            guild = guild or getattr(member, 'guild', None)
+            limit = asyncio.Semaphore(4)
+            async def resolve(account):
+                name = None
+                async with limit:
+                    if guild is not None:
+                        try:
+                            current = await guild.fetch_member(account.user_id)
+                            name = current.display_name or current.name
+                        except discord.HTTPException:
+                            pass
+                    if not name and client is not None:
+                        try:
+                            user = await client.fetch_user(account.user_id)
+                            name = user.name
+                        except discord.HTTPException:
+                            pass
+                return Account(account.user_id, account.balance, name or '名稱暫時無法取得')
+            return ranking_embed(list(await asyncio.gather(*(resolve(account) for account in accounts))))
         if action != "daily":
             raise ValueError("Unknown crystal action.")
         level = level_for_roles(role.name for role in member.roles)
@@ -81,7 +101,7 @@ class CrystalFeature:
             return
         await discord_update(interaction.response.defer(thinking=True))
         try:
-            embed = await self.render(interaction.user, action)
+            embed = await self.render(interaction.user, action, guild=interaction.guild, client=getattr(interaction, "client", None))
         except DatabaseError as error:
             mark_status("busy" if isinstance(error, DatabaseBusy) else "database_error")
             logging.warning("Crystal database operation failed; details suppressed.")

@@ -94,9 +94,9 @@ class DatabaseTests(unittest.IsolatedAsyncioTestCase):
         await self.store.import_accounts([Account(9, 100), Account(10, 100)], dry_run=False)
         self.assertEqual([a.user_id for a in await self.store.leaderboard()], [9, 10])
         await self.store.import_accounts([
-            Account(11, 90), Account(12, 80), Account(13, 70), Account(14, 60),
+            *[Account(uid, 100-(uid-10)*10) for uid in range(11, 21)],
         ], dry_run=False)
-        self.assertEqual([a.user_id for a in await self.store.leaderboard()], [9, 10, 11, 12, 13])
+        self.assertEqual([a.user_id for a in await self.store.leaderboard()], list(range(9, 19)))
 
     async def test_taipei_dates_and_claim_after_downtime(self):
         async with self.store.connection() as conn:

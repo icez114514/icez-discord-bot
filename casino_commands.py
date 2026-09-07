@@ -16,7 +16,7 @@ import discord
 from discord import app_commands
 from discord.ext import tasks
 
-from casino_rules import CasinoError, dice_points, parse_integer
+from casino_rules import CasinoError, InsufficientBalance, dice_points, parse_integer
 from blackjack import total
 from casino_store import CasinoStore, Game, Preferences, LobbySnapshot
 from casino_records import CasinoRecords, Record, Summary
@@ -434,6 +434,13 @@ class CasinoFeature:
                     field, raw = action.split(":") if not custom else (action.split(":")[1], value)
                     prefs = await store.choose_settings(uid, view.prefs.token, **{field: parse_integer(raw)}, custom=custom)
                     await self.show_settings(interaction, prefs, view.game_type)
+            except InsufficientBalance as error:
+                mark_status("rejected")
+                try:
+                    await discord_update(interaction.edit_original_response(
+                        content=str(error), allowed_mentions=discord.AllowedMentions.none()))
+                except discord.HTTPException:
+                    logging.warning('Casino insufficient balance notice failed; no financial operation retried.')
             except CasinoError as error:
                 mark_status("rejected")
                 await discord_update(interaction.followup.send(str(error), ephemeral=True))
@@ -575,6 +582,8 @@ class CasinoFeature:
         embed.add_field(name="倍率", value=money(prefs.bet.multiplier))
         embed.add_field(name="實際下注", value=money(prefs.bet.total))
         embed.add_field(name="目前餘額", value=money(balance) if balance is not None else "尚無帳戶")
+        if balance is not None and balance < prefs.bet.total:
+            embed.description = '水晶餘額不足，請修改下注金額。'
         embed.set_footer(text="設定與返回不扣款。豹子＝骰值×10、456＝7、對子取單點、123＝0、散骰＝−1；同點比總和，不重擲、不抽水。")
         if game_type == 'blackjack':
             embed.set_footer(text='首兩張可加倍；軟 17 停牌；120 秒無有效操作自動停牌。天然勝利返還 2.5 倍，普通勝利 2 倍。')
@@ -591,14 +600,19 @@ class CasinoFeature:
             if game.deadline is not None:
                 embed.description += f'\n期限：<t:{int(game.deadline.timestamp())}:R>（到期自動停牌）'
         elif game.status != "void":
-            embed.description = (f"玩家：{' · '.join(map(str, game.dice[:3]))}（{dice_points(game.dice[:3])} 點；總和 {sum(game.dice[:3])}）\n"
-                                 f"莊家：{' · '.join(map(str, game.dice[3:]))}（{dice_points(game.dice[3:])} 點；總和 {sum(game.dice[3:])}）")
+            embed.description = (f"玩家：{' · '.join(map(str, game.dice[:3]))}（{dice_points(game.dice[:3])} 點）\n"
+                                 f"莊家：{' · '.join(map(str, game.dice[3:]))}（{dice_points(game.dice[3:])} 點）")
         else:
             embed.description = "牌局資料無法恢復，已退回全部下注並保留退款流水。"
         embed.add_field(name="下注", value=money(game.wager))
         embed.add_field(name="返還（含本金）", value=money(game.returned) if game.status != 'active' else '待結算')
         embed.add_field(name="淨盈虧", value=money(game.net) if game.status != 'active' else '待結算')
         embed.add_field(name="扣款後餘額" if game.status == 'active' else "結算後餘額", value=money(game.balance_after), inline=False)
+        if game.balance_after < game.bet.total:
+            if game.status != 'active':
+                embed.add_field(name='提示', value='水晶餘額不足以再來一局，請修改下注金額。', inline=False)
+            elif len(game.player) == 2:
+                embed.add_field(name='提示', value='水晶餘額不足，無法加倍；仍可要牌或停牌。', inline=False)
         embed.set_footer(text=f"牌局 {game.id} · 版本 {game.version}")
         view = PlayView(self, game.user_id, game) if game.status == 'active' else ResultView(self, game.user_id, game)
         shown = await self.render(interaction, embed, view, game=game)
