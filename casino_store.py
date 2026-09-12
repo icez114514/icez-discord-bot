@@ -428,11 +428,18 @@ class CasinoStore:
                           action: str, front=None) -> Game:
         try:
             async with self.crystals.connection() as conn:
-                balance = await self.lock_account(conn, user_id)
-                row = await (await self.execute(conn,
-                    'SELECT * FROM {games} WHERE id=%s AND user_id=%s FOR UPDATE',
-                    (game_id, user_id))).fetchone()
-                if row is None or row['game'] != 'paigow':
+                # Materialize the account lock before the correlated game lock.
+                # This keeps the global lock order while saving one network roundtrip.
+                row = await (await self.execute(conn, '''WITH locked_account AS MATERIALIZED (
+                    SELECT user_id,balance FROM {accounts} WHERE user_id=%s FOR UPDATE
+                ) SELECT g.*,a.balance AS locked_balance FROM locked_account a
+                  LEFT JOIN LATERAL (
+                    SELECT * FROM {games} WHERE id=%s AND user_id=a.user_id FOR UPDATE
+                  ) g ON TRUE''', (user_id, game_id))).fetchone()
+                if row is None:
+                    raise CasinoError('尚無水晶帳戶，請先使用 /水晶 簽到。')
+                balance = int(row['locked_balance'])
+                if row['id'] is None or row['game'] != 'paigow':
                     raise CasinoError('找不到你的牌九撲克牌局。')
                 if row['status'] != 'active':
                     return read_game(row)
@@ -445,7 +452,11 @@ class CasinoStore:
                     paigow.validate(state)
                 except (ValueError, TypeError, KeyError):
                     return await self.resolve_paigow(conn, row, balance)
+                previous_front = list(state['front'])
                 paigow.act(state, action, front)
+                if action != 'confirm' and set(previous_front) == set(state['front']):
+                    state['front'] = previous_front
+                    return read_game(row)
                 row = await (await self.execute(conn, '''UPDATE {games}
                     SET cards=%s,balance_after=%s,version=version+1 WHERE id=%s RETURNING *''',
                     (Jsonb(state), balance, game_id))).fetchone()

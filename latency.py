@@ -193,6 +193,7 @@ def mark_action(action):
     category = action.split(':', 1)[0]
     allowed = {'start', 'hit', 'stand', 'double', 'replay', 'settings', 'blackjack',
                'lobby', 'base', 'multiplier', 'custom', 'submit', 'records', 'house',
+               'paigow', 'pai_select', 'pai_auto', 'pai_confirm',
                'audit_player', 'audit_game', 'previous', 'next', 'toggle', 'filter', 'apply_filter'}
     state = _current.get()
     if state is not None:

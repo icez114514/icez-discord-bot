@@ -199,3 +199,13 @@ class PaiGowDatabaseTests(unittest.IsolatedAsyncioTestCase):
             await feature.act(event, result, 'settings')
             settings = event.edit_original_response.call_args.kwargs['view']
             self.assertEqual(settings.game_type, 'paigow')
+
+    async def test_same_selection_is_a_noop_even_when_ids_are_reversed(self):
+        casino = CasinoStore(self.crystals, pai_deck=lambda: list(range(53)))
+        prefs = await casino.settings(123)
+        game = await casino.start(123, prefs.token, game='paigow')
+        selected = await casino.play_paigow(123, game.id, game.version, 'select', [8, 10])
+        duplicate = await casino.play_paigow(123, game.id, selected.version, 'select', [10, 8])
+        self.assertEqual(duplicate, selected)
+        self.assertEqual(await casino.recover(123), selected)
+        self.assertEqual(len(await casino.ledger(123, game.id)), 1)

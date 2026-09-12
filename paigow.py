@@ -220,3 +220,8 @@ def result(state):
         return None
     return compare(*split(state['player'], state['front']),
                    *split(state['dealer'], state['dealer_front']))[1]
+
+
+def display_order(cards):
+    """A through K, suit as a stable tie-breaker, Joker last; never changes ranks."""
+    return sorted(cards, key=lambda c: (13, 0) if c == JOKER else (c % 13, c // 13))

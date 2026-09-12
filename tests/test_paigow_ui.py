@@ -27,6 +27,7 @@ class PaiGowUITests(unittest.IsolatedAsyncioTestCase):
         feature, event, game = CasinoFeature(None), interaction(), hand()
         with patch.object(feature, 'table_image', new=AsyncMock(side_effect=OSError('image unavailable'))):
             await feature.show_result(event, game)
+            await __import__('asyncio').gather(*feature.image_tasks, return_exceptions=True)
         reply = event.edit_original_response.call_args.kwargs
         self.assertIsInstance(reply['view'], PaiGowView)
         self.assertIn('前墩', reply['embed'].description)
@@ -53,7 +54,7 @@ class PaiGowUITests(unittest.IsolatedAsyncioTestCase):
         for sample in (replace(game, front=()), game, completed):
             payload = await feature.table_image(sample)
             image = Image.open(io.BytesIO(payload))
-            self.assertEqual(image.size, (1200, 800))
+            self.assertEqual(image.size, (1200, 1800))
             image.verify()
         renderer = TableRenderer('casino_assets')
         self.assertIn(52, renderer.cards)
@@ -76,16 +77,23 @@ class PaiGowUITests(unittest.IsolatedAsyncioTestCase):
             await feature.show_result(event, newest)
             release.set()
             await pending
-        self.assertEqual(event.edit_original_response.await_count, 1)
-        self.assertEqual(event.edit_original_response.call_args.kwargs['view'].game, newest)
+            await __import__('asyncio').gather(*feature.image_tasks, return_exceptions=True)
+        previews = [call.kwargs for call in event.edit_original_response.call_args_list if 'view' in call.kwargs]
+        self.assertEqual([p['view'].game.version for p in previews], [1, 2])
+        self.assertEqual(previews[-1]['view'].game, newest)
+        self.assertTrue(event.edit_original_response.call_args.kwargs['attachments'])
+        self.assertNotIn('view', event.edit_original_response.call_args.kwargs)
+        await feature.stop_background()
 
     async def test_upload_failure_preserves_full_text_and_controls(self):
         import discord
         feature, event = CasinoFeature(None), interaction()
         event.edit_original_response.side_effect = [
-            discord.HTTPException(SimpleNamespace(status=500, reason='test'), 'upload failed'), None]
+            None, discord.HTTPException(SimpleNamespace(status=500, reason='test'), 'upload failed')]
         await feature.show_result(event, hand())
         reply = event.edit_original_response.call_args.kwargs
+        await __import__('asyncio').gather(*feature.image_tasks, return_exceptions=True)
+        self.assertEqual(event.edit_original_response.await_count, 2)
         self.assertEqual(reply['attachments'], [])
         self.assertIn('Joker', reply['embed'].description)
         self.assertIn('前墩', reply['embed'].description)
@@ -97,3 +105,32 @@ class PaiGowUITests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(await feature.table_image(game),
                          await feature.table_image(replace(game, dealer=tuple(range(7)),
                                                           dealer_front=(0, 1))))
+
+    async def test_selected_preview_is_visible_before_slow_image_finishes(self):
+        import asyncio
+        feature, event = CasinoFeature(None), interaction()
+        started, release = asyncio.Event(), asyncio.Event()
+        async def slow_image(game):
+            started.set()
+            await release.wait()
+            return b'preview'
+        with patch.object(feature, 'table_image', side_effect=slow_image):
+            pending = asyncio.create_task(feature.show_result(event, hand()))
+            try:
+                await asyncio.wait_for(started.wait(), 2)
+                self.assertTrue(event.edit_original_response.called,
+                                'Selected hand preview is blocked behind image generation')
+                self.assertIn('前墩', event.edit_original_response.call_args.kwargs['embed'].description)
+                await asyncio.wait_for(asyncio.shield(pending), 0.5)
+            finally:
+                release.set()
+                await pending
+                await feature.stop_background()
+
+    async def test_selector_text_and_picture_indices_follow_ace_to_king(self):
+        from casino_commands import PaiGowView, paigow_description
+        game = replace(hand(), player=tuple(cards('Kh 2d As Ah Qs 9c X')), front=())
+        view = PaiGowView(CasinoFeature(None), 123, game)
+        self.assertEqual([option.value for option in view.children[0].options],
+                         list(map(str, cards('As Ah 2d 9c Qs Kh X'))))
+        self.assertIn('1:A♠ · 2:A♥ · 3:2♦', paigow_description(game))

@@ -59,6 +59,7 @@ class Delivery:
     def __init__(self):
         self.lock = asyncio.Lock()
         self.revision = 0
+        self.image_task: asyncio.Task | None = None
         self.game_id = None
         self.version = 0
 
@@ -224,7 +225,7 @@ class PaiGowSelect(discord.ui.Select):
         self.panel = panel
         options = [discord.SelectOption(label=f'{i + 1}. {card_text(card)}',
                     value=str(card), default=card in panel.game.front)
-                   for i, card in enumerate(panel.game.player)]
+                   for i, card in enumerate(paigow.display_order(panel.game.player))]
         super().__init__(placeholder='選擇前墩兩張，剩餘五張為後墩',
                          min_values=2, max_values=2, options=options, row=0)
 
@@ -244,14 +245,14 @@ class PaiGowView(OwnedView):
 
 def paigow_hand_text(cards):
     evaluated = paigow.evaluate(cards)
-    text = ' · '.join(map(card_text, cards)) + f'（{evaluated.name}）'
+    text = ' · '.join(map(card_text, paigow.display_order(cards))) + f'（{evaluated.name}）'
     if evaluated.joker_as is not None:
         text += f' Joker 當 {card_text(evaluated.joker_as)}'
     return text
 
 
 def paigow_description(game):
-    lines = ['手牌：' + ' · '.join(f'{i + 1}:{card_text(card)}' for i, card in enumerate(game.player))]
+    lines = ['手牌：' + ' · '.join(f'{i + 1}:{card_text(card)}' for i, card in enumerate(paigow.display_order(game.player)))]
     if game.front:
         low, high = paigow.split(game.player, game.front)
         lines += ['你的前墩：' + paigow_hand_text(low), '你的後墩：' + paigow_hand_text(high)]
@@ -305,6 +306,7 @@ class CasinoFeature:
         self.owner_locks: WeakValueDictionary[int, asyncio.Lock] = WeakValueDictionary()
         self.active_messages: dict[int, ActiveMessage] = {}
         self.pending_actions: set[int] = set()
+        self.image_tasks: set[asyncio.Task] = set()
 
     def preload(self):
         renderer(self.asset_directory)
@@ -332,6 +334,11 @@ class CasinoFeature:
             except asyncio.CancelledError:
                 pass
         self.active_messages.clear()
+        images = list(self.image_tasks)
+        for image_task in images:
+            image_task.cancel()
+        await asyncio.gather(*images, return_exceptions=True)
+        self.image_tasks.clear()
 
     @tasks.loop(seconds=2)
     async def expiry_loop(self):
@@ -707,6 +714,51 @@ class CasinoFeature:
     async def table_image(self, game):
         return await asyncio.to_thread(lambda: renderer(self.asset_directory).render(game))
 
+
+    async def preview_paigow(self, interaction, embed, view, game, delivery, revision):
+        # This projection was committed before show_result. Enable controls immediately;
+        # composition/upload must not retain the owner action lock or click guard.
+        async with delivery.lock:
+            if revision != delivery.revision:
+                return False
+            message = await discord_update(interaction.edit_original_response(
+                content=None, embed=embed, view=view, attachments=[],
+                allowed_mentions=discord.AllowedMentions.none()))
+            if isinstance(getattr(message, 'id', None), int):
+                self.deliveries[message.id] = delivery
+        task = asyncio.create_task(self.refresh_paigow_image(
+            interaction, embed.copy(), game, delivery, revision))
+        delivery.image_task = task
+        self.image_tasks.add(task)
+        task.add_done_callback(self.image_tasks.discard)
+        return True
+
+    async def refresh_paigow_image(self, interaction, embed, game, delivery, revision):
+        started = time.perf_counter()
+        try:
+            payload = await self.table_image(game)
+            composed = time.perf_counter()
+            embed.set_image(url='attachment://table.png')
+            # Never restore controls from a previous snapshot. The preview already
+            # owns the current view; an image refresh changes only image and embed.
+            async with delivery.lock:
+                if revision != delivery.revision:
+                    return
+                attachment = discord.File(io.BytesIO(payload), filename='table.png')
+                try:
+                    await interaction.edit_original_response(
+                        embed=embed, attachments=[attachment],
+                        allowed_mentions=discord.AllowedMentions.none())
+                finally:
+                    attachment.close()
+            timing_logger.info('Casino image refresh compose_ms=%.1f upload_ms=%.1f version=%s',
+                               (composed-started)*1000, (time.perf_counter()-composed)*1000, game.version)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            # The confirmed text preview remains usable even if composition or upload fails.
+            logging.warning('Casino image refresh failed; committed text preview remains available.')
+
     def lobby_image(self):
         return dealer_bytes(self.dealer_path)
 
@@ -721,10 +773,15 @@ class CasinoFeature:
         view.delivery = delivery
         if game is not None and delivery.game_id == game.id and game.version < delivery.version:
             return
+        if delivery.image_task is not None:
+            delivery.image_task.cancel()
+            delivery.image_task = None
         delivery.game_id = game.id if game is not None else None
         delivery.version = game.version if game is not None else 0
         delivery.revision += 1
         revision = delivery.revision
+        if game is not None and game.game == 'paigow' and game.status == 'active':
+            return await self.preview_paigow(interaction, embed, view, game, delivery, revision)
         started = time.perf_counter()
         attachments = []
         if game is not None:
