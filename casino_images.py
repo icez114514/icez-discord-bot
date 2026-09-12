@@ -156,12 +156,11 @@ class TableRenderer:
                 group(game.player, 159, 460, indices)
         status = 'ARRANGE / CONFIRM' if game.status == 'active' else (game.outcome or game.status).upper()
         draw.text((65, 721), status, font=font(22), fill='#e6d7b5')
-        returned = 'PENDING' if game.status == 'active' else compact(game.returned)
-        draw.text((1135, 721), f'WAGER {compact(game.wager)} / RETURN {returned}',
+        net = 'PENDING' if game.status == 'active' else compact(game.net)
+        draw.text((1135, 721), f'WAGER {compact(game.wager)} / NET {net}',
                   font=font(19), fill='#c6d8ce', anchor='ra')
-        if game.status != 'active':
-            draw.text((1135, 750), f'NET {compact(game.net)} / BALANCE {compact(game.balance_after)}',
-                      font=font(17), fill='#c6d8ce', anchor='ra')
+        draw.text((1135, 750), f'BALANCE {compact(game.balance_after)}',
+                  font=font(17), fill='#c6d8ce', anchor='ra')
         output = io.BytesIO()
         image.convert('RGB').save(output, format='PNG')
         return output.getvalue()
@@ -192,9 +191,11 @@ class TableRenderer:
             self.row(image, player, 490)
         status = 'YOUR TURN' if game.status == 'active' else (game.outcome or game.status).upper()
         draw.text((65, 731), status, font=font(24), fill='#e6d7b5')
-        draw.text((1135, 735), 'WAGER ' + compact(game.wager) + '  /  RETURN ' +
-                  ('PENDING' if game.status == 'active' else compact(game.returned)),
-                  font=font(20), fill='#c6d8ce', anchor='ra')
+        net = 'PENDING' if game.status == 'active' else compact(game.net)
+        draw.text((1135, 721), f'WAGER {compact(game.wager)} / NET {net}',
+                  font=font(19), fill='#c6d8ce', anchor='ra')
+        draw.text((1135, 750), f'BALANCE {compact(game.balance_after)}',
+                  font=font(17), fill='#c6d8ce', anchor='ra')
         output = io.BytesIO()
         image.convert('RGB').save(output, format='PNG')
         return output.getvalue()

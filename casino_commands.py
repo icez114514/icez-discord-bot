@@ -695,9 +695,8 @@ class CasinoFeature:
         else:
             embed.description = "牌局資料無法恢復，已退回全部下注並保留退款流水。"
         embed.add_field(name="下注", value=money(game.wager))
-        embed.add_field(name="返還（含本金）", value=money(game.returned) if game.status != 'active' else '待結算')
-        embed.add_field(name="淨盈虧", value=money(game.net) if game.status != 'active' else '待結算')
-        embed.add_field(name="扣款後餘額" if game.status == 'active' else "結算後餘額", value=money(game.balance_after), inline=False)
+        embed.add_field(name="盈虧", value=money(game.net) if game.status != 'active' else '待結算')
+        embed.add_field(name="餘額", value=money(game.balance_after))
         if game.balance_after < game.bet.total:
             if game.status != 'active':
                 embed.add_field(name='提示', value='水晶餘額不足以再來一局，請修改下注金額。', inline=False)
