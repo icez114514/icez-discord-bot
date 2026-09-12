@@ -60,6 +60,7 @@ class Delivery:
         self.lock = asyncio.Lock()
         self.revision = 0
         self.image_task: asyncio.Task | None = None
+        self.image_uploading = False
         self.game_id = None
         self.version = 0
 
@@ -717,7 +718,8 @@ class CasinoFeature:
 
     async def preview_paigow(self, interaction, embed, view, game, delivery, revision):
         # This projection was committed before show_result. Enable controls immediately;
-        # composition/upload must not retain the owner action lock or click guard.
+        # New composition/upload runs outside the owner action lock and click guard.
+        # A previously accepted image edit must finish before this newer preview.
         async with delivery.lock:
             if revision != delivery.revision:
                 return False
@@ -745,11 +747,13 @@ class CasinoFeature:
                 if revision != delivery.revision:
                     return
                 attachment = discord.File(io.BytesIO(payload), filename='table.png')
+                delivery.image_uploading = True
                 try:
                     await interaction.edit_original_response(
                         embed=embed, attachments=[attachment],
                         allowed_mentions=discord.AllowedMentions.none())
                 finally:
+                    delivery.image_uploading = False
                     attachment.close()
             timing_logger.info('Casino image refresh compose_ms=%.1f upload_ms=%.1f version=%s',
                                (composed-started)*1000, (time.perf_counter()-composed)*1000, game.version)
@@ -774,7 +778,10 @@ class CasinoFeature:
         if game is not None and delivery.game_id == game.id and game.version < delivery.version:
             return
         if delivery.image_task is not None:
-            delivery.image_task.cancel()
+            # Cancellation cannot revoke a PATCH already accepted by Discord.
+            # Keep an in-flight upload serialized before any newer preview.
+            if not delivery.image_uploading:
+                delivery.image_task.cancel()
             delivery.image_task = None
         delivery.game_id = game.id if game is not None else None
         delivery.version = game.version if game is not None else 0

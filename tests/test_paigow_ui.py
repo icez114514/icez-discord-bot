@@ -85,6 +85,56 @@ class PaiGowUITests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn('view', event.edit_original_response.call_args.kwargs)
         await feature.stop_background()
 
+
+    async def test_inflight_image_finishes_before_new_preview(self):
+        import asyncio
+        feature, event, original = CasinoFeature(None), interaction(), hand()
+        event.message = SimpleNamespace(id=456)
+        accepted, release, next_preview = asyncio.Event(), asyncio.Event(), asyncio.Event()
+        applied, remote_tasks = [], []
+        original_preview = feature.preview_paigow
+
+        async def preview(*args):
+            if args[3].version == 2:
+                next_preview.set()
+            return await original_preview(*args)
+
+        async def remote_edit(**kwargs):
+            version = int(kwargs['embed'].footer.text.rsplit(' ', 1)[-1])
+            kind = 'preview' if 'view' in kwargs else 'image'
+            if version == 1 and kind == 'image':
+                async def finish_accepted_request():
+                    accepted.set()
+                    await release.wait()
+                    applied.append((version, kind))
+                remote = asyncio.create_task(finish_accepted_request())
+                remote_tasks.append(remote)
+                # Cancelling a client wait cannot undo an accepted Discord PATCH.
+                await asyncio.shield(remote)
+            else:
+                applied.append((version, kind))
+
+        event.edit_original_response.side_effect = remote_edit
+        with patch.object(feature, 'table_image', new=AsyncMock(return_value=b'preview')), \
+                patch.object(feature, 'preview_paigow', side_effect=preview):
+            await feature.show_result(event, original)
+            await asyncio.wait_for(accepted.wait(), 2)
+            old_image = next(iter(feature.image_tasks))
+            pending = asyncio.create_task(feature.show_result(event, replace(original, version=2, front=())))
+            try:
+                await asyncio.wait_for(next_preview.wait(), 2)
+                # Let a cancellation, if incorrectly requested, reach the HTTP waiter.
+                await asyncio.sleep(0)
+                await asyncio.sleep(0)
+                cancelled = old_image.cancelled()
+            finally:
+                release.set()
+                await pending
+                await asyncio.gather(*remote_tasks, *feature.image_tasks, return_exceptions=True)
+                await feature.stop_background()
+        self.assertFalse(cancelled, 'An accepted image edit must retain the delivery lock')
+        self.assertEqual(applied, [(1, 'preview'), (1, 'image'), (2, 'preview'), (2, 'image')])
+
     async def test_upload_failure_preserves_full_text_and_controls(self):
         import discord
         feature, event = CasinoFeature(None), interaction()
