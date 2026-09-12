@@ -90,6 +90,11 @@ class PaiGowRulesTests(unittest.TestCase):
             ('2s 3h 4d 5c 6s Kh Kd', 'Kh Kd'),
             ('2s 4s 6s 8s Ts Kh Qd', 'Kh Qd'),
             ('2s 3s 4s 5s 6s Kh Qd', 'Kh Qd'),
+            ('2s 3s 4s 5s 6s 7h 8d', '7h 8d'),
+            ('2s 3s 4s 5s X Kh Qd', 'Kh Qd'),
+            ('As Ah Ks Kh 9d 6c X', 'As Ah'),
+            ('7s 7h X Ac Kd 4c 2s', 'Ac Kd'),
+            ('2s 4h 6d 8c Ts Kh X', 'Kh Ts'),
         ]
         for hand, expected in examples:
             with self.subTest(hand=hand):
