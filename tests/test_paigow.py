@@ -13,6 +13,23 @@ def cards(text):
 
 
 class PaiGowRulesTests(unittest.TestCase):
+
+    def test_resolved_joker_sorts_as_its_represented_card_without_replacing_ids(self):
+        examples = [
+            ('2s 3s 4s 5s X', 'X 2s 3s 4s 5s'),
+            ('7h 7d 7c 7s X', '7s X 7h 7d 7c'),
+            ('2h X', 'X 2h'),
+            ('Ks Qs Js Ts X', 'X Ts Js Qs Ks'),
+        ]
+        for source, expected in examples:
+            with self.subTest(source=source):
+                hand = cards(source)
+                original = hand.copy()
+                joker = paigow.evaluate(hand).joker_as
+                self.assertEqual(paigow.display_order(hand, joker_as=joker), cards(expected))
+                self.assertEqual(paigow.display_order(hand)[-1], paigow.JOKER)
+                self.assertEqual(hand, original)
+
     def test_joker_makes_any_pair_or_five_of_a_kind(self):
         self.assertEqual(paigow.evaluate(cards('Ks X')).score, (1, 13))
         five = paigow.evaluate(cards('7s 7h 7d 7c X'))

@@ -45,12 +45,6 @@ class TableRenderer:
         draw = ImageDraw.Draw(image)
         draw.rounded_rectangle((1, 1, 142, 198), radius=9, fill='#fffdf8',
                                outline='#bcc5bf', width=2)
-        if value == paigow.JOKER:
-            draw.rounded_rectangle((9, 9, 134, 190), radius=8, fill='#2f2149', outline='#d2ae60', width=3)
-            draw.text((72, 45), 'JOKER', font=font(24), fill='#f8d98b', anchor='mm')
-            draw.text((72, 103), '*', font=font(80), fill='#f8d98b', anchor='mm')
-            draw.text((72, 161), 'WILD', font=font(22), fill='#f8d98b', anchor='mm')
-            return image
         name = 'back.png' if value is None else f'cards/{value}.png'
         source = Path(__file__).with_name('casino_assets') / 'classic' / name
         try:
@@ -60,6 +54,12 @@ class TableRenderer:
             return image
         except (OSError, ValueError):
             pass  # Keep a usable procedural fallback if packaged artwork is missing.
+        if value == paigow.JOKER:
+            draw.rounded_rectangle((9, 9, 134, 190), radius=8, fill='#2f2149', outline='#d2ae60', width=3)
+            draw.text((72, 45), 'JOKER', font=font(24), fill='#f8d98b', anchor='mm')
+            draw.text((72, 103), '*', font=font(80), fill='#f8d98b', anchor='mm')
+            draw.text((72, 161), 'WILD', font=font(22), fill='#f8d98b', anchor='mm')
+            return image
         if value is None:
             for inset in (15, 25, 35):
                 draw.rounded_rectangle((inset, inset, 143-inset, 199-inset), radius=8, outline='#88a5ce', width=2)
@@ -107,7 +107,9 @@ class TableRenderer:
 
         def group(cards, x, y, indices=None):
             joker = paigow.evaluate(cards).joker_as if None not in cards and len(cards) in (2, 5) else None
-            for card in cards if None in cards else paigow.display_order(cards):
+            ordered = cards if None in cards else paigow.display_order(
+                cards, joker_as=joker if game.status == 'settled' else None)
+            for card in ordered:
                 sprite = self.back if card is None else self.cards[card]
                 image.alpha_composite(sprite.resize((112, 156), Image.Resampling.LANCZOS), (x, y))
                 if indices is not None:

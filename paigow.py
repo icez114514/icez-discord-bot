@@ -222,6 +222,12 @@ def result(state):
                    *split(state['dealer'], state['dealer_front']))[1]
 
 
-def display_order(cards):
-    """A through K, suit as a stable tie-breaker, Joker last; never changes ranks."""
-    return sorted(cards, key=lambda c: (13, 0) if c == JOKER else (c % 13, c // 13))
+def display_order(cards, *, joker_as=None):
+    """Return physical IDs in A-K order, optionally positioning a resolved Joker."""
+    def key(card):
+        represented = joker_as if card == JOKER and joker_as is not None else card
+        if represented == JOKER:
+            return (13, 0, True)
+        # A natural card precedes a Joker representing the exact same card.
+        return (represented % 13, represented // 13, card == JOKER)
+    return sorted(cards, key=key)

@@ -43,6 +43,32 @@ class PaiGowUITests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(stranger.response.send_message.call_args.kwargs['ephemeral'])
         self.assertIn('paigow', [b.action for b in LobbyView(feature, 123).children])
 
+
+    async def test_resolved_joker_position_matches_text_and_both_table_rows(self):
+        import io
+        from PIL import Image
+        from casino_images import TableRenderer
+        from casino_commands import paigow_description
+        player = tuple(cards('As Kh Ah 2d 9c Qs X'))
+        dealer = tuple(cards('2s 2h 3s 3h 5d 8c Td'))
+        active = replace(hand(), player=player, front=tuple(cards('As Kh')))
+        done = replace(active, status='settled', outcome='tie', dealer=dealer,
+                       dealer_front=tuple(cards('2s 2h')))
+        r = TableRenderer('casino_assets')
+        marker = (255, 0, 255)
+        r.cards[paigow.JOKER] = Image.new('RGBA', (144, 200), marker)
+        for sample, point in [(active, (1035, 530)), (done, (531, 530)),
+                              (replace(done, player=dealer, front=done.dealer_front,
+                                       dealer=player, dealer_front=active.front), (531, 215))]:
+            with self.subTest(status=sample.status, point=point):
+                image = Image.open(io.BytesIO(r.render(sample)))
+                self.assertEqual(image.getpixel(point), marker)
+        text = paigow_description(done)
+        self.assertIn('你的後墩：Joker · A♥ · 2♦ · 9♣ · Q♠', text)
+        self.assertIn('Joker 當 A♠', text)
+        self.assertIn('原手牌：1:A♠ · 2:A♥', text)
+        self.assertIn('7:Joker', text)
+
     async def test_images_show_both_split_hands_and_a_real_joker_sprite(self):
         import io
         from PIL import Image

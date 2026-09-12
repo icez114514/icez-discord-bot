@@ -244,19 +244,22 @@ class PaiGowView(OwnedView):
                     disabled=not game.front)
 
 
-def paigow_hand_text(cards):
+def paigow_hand_text(cards, *, resolved=False):
     evaluated = paigow.evaluate(cards)
-    text = ' · '.join(map(card_text, paigow.display_order(cards))) + f'（{evaluated.name}）'
+    ordered = paigow.display_order(cards, joker_as=evaluated.joker_as if resolved else None)
+    text = ' · '.join(map(card_text, ordered)) + f'（{evaluated.name}）'
     if evaluated.joker_as is not None:
         text += f' Joker 當 {card_text(evaluated.joker_as)}'
     return text
 
 
 def paigow_description(game):
-    lines = ['手牌：' + ' · '.join(f'{i + 1}:{card_text(card)}' for i, card in enumerate(paigow.display_order(game.player)))]
+    resolved = game.status == 'settled'
+    hand_label = '原手牌：' if resolved else '手牌：'
+    lines = [hand_label + ' · '.join(f'{i + 1}:{card_text(card)}' for i, card in enumerate(paigow.display_order(game.player)))]
     if game.front:
         low, high = paigow.split(game.player, game.front)
-        lines += ['你的前墩：' + paigow_hand_text(low), '你的後墩：' + paigow_hand_text(high)]
+        lines += ['你的前墩：' + paigow_hand_text(low, resolved=resolved), '你的後墩：' + paigow_hand_text(high, resolved=resolved)]
     else:
         lines.append('請選前墩兩張牌，或使用自動分牌，再確認送出。')
     if game.status == 'active':
@@ -268,7 +271,7 @@ def paigow_description(game):
         player_low, player_high = paigow.split(game.player, game.front)
         comparisons, _ = paigow.compare(player_low, player_high, low, high)
         results = {1: '勝', 0: '同牌，莊家勝', -1: '負'}
-        lines += ['莊家前墩：' + paigow_hand_text(low), '莊家後墩：' + paigow_hand_text(high),
+        lines += ['莊家前墩：' + paigow_hand_text(low, resolved=resolved), '莊家後墩：' + paigow_hand_text(high, resolved=resolved),
                   f'逐墩結果：前墩 {results[comparisons[0]]}／後墩 {results[comparisons[1]]}']
     lines.append('全萬用 Joker · 五條最高 · A2345 第二大順子 · 同牌莊家勝 · 免抽水')
     return '\n'.join(lines)
