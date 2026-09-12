@@ -7,6 +7,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 from blackjack import total
+import paigow
 from casino_rules import dice_points
 
 
@@ -28,7 +29,7 @@ class TableRenderer:
         draw.ellipse((85, 92, 1115, 760), fill='#123c3c', outline='#35605a', width=2)
         draw.line((110, 422, 1090, 422), fill='#416660', width=2)
         self.background = self.asset('background.png', background)
-        self.cards = {card: self.asset(f'cards/{card}.png', self.card(card)) for card in range(52)}
+        self.cards = {card: self.asset(f'cards/{card}.png', self.card(card)) for card in range(53)}
         self.back = self.asset('back.png', self.card(None))
         self.dice = {value: self.asset(f'dice/{value}.png', self.die(value)) for value in range(1, 7)}
 
@@ -44,6 +45,12 @@ class TableRenderer:
         draw = ImageDraw.Draw(image)
         draw.rounded_rectangle((1, 1, 142, 198), radius=9, fill='#fffdf8',
                                outline='#bcc5bf', width=2)
+        if value == paigow.JOKER:
+            draw.rounded_rectangle((9, 9, 134, 190), radius=8, fill='#2f2149', outline='#d2ae60', width=3)
+            draw.text((72, 45), 'JOKER', font=font(24), fill='#f8d98b', anchor='mm')
+            draw.text((72, 103), '*', font=font(80), fill='#f8d98b', anchor='mm')
+            draw.text((72, 161), 'WILD', font=font(22), fill='#f8d98b', anchor='mm')
+            return image
         name = 'back.png' if value is None else f'cards/{value}.png'
         source = Path(__file__).with_name('casino_assets') / 'classic' / name
         try:
@@ -89,7 +96,74 @@ class TableRenderer:
             image.alpha_composite(sprite.resize((width, height)), (left, y + (200-height)//2))
             left += width + 12
 
+
+    def paigow_table(self, game):
+        image = self.background.copy()
+        draw = ImageDraw.Draw(image)
+        names = ('HIGH CARD', 'PAIR', 'TWO PAIR', 'THREE OF A KIND', 'STRAIGHT',
+                 'FLUSH', 'FULL HOUSE', 'FOUR OF A KIND', 'STRAIGHT FLUSH', 'FIVE OF A KIND')
+        draw.text((65, 48), 'PAI GOW POKER', font=font(30), fill='#e6d7b5')
+        draw.text((1135, 52), 'WILD JOKER / NO COMMISSION', font=font(19), fill='#a8c4be', anchor='ra')
+
+        def group(cards, x, y, indices=None):
+            joker = paigow.evaluate(cards).joker_as if None not in cards and len(cards) in (2, 5) else None
+            for card in cards:
+                sprite = self.back if card is None else self.cards[card]
+                image.alpha_composite(sprite.resize((112, 156), Image.Resampling.LANCZOS), (x, y))
+                if indices is not None:
+                    draw.rounded_rectangle((x + 37, y + 162, x + 75, y + 190), radius=8, fill='#eadbb9')
+                    draw.text((x + 56, y + 175), str(indices[card]), font=font(20), fill='#163c3c', anchor='mm')
+                if card == paigow.JOKER and joker is not None:
+                    rank = ('A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K')[joker % 13]
+                    suit = ('S', 'H', 'D', 'C')[joker // 13]
+                    draw.text((x + 56, y - 12), f'JOKER = {rank}{suit}', font=font(15), fill='#f8d98b', anchor='mm')
+                x += 126
+
+        def split_row(cards, front, y, owner, indices=None, comparison=None):
+            low, high = paigow.split(cards, front)
+            draw.text((80, y - 54), owner + ' / FRONT 2', font=font(22), fill='#e6d7b5')
+            draw.text((475, y - 54), 'BACK 5', font=font(22), fill='#e6d7b5')
+            for hand, x, ordinal in ((low, 80, 0), (high, 475, 1)):
+                caption = names[paigow.evaluate(hand).score[0]]
+                if comparison is not None:
+                    caption += ' / ' + {1: 'WIN', 0: 'TIE: DEALER WINS', -1: 'LOSS'}[comparison[ordinal]]
+                draw.text((x, y + 203), caption, font=font(17), fill='#c6d8ce')
+                group(hand, x, y, indices)
+
+        if game.status == 'void':
+            draw.text((600, 370), 'VOID / FULL REFUND', font=font(38), fill='#e6d7b5', anchor='mm')
+        else:
+            if game.status == 'active':
+                draw.text((80, 95), 'DEALER / HIDDEN UNTIL CONFIRMATION', font=font(22), fill='#c6d8ce')
+                group([None] * 7, 159, 145)
+            else:
+                split_row(game.dealer, game.dealer_front, 145, 'DEALER')
+            indices = {card: i + 1 for i, card in enumerate(game.player)}
+            if game.front:
+                comparison = None
+                if game.status == 'settled':
+                    player_low, player_high = paigow.split(game.player, game.front)
+                    dealer_low, dealer_high = paigow.split(game.dealer, game.dealer_front)
+                    comparison, _ = paigow.compare(player_low, player_high, dealer_low, dealer_high)
+                split_row(game.player, game.front, 460, 'YOU', indices, comparison)
+            else:
+                draw.text((80, 406), 'YOU / SELECT TWO CARDS FOR FRONT', font=font(22), fill='#e6d7b5')
+                group(game.player, 159, 460, indices)
+        status = 'ARRANGE / CONFIRM' if game.status == 'active' else (game.outcome or game.status).upper()
+        draw.text((65, 721), status, font=font(22), fill='#e6d7b5')
+        returned = 'PENDING' if game.status == 'active' else compact(game.returned)
+        draw.text((1135, 721), f'WAGER {compact(game.wager)} / RETURN {returned}',
+                  font=font(19), fill='#c6d8ce', anchor='ra')
+        if game.status != 'active':
+            draw.text((1135, 750), f'NET {compact(game.net)} / BALANCE {compact(game.balance_after)}',
+                      font=font(17), fill='#c6d8ce', anchor='ra')
+        output = io.BytesIO()
+        image.convert('RGB').save(output, format='PNG')
+        return output.getvalue()
+
     def render(self, game):
+        if game.game == 'paigow':
+            return self.paigow_table(game)
         image = self.background.copy()
         draw = ImageDraw.Draw(image)
         draw.text((65, 52), 'CRYSTAL CASINO', font=font(28), fill='#e6d7b5')

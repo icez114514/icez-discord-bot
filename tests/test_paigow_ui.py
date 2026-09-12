@@ -1,0 +1,99 @@
+"""Owner-facing Pai Gow text flow and safe card projections."""
+import unittest
+from dataclasses import replace
+from datetime import datetime, timezone
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, patch
+from uuid import uuid4
+
+import paigow
+from casino_commands import CasinoFeature, LobbyView
+from casino_rules import Bet
+from casino_store import Game
+from test_casino_ui import interaction
+from test_paigow import cards
+
+
+def hand():
+    player = tuple(cards('As Ah Ks Kh 9d 6c X'))
+    return Game(uuid4(), 123, Bet(100), 100, [], 'active', None, 0, 900, 1, False,
+                'paigow', player, (None,) * 7, datetime(2026, 9, 12, tzinfo=timezone.utc),
+                tuple(paigow.house_way(player)), (), paigow.RULE_VERSION)
+
+
+class PaiGowUITests(unittest.IsolatedAsyncioTestCase):
+    async def test_text_fallback_preserves_selection_and_hides_dealer(self):
+        from casino_commands import PaiGowView
+        feature, event, game = CasinoFeature(None), interaction(), hand()
+        with patch.object(feature, 'table_image', new=AsyncMock(side_effect=OSError('image unavailable'))):
+            await feature.show_result(event, game)
+        reply = event.edit_original_response.call_args.kwargs
+        self.assertIsInstance(reply['view'], PaiGowView)
+        self.assertIn('前墩', reply['embed'].description)
+        self.assertIn('後墩', reply['embed'].description)
+        self.assertIn('Joker', reply['embed'].description)
+        self.assertIn('暗牌', reply['embed'].description)
+        self.assertEqual(reply['attachments'], [])
+        selector = reply['view'].children[0]
+        self.assertEqual((selector.min_values, selector.max_values, len(selector.options)), (2, 2, 7))
+        self.assertEqual({int(o.value) for o in selector.options if o.default}, set(game.front))
+        stranger = interaction(456)
+        await feature.act(stranger, reply['view'], 'pai_confirm')
+        self.assertTrue(stranger.response.send_message.call_args.kwargs['ephemeral'])
+        self.assertIn('paigow', [b.action for b in LobbyView(feature, 123).children])
+
+    async def test_images_show_both_split_hands_and_a_real_joker_sprite(self):
+        import io
+        from PIL import Image
+        from casino_images import TableRenderer
+        feature, game = CasinoFeature(None), hand()
+        dealer = tuple(cards('2s 2h 3s 3h 5d 8c Td'))
+        completed = replace(game, status='settled', outcome='tie', dealer=dealer,
+                            dealer_front=tuple(paigow.house_way(dealer)), returned=100, version=3)
+        for sample in (replace(game, front=()), game, completed):
+            payload = await feature.table_image(sample)
+            image = Image.open(io.BytesIO(payload))
+            self.assertEqual(image.size, (1200, 800))
+            image.verify()
+        renderer = TableRenderer('casino_assets')
+        self.assertIn(52, renderer.cards)
+        self.assertNotEqual(renderer.cards[52].tobytes(), renderer.cards[0].tobytes())
+
+    async def test_old_image_does_not_replace_new_selection(self):
+        import asyncio
+        feature, event, original = CasinoFeature(None), interaction(), hand()
+        event.message = SimpleNamespace(id=456)
+        newest = replace(original, version=2, front=())
+        started, release = asyncio.Event(), asyncio.Event()
+        async def image(game):
+            if game.version == 1:
+                started.set()
+                await release.wait()
+            return b'preview'
+        with patch.object(feature, 'table_image', side_effect=image):
+            pending = asyncio.create_task(feature.show_result(event, original))
+            await started.wait()
+            await feature.show_result(event, newest)
+            release.set()
+            await pending
+        self.assertEqual(event.edit_original_response.await_count, 1)
+        self.assertEqual(event.edit_original_response.call_args.kwargs['view'].game, newest)
+
+    async def test_upload_failure_preserves_full_text_and_controls(self):
+        import discord
+        feature, event = CasinoFeature(None), interaction()
+        event.edit_original_response.side_effect = [
+            discord.HTTPException(SimpleNamespace(status=500, reason='test'), 'upload failed'), None]
+        await feature.show_result(event, hand())
+        reply = event.edit_original_response.call_args.kwargs
+        self.assertEqual(reply['attachments'], [])
+        self.assertIn('Joker', reply['embed'].description)
+        self.assertIn('前墩', reply['embed'].description)
+        self.assertFalse(reply['view'].children[-1].disabled)
+
+    async def test_active_renderer_does_not_leak_even_an_unmasked_dealer(self):
+        feature, game = CasinoFeature(None), hand()
+        # Defense in depth: renderer hides active dealer cards regardless of caller.
+        self.assertEqual(await feature.table_image(game),
+                         await feature.table_image(replace(game, dealer=tuple(range(7)),
+                                                          dealer_front=(0, 1))))

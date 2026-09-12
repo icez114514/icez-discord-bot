@@ -1,5 +1,6 @@
 """Durable casino operations sharing CrystalStore's account lock and connection."""
 
+import asyncio
 import secrets
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -13,6 +14,7 @@ from psycopg.types.json import Jsonb
 
 from casino_rules import Bet, CasinoError, InsufficientBalance, outcome
 import blackjack
+import paigow
 from database import CrystalStore, DatabaseError
 
 
@@ -52,6 +54,9 @@ class Game:
     player: tuple = ()
     dealer: tuple = ()
     deadline: datetime | None = None
+    front: tuple = ()
+    dealer_front: tuple = ()
+    rules: str | None = None
 
     @property
     def net(self) -> int:
@@ -72,10 +77,14 @@ def read_game(row) -> Game:
     dealer = tuple(state.get('dealer', ())) if row['status'] != 'void' else ()
     if row['status'] == 'active' and row['game'] == 'blackjack':
         dealer = dealer[:1] + (None,)
+    front = tuple(state.get('front', ())) if row['status'] != 'void' else ()
+    dealer_front = tuple(state.get('dealer_front', ())) if row['status'] == 'settled' else ()
+    if row['status'] == 'active' and row['game'] == 'paigow':
+        dealer = (None,) * 7
     return Game(row['id'], int(row['user_id']), Bet(int(row['base']), int(row['multiplier'])),
                 int(row['wager']), row['dice'], row['status'], row['outcome'],
                 int(row['returned']), int(row['balance_after']), row['version'], row['dismissed'],
-                row['game'], player, dealer, row.get('deadline'))
+                row['game'], player, dealer, row.get('deadline'), front, dealer_front, state.get('rules'))
 
 
 def read_preferences(row) -> Preferences:
@@ -86,9 +95,11 @@ def read_preferences(row) -> Preferences:
 
 class CasinoStore:
     def __init__(self, crystals: CrystalStore, *, roll: Callable | None = None,
-                 deck: Callable | None = None, clock: Callable | None = None):
+                 deck: Callable | None = None, clock: Callable | None = None,
+                 pai_deck: Callable | None = None):
         self.crystals = crystals
         self.deck = deck or blackjack.shuffled_deck
+        self.pai_deck = pai_deck or paigow.shuffled_deck
         self.clock = clock or (lambda: datetime.now(timezone.utc))
         self.roll = roll or (lambda: tuple(secrets.randbelow(6) + 1 for _ in range(6)))
         self.tables = {name: sql.Identifier(crystals.schema, table) for name, table in {
@@ -209,7 +220,7 @@ class CasinoStore:
         return await self.start(user_id, uuid5(NAMESPACE_URL, 'casino:replay:' + str(game_id)), parent_id=game_id)
 
     async def start(self, user_id: int, token: UUID | None, *, game='dice', parent_id=None) -> Game:
-        if game not in ('dice', 'blackjack'):
+        if game not in ('dice', 'blackjack', 'paigow'):
             raise CasinoError('未知遊戲。')
         try:
             async with self.crystals.connection() as conn:
@@ -257,9 +268,14 @@ class CasinoStore:
             if len(dice) != 6:
                 raise ValueError('Expected six dice')
             outcome(dice[:3], dice[3:])
-        else:
+        elif game == 'blackjack':
             cards = blackjack.deal(list(self.deck()))
             deadline = self.clock() + timedelta(seconds=120)
+        elif game == 'paigow':
+            cards = await asyncio.to_thread(lambda: paigow.deal(list(self.pai_deck())))
+            deadline = self.clock() + timedelta(seconds=120)
+        else:
+            raise CasinoError('未知遊戲。')
         game_id = uuid4()
         # Ordered writes share one protocol flush but remain inside the original debit transaction.
         async with conn.pipeline():
@@ -322,6 +338,8 @@ class CasinoStore:
         if row['status'] == 'active':
             if row['game'] == 'blackjack':
                 return await self.resolve_blackjack(conn, row, balance)
+            if row['game'] == 'paigow':
+                return await self.resolve_paigow(conn, row, balance)
             if row['game'] != 'dice':
                 raise CasinoError('此牌局需要對應遊戲的恢復功能，未執行退款。')
             try:
@@ -398,6 +416,66 @@ class CasinoStore:
         except (ValueError, TypeError, KeyError):
             result, returned = 'void', int(row['wager'])
             status, kind, reason = 'void', 'refund', 'invalid_persisted_blackjack'
+        await self.transfer(conn, int(row['user_id']), row['id'], kind, returned, balance)
+        row = await (await self.execute(conn, '''UPDATE {games} SET status=%s,outcome=%s,
+            returned=%s,balance_after=%s,version=version+1,finished_at=clock_timestamp(),reason=%s,
+            cards=%s,deadline=NULL WHERE id=%s RETURNING *''',
+            (status, result, returned, balance + returned, reason, Jsonb(state), row['id']))).fetchone()
+        return read_game(row)
+
+
+    async def play_paigow(self, user_id: int, game_id: UUID, version: int,
+                          action: str, front=None) -> Game:
+        try:
+            async with self.crystals.connection() as conn:
+                balance = await self.lock_account(conn, user_id)
+                row = await (await self.execute(conn,
+                    'SELECT * FROM {games} WHERE id=%s AND user_id=%s FOR UPDATE',
+                    (game_id, user_id))).fetchone()
+                if row is None or row['game'] != 'paigow':
+                    raise CasinoError('找不到你的牌九撲克牌局。')
+                if row['status'] != 'active':
+                    return read_game(row)
+                if row['deadline'] is None or row['deadline'] <= self.clock():
+                    return await self.resolve_paigow(conn, row, balance)
+                if row['version'] != version:
+                    return read_game(row)
+                state = row['cards']
+                try:
+                    paigow.validate(state)
+                except (ValueError, TypeError, KeyError):
+                    return await self.resolve_paigow(conn, row, balance)
+                paigow.act(state, action, front)
+                row = await (await self.execute(conn, '''UPDATE {games}
+                    SET cards=%s,balance_after=%s,version=version+1 WHERE id=%s RETURNING *''',
+                    (Jsonb(state), balance, game_id))).fetchone()
+                return await self.resolve_paigow(conn, row, balance)
+        except DatabaseError:
+            # Lost acknowledgement: observe a committed version, never repeat the action.
+            async with self.crystals.connection(read_only=True) as conn:
+                row = await (await self.execute(conn,
+                    'SELECT * FROM {games} WHERE id=%s AND user_id=%s', (game_id, user_id))).fetchone()
+                if row is None or row['version'] <= version:
+                    raise
+                return read_game(row)
+
+    async def resolve_paigow(self, conn, row, balance):
+        state = row['cards']
+        try:
+            paigow.validate(state)
+            if row['deadline'] is None:
+                raise ValueError('Missing Pai Gow deadline')
+            if row['deadline'] <= self.clock() and not state['confirmed']:
+                paigow.act(state, 'auto')
+                paigow.act(state, 'confirm')
+            result = paigow.result(state)
+            if result is None:
+                return read_game(row)
+            returned = int(row['wager']) * {'win': 2, 'tie': 1, 'loss': 0}[result]
+            status, kind, reason = 'settled', 'payout', None
+        except (ValueError, TypeError, KeyError):
+            result, returned = 'void', int(row['wager'])
+            status, kind, reason = 'void', 'refund', 'invalid_persisted_paigow'
         await self.transfer(conn, int(row['user_id']), row['id'], kind, returned, balance)
         row = await (await self.execute(conn, '''UPDATE {games} SET status=%s,outcome=%s,
             returned=%s,balance_after=%s,version=version+1,finished_at=clock_timestamp(),reason=%s,

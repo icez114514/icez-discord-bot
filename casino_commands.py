@@ -18,6 +18,7 @@ from discord.ext import tasks
 
 from casino_rules import CasinoError, InsufficientBalance, dice_points, parse_integer
 from blackjack import total
+import paigow
 from casino_store import CasinoStore, Game, Preferences, LobbySnapshot
 from casino_records import CasinoRecords, Record, Summary
 from casino_images import renderer
@@ -26,6 +27,8 @@ from latency import measure, record_age, timing_logger, discord_update, mark_sta
 
 # Unsigned attachment URLs in embeds are refreshed by Discord.
 DEALER_IMAGE_URLS = ('https://cdn.discordapp.com/attachments/1495692135452901496/1546121292745539614/Mei_1.jpg', 'https://cdn.discordapp.com/attachments/1495692135452901496/1546121293353451642/Mei_2.jpg', 'https://cdn.discordapp.com/attachments/1495692135452901496/1546121294054170634/Mei_3.jpg', 'https://cdn.discordapp.com/attachments/1495692135452901496/1546121295106674698/Mei_4.jpg', 'https://cdn.discordapp.com/attachments/1495692135452901496/1546121295765315614/Mei_5.jpg', 'https://cdn.discordapp.com/attachments/1495692135452901496/1546121296457236590/Mei_6.jpg')
+
+GAME_NAMES = {'dice': '18 豆仔', 'blackjack': '21 點', 'paigow': '牌九撲克'}
 
 COLOR = 0xDC9FB4
 UNAVAILABLE = "賭場資料庫暫時無法確認操作結果，請重新使用 /賭場 查證；請勿假定未扣款。"
@@ -92,6 +95,7 @@ class LobbyView(OwnedView):
         super().__init__(feature, owner_id)
         self.button("21 點", "blackjack", style=discord.ButtonStyle.primary)
         self.button("18 豆仔", "settings", style=discord.ButtonStyle.primary)
+        self.button("牌九撲克", "paigow", style=discord.ButtonStyle.primary)
         self.button("我的紀錄", "records")
         self.button("莊家統計", "house")
 
@@ -172,7 +176,7 @@ class QueryModal(discord.ui.Modal):
         super().__init__(title="遊戲篩選")
         self.panel = panel
         self.value: discord.ui.TextInput = discord.ui.TextInput(
-            label="遊戲識別（dice／blackjack；留空全部）", required=False, max_length=100,
+            label="遊戲識別（dice／blackjack／paigow）", required=False, max_length=100,
             default=panel.game_filter)
         self.add_item(self.value)
 
@@ -214,9 +218,65 @@ class PlayView(OwnedView):
                     disabled=len(game.player) != 2 or game.balance_after < game.bet.total)
 
 
+
+class PaiGowSelect(discord.ui.Select):
+    def __init__(self, panel):
+        self.panel = panel
+        options = [discord.SelectOption(label=f'{i + 1}. {card_text(card)}',
+                    value=str(card), default=card in panel.game.front)
+                   for i, card in enumerate(panel.game.player)]
+        super().__init__(placeholder='選擇前墩兩張，剩餘五張為後墩',
+                         min_values=2, max_values=2, options=options, row=0)
+
+    async def callback(self, interaction):
+        await self.panel.feature.act(interaction, self.panel, 'pai_select', list(self.values))
+
+
+class PaiGowView(OwnedView):
+    def __init__(self, feature, owner_id, game: Game):
+        super().__init__(feature, owner_id)
+        self.game = game
+        self.add_item(PaiGowSelect(self))
+        self.button('自動分牌', 'pai_auto', row=1)
+        self.button('確認分牌', 'pai_confirm', row=1, style=discord.ButtonStyle.success,
+                    disabled=not game.front)
+
+
+def paigow_hand_text(cards):
+    evaluated = paigow.evaluate(cards)
+    text = ' · '.join(map(card_text, cards)) + f'（{evaluated.name}）'
+    if evaluated.joker_as is not None:
+        text += f' Joker 當 {card_text(evaluated.joker_as)}'
+    return text
+
+
+def paigow_description(game):
+    lines = ['手牌：' + ' · '.join(f'{i + 1}:{card_text(card)}' for i, card in enumerate(game.player))]
+    if game.front:
+        low, high = paigow.split(game.player, game.front)
+        lines += ['你的前墩：' + paigow_hand_text(low), '你的後墩：' + paigow_hand_text(high)]
+    else:
+        lines.append('請選前墩兩張牌，或使用自動分牌，再確認送出。')
+    if game.status == 'active':
+        lines.append('莊家：七張暗牌，確認後揭曉。')
+        if game.deadline is not None:
+            lines.append(f'期限：<t:{int(game.deadline.timestamp())}:R>（固定 120 秒，到期自動分牌結算）')
+    else:
+        low, high = paigow.split(game.dealer, game.dealer_front)
+        player_low, player_high = paigow.split(game.player, game.front)
+        comparisons, _ = paigow.compare(player_low, player_high, low, high)
+        results = {1: '勝', 0: '同牌，莊家勝', -1: '負'}
+        lines += ['莊家前墩：' + paigow_hand_text(low), '莊家後墩：' + paigow_hand_text(high),
+                  f'逐墩結果：前墩 {results[comparisons[0]]}／後墩 {results[comparisons[1]]}']
+    lines.append('全萬用 Joker · 五條最高 · A2345 第二大順子 · 同牌莊家勝 · 免抽水')
+    return '\n'.join(lines)
+
+
 def card_text(card):
     if card is None:
         return '暗牌'
+    if card == paigow.JOKER:
+        return 'Joker'
     return ('A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K')[card % 13] + '♠♥♦♣'[card // 13]
 
 
@@ -365,7 +425,7 @@ class CasinoFeature:
     @operation("casino.act")
     async def act(self, interaction, view: OwnedView, action: str, value=None):
         mark_action(action)
-        if action not in ('start', 'replay', 'hit', 'stand', 'double'):
+        if action not in ('start', 'replay', 'hit', 'stand', 'double', 'pai_select', 'pai_auto', 'pai_confirm'):
             return await self._act(interaction, view, action, value)
         if interaction.user.id != view.owner_id:
             await view.interaction_check(interaction)
@@ -412,11 +472,23 @@ class CasinoFeature:
                 elif action in ('hit', 'stand', 'double') and isinstance(view, PlayView):
                     game = await store.play(uid, view.game.id, view.game.version, action)
                     await self.show_result(interaction, game)
+                elif action in ('pai_select', 'pai_auto', 'pai_confirm') and isinstance(view, PaiGowView):
+                    front = None
+                    if action == 'pai_select':
+                        if not isinstance(value, list) or len(value) != 2:
+                            raise CasinoError('請選擇前墩兩張牌。')
+                        try:
+                            front = [int(card) for card in value]
+                        except (ValueError, TypeError):
+                            raise CasinoError('選牌無效，請重新選擇。')
+                    game = await store.play_paigow(uid, view.game.id, view.game.version,
+                                                   action.removeprefix('pai_'), front)
+                    await self.show_result(interaction, game)
                 elif action == "replay" and isinstance(view, ResultView):
                     game = await store.replay(uid, view.game.id)
                     await self.show_result(interaction, game)
-                elif action in ("settings", "blackjack", "lobby"):
-                    game_type = 'blackjack' if action == 'blackjack' else (
+                elif action in ("settings", "blackjack", "paigow", "lobby"):
+                    game_type = action if action in ('blackjack', 'paigow') else (
                         view.game.game if isinstance(view, ResultView) else 'dice')
                     source = ({'game_id': view.game.id} if isinstance(view, ResultView) else
                               {'token': view.prefs.token} if isinstance(view, SettingsView) else {})
@@ -577,7 +649,7 @@ class CasinoFeature:
 
     async def show_settings(self, interaction, panel, game_type='dice'):
         prefs, balance = panel.preferences, panel.balance
-        embed = discord.Embed(title=('21 點' if game_type == 'blackjack' else '18 豆仔') + ' · 下注設定', color=COLOR)
+        embed = discord.Embed(title=GAME_NAMES.get(game_type, game_type) + ' · 下注設定', color=COLOR)
         embed.add_field(name="基本下注", value=money(prefs.bet.base))
         embed.add_field(name="倍率", value=money(prefs.bet.multiplier))
         embed.add_field(name="實際下注", value=money(prefs.bet.total))
@@ -587,11 +659,13 @@ class CasinoFeature:
         embed.set_footer(text="設定與返回不扣款。豹子＝骰值×10、456＝7、對子取單點、123＝0、散骰＝−1；同點比總和，不重擲、不抽水。")
         if game_type == 'blackjack':
             embed.set_footer(text='首兩張可加倍；軟 17 停牌；120 秒無有效操作自動停牌。天然勝利返還 2.5 倍，普通勝利 2 倍。')
+        if game_type == 'paigow':
+            embed.set_footer(text='前二後五；Joker 全萬用、五條最高、A2345 第二大順子、同牌莊家勝。免抽水，勝／和／負返還 2／1／0 倍；120 秒到期自動分牌結算。')
         await self.render(interaction, embed, SettingsView(self, interaction.user.id, prefs, game_type))
 
     async def show_result(self, interaction, game):
         labels = {"win": "勝利", "loss": "落敗", "tie": "平手", "void": "作廢退款"}
-        name = '21 點' if game.game == 'blackjack' else '18 豆仔'
+        name = GAME_NAMES.get(game.game, game.game)
         embed = discord.Embed(title=f"{name} · {labels.get(game.outcome, '你的回合')}", color=COLOR)
         if game.game == 'blackjack' and game.status != 'void':
             dealer_total = str(total(game.dealer)) if game.status != 'active' else f'{total(game.dealer[:1])} + ?'
@@ -599,7 +673,9 @@ class CasinoFeature:
                                  f"莊家：{' · '.join(map(card_text, game.dealer))}（{dealer_total} 點）")
             if game.deadline is not None:
                 embed.description += f'\n期限：<t:{int(game.deadline.timestamp())}:R>（到期自動停牌）'
-        elif game.status != "void":
+        elif game.game == 'paigow' and game.status != 'void':
+            embed.description = paigow_description(game)
+        elif game.game == 'dice' and game.status != "void":
             embed.description = (f"玩家：{' · '.join(map(str, game.dice[:3]))}（{dice_points(game.dice[:3])} 點）\n"
                                  f"莊家：{' · '.join(map(str, game.dice[3:]))}（{dice_points(game.dice[3:])} 點）")
         else:
@@ -614,7 +690,8 @@ class CasinoFeature:
             elif len(game.player) == 2:
                 embed.add_field(name='提示', value='水晶餘額不足，無法加倍；仍可要牌或停牌。', inline=False)
         embed.set_footer(text=f"牌局 {game.id} · 版本 {game.version}")
-        view = PlayView(self, game.user_id, game) if game.status == 'active' else ResultView(self, game.user_id, game)
+        view = (PaiGowView(self, game.user_id, game) if game.game == 'paigow' else
+                PlayView(self, game.user_id, game)) if game.status == 'active' else ResultView(self, game.user_id, game)
         shown = await self.render(interaction, embed, view, game=game)
         if not shown:
             return
