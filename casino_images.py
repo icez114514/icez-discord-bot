@@ -29,7 +29,6 @@ class TableRenderer:
         draw.ellipse((85, 92, 1115, 760), fill='#123c3c', outline='#35605a', width=2)
         draw.line((110, 422, 1090, 422), fill='#416660', width=2)
         self.background = self.asset('background.png', background)
-        self.paigow_background = self.asset('background.png', Image.new('RGBA', (1200, 1800), '#0a2427'))
         self.cards = {card: self.asset(f'cards/{card}.png', self.card(card)) for card in range(53)}
         self.back = self.asset('back.png', self.card(None))
         self.dice = {value: self.asset(f'dice/{value}.png', self.die(value)) for value in range(1, 7)}
@@ -99,74 +98,65 @@ class TableRenderer:
 
 
     def paigow_table(self, game):
-        # Portrait table: each side's front two cards sit ABOVE its back five.
-        image = self.paigow_background.copy()
+        image = self.background.copy()
         draw = ImageDraw.Draw(image)
-        draw.rounded_rectangle((24, 24, 1176, 1776), radius=40, outline='#97784d', width=3)
-        for top, bottom in ((90, 825), (860, 1630)):
-            draw.rounded_rectangle((48, top, 1152, bottom), radius=26,
-                                   fill='#123c3c', outline='#35605a', width=2)
         names = ('HIGH CARD', 'PAIR', 'TWO PAIR', 'THREE OF A KIND', 'STRAIGHT',
                  'FLUSH', 'FULL HOUSE', 'FOUR OF A KIND', 'STRAIGHT FLUSH', 'FIVE OF A KIND')
-        draw.text((65, 43), 'PAI GOW POKER', font=font(30), fill='#e6d7b5')
-        draw.text((1135, 47), 'WILD JOKER / NO COMMISSION', font=font(19), fill='#a8c4be', anchor='ra')
+        draw.text((65, 48), 'PAI GOW POKER', font=font(30), fill='#e6d7b5')
+        draw.text((1135, 52), 'WILD JOKER / NO COMMISSION', font=font(19), fill='#a8c4be', anchor='ra')
 
-        def group(cards, y, heading, indices=None, comparison=None):
-            hidden = None in cards
-            ordered = list(cards) if hidden else paigow.display_order(cards)
-            evaluation = None if hidden else paigow.evaluate(ordered)
-            caption = 'HIDDEN' if evaluation is None else names[evaluation.score[0]]
-            if indices is not None and not game.front:
-                evaluation = None
-                caption = 'NOT ARRANGED'
-            if comparison is not None:
-                caption += ' / ' + {1: 'WIN', 0: 'TIE: DEALER WINS', -1: 'LOSS'}[comparison]
-            draw.text((600, y - 33), heading, font=font(25), fill='#e6d7b5', anchor='mm')
-            x = (1200 - len(ordered) * 168 - (len(ordered) - 1) * 20) // 2
-            for card in ordered:
+        def group(cards, x, y, indices=None):
+            joker = paigow.evaluate(cards).joker_as if None not in cards and len(cards) in (2, 5) else None
+            for card in cards if None in cards else paigow.display_order(cards):
                 sprite = self.back if card is None else self.cards[card]
-                image.alpha_composite(sprite.resize((168, 233), Image.Resampling.LANCZOS), (x, y))
+                image.alpha_composite(sprite.resize((112, 156), Image.Resampling.LANCZOS), (x, y))
                 if indices is not None:
-                    draw.rounded_rectangle((x + 63, y + 238, x + 105, y + 265), radius=8, fill='#eadbb9')
-                    draw.text((x + 84, y + 251), str(indices[card]), font=font(21), fill='#163c3c', anchor='mm')
-                if card == paigow.JOKER and evaluation is not None and evaluation.joker_as is not None:
-                    joker = evaluation.joker_as
+                    draw.rounded_rectangle((x + 37, y + 162, x + 75, y + 190), radius=8, fill='#eadbb9')
+                    draw.text((x + 56, y + 175), str(indices[card]), font=font(20), fill='#163c3c', anchor='mm')
+                if card == paigow.JOKER and joker is not None:
                     rank = ('A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K')[joker % 13]
                     suit = ('S', 'H', 'D', 'C')[joker // 13]
-                    draw.text((x + 84, y + 211), f'= {rank}{suit}', font=font(18), fill='#f8d98b', anchor='mm')
-                x += 188
-            draw.text((600, y + 283), caption, font=font(22), fill='#c6d8ce', anchor='mm')
+                    draw.text((x + 56, y - 12), f'JOKER = {rank}{suit}', font=font(15), fill='#f8d98b', anchor='mm')
+                x += 126
+
+        def split_row(cards, front, y, owner, indices=None, comparison=None):
+            low, high = paigow.split(cards, front)
+            draw.text((80, y - 54), owner + ' / FRONT 2', font=font(22), fill='#e6d7b5')
+            draw.text((475, y - 54), 'BACK 5', font=font(22), fill='#e6d7b5')
+            for hand, x, ordinal in ((low, 80, 0), (high, 475, 1)):
+                caption = names[paigow.evaluate(hand).score[0]]
+                if comparison is not None:
+                    caption += ' / ' + {1: 'WIN', 0: 'TIE: DEALER WINS', -1: 'LOSS'}[comparison[ordinal]]
+                draw.text((x, y + 203), caption, font=font(17), fill='#c6d8ce')
+                group(hand, x, y, indices)
 
         if game.status == 'void':
-            draw.text((600, 840), 'VOID / FULL REFUND', font=font(42), fill='#e6d7b5', anchor='mm')
+            draw.text((600, 370), 'VOID / FULL REFUND', font=font(38), fill='#e6d7b5', anchor='mm')
         else:
             if game.status == 'active':
-                dealer_low, dealer_high = [None] * 2, [None] * 5
+                draw.text((80, 95), 'DEALER / HIDDEN UNTIL CONFIRMATION', font=font(22), fill='#c6d8ce')
+                group([None] * 7, 159, 145)
             else:
-                dealer_low, dealer_high = paigow.split(game.dealer, game.dealer_front)
-            group(dealer_low, 150, 'DEALER / FRONT 2')
-            group(dealer_high, 510, 'DEALER / BACK 5')
-            player = paigow.display_order(game.player)
-            indices = {card: i + 1 for i, card in enumerate(player)}
+                split_row(game.dealer, game.dealer_front, 145, 'DEALER')
+            indices = {card: i + 1 for i, card in enumerate(paigow.display_order(game.player))}
             if game.front:
-                low, high = paigow.split(player, game.front)
-                comparison = (None, None)
+                comparison = None
                 if game.status == 'settled':
-                    comparison, _ = paigow.compare(low, high, dealer_low, dealer_high)
-                group(low, 945, 'YOU / FRONT 2', indices, comparison[0])
-                group(high, 1305, 'YOU / BACK 5', indices, comparison[1])
+                    player_low, player_high = paigow.split(game.player, game.front)
+                    dealer_low, dealer_high = paigow.split(game.dealer, game.dealer_front)
+                    comparison, _ = paigow.compare(player_low, player_high, dealer_low, dealer_high)
+                split_row(game.player, game.front, 460, 'YOU', indices, comparison)
             else:
-                # Display all cards in A-K order without claiming an unchosen split.
-                group(player[:2], 945, 'YOUR CARDS 1-2 / CHOOSE FRONT TWO', indices)
-                group(player[2:], 1305, 'YOUR CARDS 3-7 / NOT YET ARRANGED', indices)
+                draw.text((80, 406), 'YOU / SELECT TWO CARDS FOR FRONT', font=font(22), fill='#e6d7b5')
+                group(game.player, 159, 460, indices)
         status = 'ARRANGE / CONFIRM' if game.status == 'active' else (game.outcome or game.status).upper()
-        draw.text((65, 1680), status, font=font(23), fill='#e6d7b5')
+        draw.text((65, 721), status, font=font(22), fill='#e6d7b5')
         returned = 'PENDING' if game.status == 'active' else compact(game.returned)
-        draw.text((1135, 1680), f'WAGER {compact(game.wager)} / RETURN {returned}',
-                  font=font(21), fill='#c6d8ce', anchor='ra')
+        draw.text((1135, 721), f'WAGER {compact(game.wager)} / RETURN {returned}',
+                  font=font(19), fill='#c6d8ce', anchor='ra')
         if game.status != 'active':
-            draw.text((1135, 1720), f'NET {compact(game.net)} / BALANCE {compact(game.balance_after)}',
-                      font=font(19), fill='#c6d8ce', anchor='ra')
+            draw.text((1135, 750), f'NET {compact(game.net)} / BALANCE {compact(game.balance_after)}',
+                      font=font(17), fill='#c6d8ce', anchor='ra')
         output = io.BytesIO()
         image.convert('RGB').save(output, format='PNG')
         return output.getvalue()

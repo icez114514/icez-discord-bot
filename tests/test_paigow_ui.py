@@ -54,7 +54,7 @@ class PaiGowUITests(unittest.IsolatedAsyncioTestCase):
         for sample in (replace(game, front=()), game, completed):
             payload = await feature.table_image(sample)
             image = Image.open(io.BytesIO(payload))
-            self.assertEqual(image.size, (1200, 1800))
+            self.assertEqual(image.size, (1200, 800))
             image.verify()
         renderer = TableRenderer('casino_assets')
         self.assertIn(52, renderer.cards)
