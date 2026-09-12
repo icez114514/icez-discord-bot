@@ -1,0 +1,440 @@
+{
+  "name": "White embossed",
+  "size": [
+    1000,
+    1400
+  ],
+  "cards": [
+    {
+      "id": 0,
+      "rank": "A",
+      "suit": "spades",
+      "label": "A♠",
+      "file": "cards/0.png",
+      "sha256": "b816aebea3e8bb299e41f4e95421f00d95c107a4857d575a6406322bdb26c226"
+    },
+    {
+      "id": 1,
+      "rank": "2",
+      "suit": "spades",
+      "label": "2♠",
+      "file": "cards/1.png",
+      "sha256": "faae5e97202ac1e444d75da82b0bfa6c927aa657f0eb851b480f66c0fbd6d42b"
+    },
+    {
+      "id": 2,
+      "rank": "3",
+      "suit": "spades",
+      "label": "3♠",
+      "file": "cards/2.png",
+      "sha256": "d6db02166c64187b3ea61a05bfad605db052e5004912dbf4babb36178624a392"
+    },
+    {
+      "id": 3,
+      "rank": "4",
+      "suit": "spades",
+      "label": "4♠",
+      "file": "cards/3.png",
+      "sha256": "ee6873fe0e5318b9d84e33cff04ba0bb656e14f0a132189a861664004df9b1df"
+    },
+    {
+      "id": 4,
+      "rank": "5",
+      "suit": "spades",
+      "label": "5♠",
+      "file": "cards/4.png",
+      "sha256": "7dfe33ae7cee980f1e03efb29bd203e89eb8b35664e291ab5f0c4489e251789e"
+    },
+    {
+      "id": 5,
+      "rank": "6",
+      "suit": "spades",
+      "label": "6♠",
+      "file": "cards/5.png",
+      "sha256": "5dfeabe0110d2ca9b4d181e42af84d025d68169e8d016d5cfedfbe92bc8c7a00"
+    },
+    {
+      "id": 6,
+      "rank": "7",
+      "suit": "spades",
+      "label": "7♠",
+      "file": "cards/6.png",
+      "sha256": "818333d537f7155774298d22ee6ab49206d0df4868031368fdf822f920cd5b27"
+    },
+    {
+      "id": 7,
+      "rank": "8",
+      "suit": "spades",
+      "label": "8♠",
+      "file": "cards/7.png",
+      "sha256": "ea592cf3d23c10941fb740f131678876a293ae018afd43cc73ad2ea44a4bbb74"
+    },
+    {
+      "id": 8,
+      "rank": "9",
+      "suit": "spades",
+      "label": "9♠",
+      "file": "cards/8.png",
+      "sha256": "da6c95cb4d7f5fb36eead1c5f0e0a2bc9c0e468fcf0a8e751386a4e46152dca8"
+    },
+    {
+      "id": 9,
+      "rank": "10",
+      "suit": "spades",
+      "label": "10♠",
+      "file": "cards/9.png",
+      "sha256": "90fcc3475879d24a9d933cfcd2d989d4f4095adc9bafad275c834472ec4e26aa"
+    },
+    {
+      "id": 10,
+      "rank": "J",
+      "suit": "spades",
+      "label": "J♠",
+      "file": "cards/10.png",
+      "sha256": "946cbb43883c6fb4370c0e9ddc921fb830da216612f25ad33789e770e39b72f0"
+    },
+    {
+      "id": 11,
+      "rank": "Q",
+      "suit": "spades",
+      "label": "Q♠",
+      "file": "cards/11.png",
+      "sha256": "dc0a6828f2f7db4fb58a4ec140966a4d41777a1b707a36308ec41bbf6502d476"
+    },
+    {
+      "id": 12,
+      "rank": "K",
+      "suit": "spades",
+      "label": "K♠",
+      "file": "cards/12.png",
+      "sha256": "8233447751f4cd70d8ce0c2875dd3ea5aaee9a63b7bc51dd30f4d8be46a2d625"
+    },
+    {
+      "id": 13,
+      "rank": "A",
+      "suit": "hearts",
+      "label": "A♥",
+      "file": "cards/13.png",
+      "sha256": "b2b7278e7390f278958d06b760bd7e4c9ac4b9bdaaf4712687ce18b214bdada3"
+    },
+    {
+      "id": 14,
+      "rank": "2",
+      "suit": "hearts",
+      "label": "2♥",
+      "file": "cards/14.png",
+      "sha256": "378921908d530b126e7d3e35e459ca708da9bd3e563dee01bc0992d6a11a24c9"
+    },
+    {
+      "id": 15,
+      "rank": "3",
+      "suit": "hearts",
+      "label": "3♥",
+      "file": "cards/15.png",
+      "sha256": "841b7a8c1bc18777e258d88ce95d7f7eca32b7b63a8d66713ebaf081b1a91a34"
+    },
+    {
+      "id": 16,
+      "rank": "4",
+      "suit": "hearts",
+      "label": "4♥",
+      "file": "cards/16.png",
+      "sha256": "60080db3b79ba72a882e42ef1ed4df0e464b59f41fb012e3a1e6deb5aa5f1f1d"
+    },
+    {
+      "id": 17,
+      "rank": "5",
+      "suit": "hearts",
+      "label": "5♥",
+      "file": "cards/17.png",
+      "sha256": "3d38f1a58513fbc80353be4feb728c82df319ea051815e2438aa98fec9d7793c"
+    },
+    {
+      "id": 18,
+      "rank": "6",
+      "suit": "hearts",
+      "label": "6♥",
+      "file": "cards/18.png",
+      "sha256": "f1bc4c5eeaa8669e9eaf452418c47b8b028e650cecfceb7384a9f6ef31f9b4d1"
+    },
+    {
+      "id": 19,
+      "rank": "7",
+      "suit": "hearts",
+      "label": "7♥",
+      "file": "cards/19.png",
+      "sha256": "77b74a6dd6923a13f4a02fc45e16b42888b53a5ed5cc235227c7147b8942cbd5"
+    },
+    {
+      "id": 20,
+      "rank": "8",
+      "suit": "hearts",
+      "label": "8♥",
+      "file": "cards/20.png",
+      "sha256": "407aecb6b546e71f7773d00b2bd1ecf697f2e198552b2c870fb53d22d4e15d98"
+    },
+    {
+      "id": 21,
+      "rank": "9",
+      "suit": "hearts",
+      "label": "9♥",
+      "file": "cards/21.png",
+      "sha256": "5e7775fc8979dcdb6dcbdcbe6fd815d5e706e49afb2c8156d90a44a01193b922"
+    },
+    {
+      "id": 22,
+      "rank": "10",
+      "suit": "hearts",
+      "label": "10♥",
+      "file": "cards/22.png",
+      "sha256": "ec3142b5aecb771d066ffbc7bbec4723b200c8d571bbae85234c0a0a40e6c05b"
+    },
+    {
+      "id": 23,
+      "rank": "J",
+      "suit": "hearts",
+      "label": "J♥",
+      "file": "cards/23.png",
+      "sha256": "78326d5f7e4615cc03eee394c8c804e9f4c2c25a8e278bd919ca53e94148f944"
+    },
+    {
+      "id": 24,
+      "rank": "Q",
+      "suit": "hearts",
+      "label": "Q♥",
+      "file": "cards/24.png",
+      "sha256": "a914b13d5d9c7228732fa0f006d180ce15118afaf9a5a58d9645cbf65d85f5bc"
+    },
+    {
+      "id": 25,
+      "rank": "K",
+      "suit": "hearts",
+      "label": "K♥",
+      "file": "cards/25.png",
+      "sha256": "ef5a8bccc6613ed1f296068682337f3b20af65a36e089f86457777f3e2425e71"
+    },
+    {
+      "id": 26,
+      "rank": "A",
+      "suit": "diamonds",
+      "label": "A♦",
+      "file": "cards/26.png",
+      "sha256": "a25abddfe818cf4d447716b3b91dccf494fa95f1bffaec76ba89bfecd42c523b"
+    },
+    {
+      "id": 27,
+      "rank": "2",
+      "suit": "diamonds",
+      "label": "2♦",
+      "file": "cards/27.png",
+      "sha256": "b6be5aaa329d9146dbf327463b14e9fe17da428612c782b377b29e5ebcf34486"
+    },
+    {
+      "id": 28,
+      "rank": "3",
+      "suit": "diamonds",
+      "label": "3♦",
+      "file": "cards/28.png",
+      "sha256": "fc7ada95c20531f864f271b2821105ed0af4a8f47766f265cc0c12d664c0eba1"
+    },
+    {
+      "id": 29,
+      "rank": "4",
+      "suit": "diamonds",
+      "label": "4♦",
+      "file": "cards/29.png",
+      "sha256": "77663f77163dcaea79909c8d32ed56a22d20f5e668369d5c92ac4ee5f2131c6d"
+    },
+    {
+      "id": 30,
+      "rank": "5",
+      "suit": "diamonds",
+      "label": "5♦",
+      "file": "cards/30.png",
+      "sha256": "7f0e31b16adb34507747fa7e8d2d1757cfd1ad0ae38895c215e64542d9987b44"
+    },
+    {
+      "id": 31,
+      "rank": "6",
+      "suit": "diamonds",
+      "label": "6♦",
+      "file": "cards/31.png",
+      "sha256": "6543350ae6d5527476942d896bc010f3dc5559aa81a2c4634e0d0f3820844275"
+    },
+    {
+      "id": 32,
+      "rank": "7",
+      "suit": "diamonds",
+      "label": "7♦",
+      "file": "cards/32.png",
+      "sha256": "4cbc313e8eb305f9b3f5e9cfdd2b871daa04a06e7b3cf45f0c1c140cea028a89"
+    },
+    {
+      "id": 33,
+      "rank": "8",
+      "suit": "diamonds",
+      "label": "8♦",
+      "file": "cards/33.png",
+      "sha256": "b51f3ac464b0cf9a17e7e101a539c2a895b8ab4697842d4f1ea82bc328de5596"
+    },
+    {
+      "id": 34,
+      "rank": "9",
+      "suit": "diamonds",
+      "label": "9♦",
+      "file": "cards/34.png",
+      "sha256": "4f0237e077f27fe6b6ae9898af0ed4dd04bf454e608cfdf35d3a799a504f8def"
+    },
+    {
+      "id": 35,
+      "rank": "10",
+      "suit": "diamonds",
+      "label": "10♦",
+      "file": "cards/35.png",
+      "sha256": "3e0be0c08e1d1ea747783ee4b209e46aed83579849d2fd833c028e597e6427ea"
+    },
+    {
+      "id": 36,
+      "rank": "J",
+      "suit": "diamonds",
+      "label": "J♦",
+      "file": "cards/36.png",
+      "sha256": "672b5a6c0feae76d8badc12a5d2bcddbd075c53910b6473c2bbfcec45eb132c5"
+    },
+    {
+      "id": 37,
+      "rank": "Q",
+      "suit": "diamonds",
+      "label": "Q♦",
+      "file": "cards/37.png",
+      "sha256": "0370455b5134bc4ab03dfc5a785a7c7cf143d3e977ded1321b79af08270322ef"
+    },
+    {
+      "id": 38,
+      "rank": "K",
+      "suit": "diamonds",
+      "label": "K♦",
+      "file": "cards/38.png",
+      "sha256": "f29b8d4f946e463cd09265da9361f9404cf8dd869173aa4c62a9a19b6f6c6d42"
+    },
+    {
+      "id": 39,
+      "rank": "A",
+      "suit": "clubs",
+      "label": "A♣",
+      "file": "cards/39.png",
+      "sha256": "2fef0c8f3640f9229f7dcbe949fdc1d53ff9024928502bb04c720095deb538af"
+    },
+    {
+      "id": 40,
+      "rank": "2",
+      "suit": "clubs",
+      "label": "2♣",
+      "file": "cards/40.png",
+      "sha256": "210dbdea7a0fd443a0affb5fb74ea908079cf8e88faf48703ea0f3bb876a473b"
+    },
+    {
+      "id": 41,
+      "rank": "3",
+      "suit": "clubs",
+      "label": "3♣",
+      "file": "cards/41.png",
+      "sha256": "62006aa4b4a5a9ab40f147e41f26477ca9da7b49edb087891737c146add8f7a4"
+    },
+    {
+      "id": 42,
+      "rank": "4",
+      "suit": "clubs",
+      "label": "4♣",
+      "file": "cards/42.png",
+      "sha256": "7c53083cbf5ef7eea70ba9eacc18e64b06c6170cf7af1d72aa44bb70652754a0"
+    },
+    {
+      "id": 43,
+      "rank": "5",
+      "suit": "clubs",
+      "label": "5♣",
+      "file": "cards/43.png",
+      "sha256": "48600ab906fc3eda825f24f47c6bcb6ee7d2da765bb11450301b5941ed0dbdc6"
+    },
+    {
+      "id": 44,
+      "rank": "6",
+      "suit": "clubs",
+      "label": "6♣",
+      "file": "cards/44.png",
+      "sha256": "5db6be3260c7725af76f7a3d7dfdba2ab88f6bf564d827192a79e5bdb9628315"
+    },
+    {
+      "id": 45,
+      "rank": "7",
+      "suit": "clubs",
+      "label": "7♣",
+      "file": "cards/45.png",
+      "sha256": "cfe65bd60c00bfb498cee3b894e6070c4ef1f2041a235a0b7d376704b62108c9"
+    },
+    {
+      "id": 46,
+      "rank": "8",
+      "suit": "clubs",
+      "label": "8♣",
+      "file": "cards/46.png",
+      "sha256": "11878158d402894d22be8ae8a1586e55ebb692f061351beb3d6994c2bf705fdb"
+    },
+    {
+      "id": 47,
+      "rank": "9",
+      "suit": "clubs",
+      "label": "9♣",
+      "file": "cards/47.png",
+      "sha256": "d7ef0851e5a08758cdefcab8f049e96312ba6d167981492fa5a406c1ba11ad82"
+    },
+    {
+      "id": 48,
+      "rank": "10",
+      "suit": "clubs",
+      "label": "10♣",
+      "file": "cards/48.png",
+      "sha256": "648077f2524ca1d3fa353bcce033ea3a09e664aa093ec8566d52bcf9d64ecdbc"
+    },
+    {
+      "id": 49,
+      "rank": "J",
+      "suit": "clubs",
+      "label": "J♣",
+      "file": "cards/49.png",
+      "sha256": "59b3f77ba8c5d8a7d3b3f220c3c0650df13837bd4d013d57b7720dd72ca214a8"
+    },
+    {
+      "id": 50,
+      "rank": "Q",
+      "suit": "clubs",
+      "label": "Q♣",
+      "file": "cards/50.png",
+      "sha256": "3ed3c209b406e97ea5b5db03eef740c7240433aa967dad711d4b55e3fe54aaa2"
+    },
+    {
+      "id": 51,
+      "rank": "K",
+      "suit": "clubs",
+      "label": "K♣",
+      "file": "cards/51.png",
+      "sha256": "cfe8e7559ebd3128141b476ab7031cd740f00cf2b451f2a0c93b31bb973a0cfb"
+    },
+    {
+      "id": 52,
+      "rank": "JOKER",
+      "suit": "joker",
+      "label": "Joker",
+      "file": "cards/52.png",
+      "sha256": "46468e767ace8b7ea987c25b767e3e7ed90681ea284b430f6292b8c147189732"
+    }
+  ],
+  "generation": "Pillow native typography and geometry",
+  "rank_font": "georgiab.ttf",
+  "suit_font": "seguisym.ttf",
+  "back": {
+    "file": "back.png",
+    "sha256": "670b314b9c9fdfbc92fada20f0952a6f6b995d6d81c68a1f34472d2d4d9f88cd"
+  }
+}

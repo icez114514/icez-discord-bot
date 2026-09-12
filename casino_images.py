@@ -43,14 +43,15 @@ class TableRenderer:
     def card(self, value):
         image = Image.new('RGBA', (144, 200))
         draw = ImageDraw.Draw(image)
-        draw.rounded_rectangle((1, 1, 142, 198), radius=9, fill='#fffdf8',
-                               outline='#bcc5bf', width=2)
+        draw.rounded_rectangle((1, 1, 142, 198), radius=9, fill='white',
+                               outline='#e4e6e8', width=2)
         name = 'back.png' if value is None else f'cards/{value}.png'
         assets = Path(__file__).with_name('casino_assets')
-        for deck in ('honkai', 'classic'):
+        for deck in ('embossed', 'classic'):
             try:
                 with Image.open(assets / deck / name) as artwork:
-                    face = ImageOps.contain(artwork.convert('RGBA'), (132, 188), Image.Resampling.LANCZOS)
+                    bounds = (144, 200) if deck == 'embossed' else (132, 188)
+                    face = ImageOps.contain(artwork.convert('RGBA'), bounds, Image.Resampling.LANCZOS)
                 image.alpha_composite(face, ((144-face.width)//2, (200-face.height)//2))
                 return image
             except (OSError, ValueError):
