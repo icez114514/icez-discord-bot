@@ -1,0 +1,920 @@
+{
+  "version": 1,
+  "status": "complete",
+  "style_reference": "exec-3f92517f-062f-4ec7-8628-c719e02ed325.png",
+  "sources": [
+    "https://marisaimpact.com/valk",
+    "https://honkaiimpact3.fandom.com/wiki/Battlesuits"
+  ],
+  "cards": [
+    {
+      "id": 0,
+      "rank": "A",
+      "suit": "spades",
+      "label": "A♠",
+      "character": "Kiana Kaslana",
+      "outfit": "Herrscher of Finality",
+      "character_zh": "琪亞娜",
+      "outfit_zh": "終焉之律者",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-958dcf9e-859c-4c56-8a83-bb1b6038b800.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "fbf2b68f4d723935eb594ded79bd217423b4dd4a4368213146b4bcff98255add"
+    },
+    {
+      "id": 1,
+      "rank": "2",
+      "suit": "spades",
+      "label": "2♠",
+      "character": "Raiden Mei",
+      "outfit": "Herrscher of Origin",
+      "character_zh": "雷電芽衣",
+      "outfit_zh": "始源之律者",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-4710b311-fa04-40ed-b703-01364b539b57.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "2f3cc23593b028f6246d84835b2001b4fddd8e63a78cc9b0b2cf35e4fdf5d26a"
+    },
+    {
+      "id": 2,
+      "rank": "3",
+      "suit": "spades",
+      "label": "3♠",
+      "character": "Bronya Zaychik",
+      "outfit": "Herrscher of Truth",
+      "character_zh": "布洛妮婭",
+      "outfit_zh": "真理之律者",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-8db43ccd-d596-4b09-b7d4-bec8c96606d3.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "aed2e10fa933536b23e0936f751cc694a2d3fcad2429ce714aa64a15cea828b9"
+    },
+    {
+      "id": 3,
+      "rank": "4",
+      "suit": "spades",
+      "label": "4♠",
+      "character": "Seele Vollerei",
+      "outfit": "Herrscher of Rebirth",
+      "character_zh": "希兒",
+      "outfit_zh": "死生之律者",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-e3323a8c-0aaf-4ec6-ac04-0b5c9facf4a8.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "01acb85a46ca5e15cd47af3af5e7a6f9a4d651cfc6196703d38cf653ef53ca0f"
+    },
+    {
+      "id": 4,
+      "rank": "5",
+      "suit": "spades",
+      "label": "5♠",
+      "character": "Fu Hua",
+      "outfit": "Fenghuang of Vicissitude",
+      "character_zh": "符華",
+      "outfit_zh": "浮生·渡塵之羽",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-c50dbb9c-d688-4517-a7ad-d422c5a42962.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "943c90a4f79336a75aede648e9f22a500d664c7887b0407b3a3b44427a2c4e79"
+    },
+    {
+      "id": 5,
+      "rank": "6",
+      "suit": "spades",
+      "label": "6♠",
+      "character": "Durandal",
+      "outfit": "Palatinus Equinox",
+      "character_zh": "幽蘭黛爾",
+      "outfit_zh": "天元騎英",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-c44e1270-2aaf-4830-a5eb-fa9bb67917bc.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "307d0d4ac3c168955f9e26f1643dd904cab26201ad8080b778f51318adc522ec"
+    },
+    {
+      "id": 6,
+      "rank": "7",
+      "suit": "spades",
+      "label": "7♠",
+      "character": "Rita Rossweisse",
+      "outfit": "Spina Astera",
+      "character_zh": "麗塔",
+      "outfit_zh": "繚亂星棘",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-479656c9-d618-4475-b57e-cc7871d03a93.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "d4247d89cdbdf2775a688832409c35287ea2d2dda128703354bc611c493f6e28"
+    },
+    {
+      "id": 7,
+      "rank": "8",
+      "suit": "spades",
+      "label": "8♠",
+      "character": "Theresa Apocalypse",
+      "outfit": "Schicksal's Imperative",
+      "character_zh": "德麗莎",
+      "outfit_zh": "天命難逃",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-7f025564-86b6-4237-b8c9-dea39e704a4c.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "20bf3681f3263b5ecd74f57f337d18b7badf91a7d4156012e9360e577a0840c7"
+    },
+    {
+      "id": 8,
+      "rank": "9",
+      "suit": "spades",
+      "label": "9♠",
+      "character": "Li Sushang",
+      "outfit": "Jade Knight",
+      "character_zh": "李素裳",
+      "outfit_zh": "玉騎士·月痕",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-100bd5a4-b23f-454b-acb7-5f1a4efde7d2.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "6eb137c787e15ad9279148406b1756a1f54e83512eb6434082d8e31cb464149f"
+    },
+    {
+      "id": 9,
+      "rank": "10",
+      "suit": "spades",
+      "label": "10♠",
+      "character": "Sirin",
+      "outfit": "Miracle Magical Girl",
+      "character_zh": "西琳",
+      "outfit_zh": "奇蹟魔法少女",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-ca00bc9c-4f19-482b-aba3-3f573c229c20.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "0d873336e6747e56a1c2f14daefb68fb648d812d215882eec5a5c1aba77bb7ae"
+    },
+    {
+      "id": 10,
+      "rank": "J",
+      "suit": "spades",
+      "label": "J♠",
+      "character": "Shigure Kira",
+      "outfit": "Sugary Starburst",
+      "character_zh": "時雨綺羅",
+      "outfit_zh": "糖露星霜",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-0f28e03f-9673-413a-b6ca-a4f7290eb9a7.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "4f1545601bd3c05769db037879c30502e4bd509064e7d2e4a6d6eeb986fbd588"
+    },
+    {
+      "id": 11,
+      "rank": "Q",
+      "suit": "spades",
+      "label": "Q♠",
+      "character": "PROMETHEUS",
+      "outfit": "Terminal Aide 0017",
+      "character_zh": "普羅米修斯",
+      "outfit_zh": "終末協理0017",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-bdc71084-5825-43e3-b949-d3c1b1720095.png",
+      "correction": "Q rank indices corrected with image_gen",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "a6dda9c161ba91da24d16399cd2c85952bd58d8be4ea998341c3930ce9376954"
+    },
+    {
+      "id": 12,
+      "rank": "K",
+      "suit": "spades",
+      "label": "K♠",
+      "character": "Kiana Kaslana",
+      "outfit": "Herrscher of Flamescion",
+      "character_zh": "琪亞娜",
+      "outfit_zh": "薪炎之律者",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-9d0a6fe7-929a-446c-957e-659b0414622b.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "487bf7d1ea32266c410dd1d0b0a49244abf0ab6e178951548c15155db8e6c383"
+    },
+    {
+      "id": 13,
+      "rank": "A",
+      "suit": "hearts",
+      "label": "A♥",
+      "character": "Elysia",
+      "outfit": "Herrscher of Human: Ego",
+      "character_zh": "愛莉希雅",
+      "outfit_zh": "真我·人之律者",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-31b10b6c-ee67-4c01-b373-cad7f2257e16.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "dadc80c87aa362c69b4fab8c91f7e7549b34daaacd4cd1d873354e227aa44b72"
+    },
+    {
+      "id": 14,
+      "rank": "2",
+      "suit": "hearts",
+      "label": "2♥",
+      "character": "Eden",
+      "outfit": "Golden Diva",
+      "character_zh": "伊甸",
+      "outfit_zh": "黃金·璀耀之歌",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-e15ae7ca-3b8d-4e23-a72a-09e1088f0150.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "c4543761f07cbaddd805d3c38e0175e5623f0b1dadb8ea31114de81f689eec28"
+    },
+    {
+      "id": 15,
+      "rank": "3",
+      "suit": "hearts",
+      "label": "3♥",
+      "character": "Aponia",
+      "outfit": "Disciplinary Perdition",
+      "character_zh": "阿波尼亞",
+      "outfit_zh": "戒律·深罪之檻",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-f281221e-182c-4e44-b882-e1a22904246d.png",
+      "dimensions": [
+        1059,
+        1485
+      ],
+      "sha256": "c019ed1af5646a4e5ecf70f77c5329bf77811b8cb8bf60c6fc1d1dbceaa16656"
+    },
+    {
+      "id": 16,
+      "rank": "4",
+      "suit": "hearts",
+      "label": "4♥",
+      "character": "Mobius",
+      "outfit": "Infinite Ouroboros",
+      "character_zh": "梅比烏斯",
+      "outfit_zh": "無限·噬界之蛇",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-cf3d429e-b1a8-4668-bcbf-7af5f96eaef0.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "d3a621490d504b1d136ad165d6daea80c223170211dae6d249ac319a30979e9e"
+    },
+    {
+      "id": 17,
+      "rank": "5",
+      "suit": "hearts",
+      "label": "5♥",
+      "character": "Vill-V",
+      "outfit": "Helical Contraption",
+      "character_zh": "維爾薇",
+      "outfit_zh": "螺旋·愚戲之匣",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-d85c07bb-2be2-40f7-8153-26825827ca55.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "3efa4f220c4c4196061af0df1870cf2c05377d37fc06e31c023cc968df0f38e5"
+    },
+    {
+      "id": 18,
+      "rank": "6",
+      "suit": "hearts",
+      "label": "6♥",
+      "character": "Pardofelis",
+      "outfit": "Reverist Calico",
+      "character_zh": "帕朵菲莉絲",
+      "outfit_zh": "空夢·掠集之獸",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-4c7108a3-5a2e-487b-a2c3-75456f9eead1.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "02d9efaeb57fe0aa9314da738e2296d3d01de618917654b5c3e276039d2075e2"
+    },
+    {
+      "id": 19,
+      "rank": "7",
+      "suit": "hearts",
+      "label": "7♥",
+      "character": "Griseo",
+      "outfit": "Cosmic Expression",
+      "character_zh": "格蕾修",
+      "outfit_zh": "天行·繪星之卷",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-3ba72f14-31de-4e82-9bad-2affed6c7b62.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "11f87bee5d01b9518a370095d6c5e0e769f6b80a2d6d3b01ff9302cbaafbaee6"
+    },
+    {
+      "id": 20,
+      "rank": "8",
+      "suit": "hearts",
+      "label": "8♥",
+      "character": "Elysia",
+      "outfit": "Miss Pink Elf",
+      "character_zh": "愛莉希雅",
+      "outfit_zh": "粉色妖精小姐",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-e38344b6-f71f-49c4-af67-95534ebb88a9.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "44f58dbd4d2cf4d8f02db97f1996dbb00e089aa3f324332dd59ef32ec706f947"
+    },
+    {
+      "id": 21,
+      "rank": "9",
+      "suit": "hearts",
+      "label": "9♥",
+      "character": "Fu Hua",
+      "outfit": "Azure Empyrea",
+      "character_zh": "符華",
+      "outfit_zh": "雲墨丹心",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-0d1686ad-18cf-4150-82cc-82b297a8e0fa.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "2f2f8766ce13214bcc966fd93b84976bfbb4ba9cdddc3c7d40e33bb273a259c4"
+    },
+    {
+      "id": 22,
+      "rank": "10",
+      "suit": "hearts",
+      "label": "10♥",
+      "character": "Herrscher of Sentience",
+      "outfit": "Herrscher of Sentience",
+      "character_zh": "識之律者",
+      "outfit_zh": "識之律者",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-9c1930d4-3d68-4d95-928a-cc0e9319f852.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "65c23716b888bad8f82a3e13848be40fb52392d951db4137f40785ca5cfae9a2"
+    },
+    {
+      "id": 23,
+      "rank": "J",
+      "suit": "hearts",
+      "label": "J♥",
+      "character": "Luna",
+      "outfit": "Lunar Vow: Crimson Love",
+      "character_zh": "月下",
+      "outfit_zh": "月下誓約·予愛以心",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-59ea1129-59a2-4c4b-9fb8-94aa9c2da348.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "709f21a75ea8458f779dba0d931673880d190951608374d8d6745396a8af79f9"
+    },
+    {
+      "id": 24,
+      "rank": "Q",
+      "suit": "hearts",
+      "label": "Q♥",
+      "character": "Seele Vollerei",
+      "outfit": "Stygian Nymph",
+      "character_zh": "希兒",
+      "outfit_zh": "彼岸雙生",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-e94e5a4a-edeb-4ba3-8398-c9f01a8cf953.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "7f596737daf774b4fb5c1f4ca8ff8eb20734efdcb8cf44ceedd31aeb6a0f37d7"
+    },
+    {
+      "id": 25,
+      "rank": "K",
+      "suit": "hearts",
+      "label": "K♥",
+      "character": "Raiden Mei",
+      "outfit": "Herrscher of Thunder",
+      "character_zh": "雷電芽衣",
+      "outfit_zh": "雷之律者",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-c65b6772-4b3d-4e6a-af30-366cf3eff1e2.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "cf14fd597f04dddc5155dd6bc08b49ef9eb7708340bb648426fa605ba1f9e5b5"
+    },
+    {
+      "id": 26,
+      "rank": "A",
+      "suit": "diamonds",
+      "label": "A♦",
+      "character": "Senadina",
+      "outfit": "Deepspace Anchor: First Light",
+      "character_zh": "瑟娜雀狄婭",
+      "outfit_zh": "深空定錨·曙光",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-8d4626ee-d592-4b1d-a0f5-9294fc7c320d.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "bfad7b4913a22d6b164d065478b59d51303e162caa6798b1b8fc18681f2450f3"
+    },
+    {
+      "id": 27,
+      "rank": "2",
+      "suit": "diamonds",
+      "label": "2♦",
+      "character": "Helia",
+      "outfit": "Valkyrie Boltstorm",
+      "character_zh": "赫麗婭",
+      "outfit_zh": "女武神·巡矢",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-debe4db2-0126-4567-ba6d-ec24d02ed23c.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "92b2f531623fa17839e20a777a67bc7174acc7e30cc0e3fd543d5caadf2d5225"
+    },
+    {
+      "id": 28,
+      "rank": "3",
+      "suit": "diamonds",
+      "label": "3♦",
+      "character": "Coralie",
+      "outfit": "Valkyrie Blastmetal",
+      "character_zh": "科拉莉",
+      "outfit_zh": "女武神·重機",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-e351e5bc-9107-4a1b-a9af-6982bc0cdef7.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "8379bf788c4165893d6a26041afa9f110ebd9fbdb264573692454798274fca9e"
+    },
+    {
+      "id": 29,
+      "rank": "4",
+      "suit": "diamonds",
+      "label": "4♦",
+      "character": "Thelema",
+      "outfit": "Mad Pleasure: Shadowbringer",
+      "character_zh": "瑟莉姆",
+      "outfit_zh": "享樂狂宴·邀影",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-eee75445-632b-4bea-8f97-294310a9be02.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "4e68bfb5b796be147a93ee9ea851de93f0fcf6cc90122b96661da6578cb11161"
+    },
+    {
+      "id": 30,
+      "rank": "5",
+      "suit": "diamonds",
+      "label": "5♦",
+      "character": "Lantern",
+      "outfit": "Lone Destruction: Shadowchaser",
+      "character_zh": "燈",
+      "outfit_zh": "破棄孤光·逐影",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-e7820ff3-b0a2-41e2-9caf-01b744b2db5f.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "a2e26427a156aa016aaf99d374e863587b3d5877893a36ae7b2fe3690f508aa3"
+    },
+    {
+      "id": 31,
+      "rank": "6",
+      "suit": "diamonds",
+      "label": "6♦",
+      "character": "Songque",
+      "outfit": "Jovial Deception: Shadowdimmer",
+      "character_zh": "松雀",
+      "outfit_zh": "瞞天樂遊·曙影",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-39765f90-6f9a-49ee-86ac-236d62a2f262.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "ba646b90c67767f09b323cada20dbd1f71f6e742fc6ae0d189c3479e8fb156bd"
+    },
+    {
+      "id": 32,
+      "rank": "7",
+      "suit": "diamonds",
+      "label": "7♦",
+      "character": "Vita",
+      "outfit": "Lone Planetfarer",
+      "character_zh": "薇塔",
+      "outfit_zh": "孑遺千星",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-482659d1-0300-4ce7-b9e7-03b999238aaa.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "b07ed59bac3ba66f6aa88ca860146d3afcb384626c065f9bd7556e9f705fd9f2"
+    },
+    {
+      "id": 33,
+      "rank": "8",
+      "suit": "diamonds",
+      "label": "8♦",
+      "character": "Kallen Kaslana",
+      "outfit": "Sixth Serenade",
+      "character_zh": "卡蓮",
+      "outfit_zh": "第六夜想曲",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-d77bd1af-822e-45d2-b17a-118448f370e3.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "5b690a2cd5bec114411368cf4df7c730f5cca3e13bf0c22eee3774a114435dfa"
+    },
+    {
+      "id": 34,
+      "rank": "9",
+      "suit": "diamonds",
+      "label": "9♦",
+      "character": "Durandal",
+      "outfit": "Reign Solaris",
+      "character_zh": "幽蘭黛爾",
+      "outfit_zh": "耀星",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-20b308da-0a44-44f0-8b11-f2f4f847660b.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "92bfe599120d812d024669496d86d6307308f18644b1680694e391fa28e8d290"
+    },
+    {
+      "id": 35,
+      "rank": "10",
+      "suit": "diamonds",
+      "label": "10♦",
+      "character": "Theresa Apocalypse",
+      "outfit": "Twilight Paladin",
+      "character_zh": "德麗莎",
+      "outfit_zh": "暮光騎士·月煌",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-c9508952-469e-4918-acc4-f1929bce3404.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "20b488222f8c801eda22972d44787a0513035f85ee7bfc7d92a9e46cd0594dc5"
+    },
+    {
+      "id": 36,
+      "rank": "J",
+      "suit": "diamonds",
+      "label": "J♦",
+      "character": "Bronya Zaychik",
+      "outfit": "Silverwing N-EX",
+      "character_zh": "布洛妮婭",
+      "outfit_zh": "次生銀翼",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-c0865c31-a911-422f-a384-db45e3c94709.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "bfa310a958a8f3fc63f2ea5d00efc9435de13e61d329bb5888261cb5a1e08874"
+    },
+    {
+      "id": 37,
+      "rank": "Q",
+      "suit": "diamonds",
+      "label": "Q♦",
+      "character": "Griseo",
+      "outfit": "Starry Impression",
+      "character_zh": "格蕾修",
+      "outfit_zh": "繁星·繪世之卷",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-ab7a9dac-78e1-46c1-8dae-5091f94431ab.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "cdd59abccd3040f933fbee2663fade8aa17e6c949b944f0c3cdba66868b11773"
+    },
+    {
+      "id": 38,
+      "rank": "K",
+      "suit": "diamonds",
+      "label": "K♦",
+      "character": "Murata Himeko",
+      "outfit": "Vermilion Knight: Eclipse",
+      "character_zh": "無量塔姬子",
+      "outfit_zh": "真紅騎士·月蝕",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-ad21b396-4491-4bc1-af7c-b68b48aec48c.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "011aebb30c21a96e098aa0deddb80b5f9a5b3a01a5bb59fc74bdbc617b1eccf4"
+    },
+    {
+      "id": 39,
+      "rank": "A",
+      "suit": "clubs",
+      "label": "A♣",
+      "character": "Kiana Kaslana",
+      "outfit": "Herrscher of the Void",
+      "character_zh": "琪亞娜",
+      "outfit_zh": "空之律者",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-b5cf4721-4a0d-4e1c-8cf2-5b2681901200.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "96ad807d80871bc61a19b8a5686393087802f90d6ed6b857475c0cdcc561393a"
+    },
+    {
+      "id": 40,
+      "rank": "2",
+      "suit": "clubs",
+      "label": "2♣",
+      "character": "Raiden Mei",
+      "outfit": "Danzai Spectramancer",
+      "character_zh": "雷電芽衣",
+      "outfit_zh": "斷罪影舞",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-5c3bbde1-7930-4b73-b962-e875e1f74a85.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "480d3177393c4cb5bbf3849ae956505e1ffda9625553bec68b4bd1a17d6aac54"
+    },
+    {
+      "id": 41,
+      "rank": "3",
+      "suit": "clubs",
+      "label": "3♣",
+      "character": "Bronya Zaychik",
+      "outfit": "Herrscher of Reason",
+      "character_zh": "布洛妮婭",
+      "outfit_zh": "理之律者",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-2cf972c6-3233-42eb-a276-043d39c1f58a.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "9df265cbe9ca30e2da38bc62e58f7c8ee1bc6dec960bb732839e18d75017f443"
+    },
+    {
+      "id": 42,
+      "rank": "4",
+      "suit": "clubs",
+      "label": "4♣",
+      "character": "Seele (Veliona)",
+      "outfit": "Starchasm Nyx",
+      "character_zh": "黑希兒",
+      "outfit_zh": "魘夜星淵",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-358323ec-be1f-4bf2-a2ab-8a12ce53ff11.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "1f69934c8e4046ffbba7f3903d3e254096fb930568b4a45dc18d3469d0dc0a08"
+    },
+    {
+      "id": 43,
+      "rank": "5",
+      "suit": "clubs",
+      "label": "5♣",
+      "character": "Yae Kasumi",
+      "outfit": "Darkbolt Jonin",
+      "character_zh": "八重霞",
+      "outfit_zh": "夜隱重霞",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-575f8254-d8ae-49dc-94b5-4df8ee9b11a1.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "a0059934201575729834a39ed147a887d3f3dbbeb9a12c61be5e01069f5b9170"
+    },
+    {
+      "id": 44,
+      "rank": "6",
+      "suit": "clubs",
+      "label": "6♣",
+      "character": "Kallen Kaslana",
+      "outfit": "Ritual Imayoh",
+      "character_zh": "卡蓮",
+      "outfit_zh": "原罪獵人",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-a15f6d06-7528-422b-bcca-8adb48ffa511.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "d108614d026b3ed66c736b3b98eb828dae7b97f23ad4b139eee6b7dc1fe8f62b"
+    },
+    {
+      "id": 45,
+      "rank": "7",
+      "suit": "clubs",
+      "label": "7♣",
+      "character": "Natasha Cioara (Raven)",
+      "outfit": "Midnight Absinthe",
+      "character_zh": "渡鴉",
+      "outfit_zh": "午夜苦艾",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-aade7a60-54c2-4e82-8815-e2abea0fe290.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "af0932038f8d576fd47580daee9b661fad56db2ad339664251583e2827ae17fb"
+    },
+    {
+      "id": 46,
+      "rank": "8",
+      "suit": "clubs",
+      "label": "8♣",
+      "character": "Susannah",
+      "outfit": "Valkyrie Quicksand",
+      "character_zh": "蘇莎娜",
+      "outfit_zh": "女武神·熱砂",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-9f57f4c5-806a-418f-89c7-3a12735471ce.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "a32a98af779ac50244322c02a48400b8e8a043477f34ed9742b37b5f504f9c19"
+    },
+    {
+      "id": 47,
+      "rank": "9",
+      "suit": "clubs",
+      "label": "9♣",
+      "character": "Carole Pepper",
+      "outfit": "Sweet 'n' Spicy",
+      "character_zh": "卡蘿爾",
+      "outfit_zh": "甜辣女孩",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-e43dee52-ff7f-4d5c-ad75-cbdbeb4f6f42.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "67bfd4d8c5e13768c7df4769ba49f3181139faa15c6943b4449709b2e1e6c05c"
+    },
+    {
+      "id": 48,
+      "rank": "10",
+      "suit": "clubs",
+      "label": "10♣",
+      "character": "Rozaliya Olenyeva",
+      "outfit": "Molotov Cherry",
+      "character_zh": "蘿莎莉婭",
+      "outfit_zh": "櫻桃炸彈",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-9e37b242-b018-43e1-b6b3-e7dba6b39b81.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "fcab73be38fdad1dff4077174a1a82229b82d0a4371889e4c7f3bb4bc2ecd63b"
+    },
+    {
+      "id": 49,
+      "rank": "J",
+      "suit": "clubs",
+      "label": "J♣",
+      "character": "Liliya Olenyeva",
+      "outfit": "Blueberry Blitz",
+      "character_zh": "莉莉婭",
+      "outfit_zh": "藍莓特攻",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-3df0efef-b686-4131-9c92-dea843fd760d.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "8fa8db71f513cc4f616a2711a1d83f7e7587c9106be704adf945a9f4b5a3d734"
+    },
+    {
+      "id": 50,
+      "rank": "Q",
+      "suit": "clubs",
+      "label": "Q♣",
+      "character": "Rita Rossweisse",
+      "outfit": "Fallen Rosemary",
+      "character_zh": "麗塔",
+      "outfit_zh": "失落迷迭",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-5423c334-07b8-4a49-aff5-7b20d88a82e1.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "f8ffedcb22d180fb6fe8df29d3989dc6c9950885936ba22fb586399abfa0596a"
+    },
+    {
+      "id": 51,
+      "rank": "K",
+      "suit": "clubs",
+      "label": "K♣",
+      "character": "Durandal",
+      "outfit": "Dea Anchora",
+      "character_zh": "幽蘭黛爾",
+      "outfit_zh": "不滅星錨",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-831a1d16-0908-471a-bb4f-97c5bb9706f6.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "84a59b2ce0f52eb7469e1be5b9686831132f585b172fd27319904b675a7a442e"
+    },
+    {
+      "id": 52,
+      "rank": "JOKER",
+      "suit": null,
+      "label": "Joker",
+      "character": "Ai Hyperion Lambda",
+      "outfit": "Chrono Navi",
+      "character_zh": "愛衣·休伯利安Λ",
+      "outfit_zh": "時帆旅人",
+      "status": "complete",
+      "generated_source": "C:\\Users\\Mex\\.codex\\generated_images\\01a09413-cffa-7422-a227-a11e73597573\\exec-e3cb32df-10d3-4c41-80d3-5bdbcb12dda6.png",
+      "dimensions": [
+        1060,
+        1484
+      ],
+      "sha256": "088df24b51c857f5f0ed14afa56ff48351f49bd75f772a18a7d3d40c4a626743"
+    }
+  ],
+  "back": {
+    "file": "back.png",
+    "status": "complete",
+    "sha256": "a10e069079e523e00bf6c966404b1476641577962cacba312b3e13ceef970398"
+  },
+  "character_count": 38,
+  "character_outfit_count": 53
+}

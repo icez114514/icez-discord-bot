@@ -46,14 +46,15 @@ class TableRenderer:
         draw.rounded_rectangle((1, 1, 142, 198), radius=9, fill='#fffdf8',
                                outline='#bcc5bf', width=2)
         name = 'back.png' if value is None else f'cards/{value}.png'
-        source = Path(__file__).with_name('casino_assets') / 'classic' / name
-        try:
-            with Image.open(source) as artwork:
-                face = ImageOps.contain(artwork.convert('RGBA'), (132, 188), Image.Resampling.LANCZOS)
-            image.alpha_composite(face, ((144-face.width)//2, (200-face.height)//2))
-            return image
-        except (OSError, ValueError):
-            pass  # Keep a usable procedural fallback if packaged artwork is missing.
+        assets = Path(__file__).with_name('casino_assets')
+        for deck in ('honkai', 'classic'):
+            try:
+                with Image.open(assets / deck / name) as artwork:
+                    face = ImageOps.contain(artwork.convert('RGBA'), (132, 188), Image.Resampling.LANCZOS)
+                image.alpha_composite(face, ((144-face.width)//2, (200-face.height)//2))
+                return image
+            except (OSError, ValueError):
+                continue  # Fall back to classic art, then a procedural card.
         if value == paigow.JOKER:
             draw.rounded_rectangle((9, 9, 134, 190), radius=8, fill='#2f2149', outline='#d2ae60', width=3)
             draw.text((72, 45), 'JOKER', font=font(24), fill='#f8d98b', anchor='mm')
