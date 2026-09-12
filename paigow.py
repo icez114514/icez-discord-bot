@@ -1,10 +1,11 @@
-"""Pai Gow with a fully wild Joker (52); scores use the casino's wheel order."""
+"""Pai Gow with a fully wild Joker (52) and versioned hand rules."""
 
 from collections import Counter
 from dataclasses import dataclass
 
 JOKER = 52
-RULE_VERSION = 'wild-house-v1'
+LEGACY_RULE_VERSION = 'wild-house-v1'
+RULE_VERSION = 'wild-house-v2'
 NAMES = ('高牌', '對子', '兩對', '三條', '順子', '同花', '葫蘆', '四條', '同花順', '五條')
 
 
@@ -22,7 +23,7 @@ def rank(card):
     return 14 if card % 13 == 0 else card % 13 + 1
 
 
-def _score(cards):
+def _score(cards, rules=RULE_VERSION):
     values = sorted(map(rank, cards), reverse=True)
     groups = sorted(((count, value) for value, count in Counter(values).items()), reverse=True)
     if len(cards) == 2:
@@ -31,9 +32,9 @@ def _score(cards):
     straight = 0
     if len(groups) == 5:
         if values == [14, 5, 4, 3, 2]:
-            straight = 14
+            straight = 14 if rules == LEGACY_RULE_VERSION else 5
         elif values[0] - values[-1] == 4:
-            straight = 15 if values[0] == 14 else values[0]
+            straight = 15 if rules == LEGACY_RULE_VERSION and values[0] == 14 else values[0]
     counts = [g[0] for g in groups]
     ranks = tuple(g[1] for g in groups)
     if counts == [5]:
@@ -51,15 +52,15 @@ def _score(cards):
     return ({3: 3, 2: 2 if counts[:2] == [2, 2] else 1}.get(counts[0], 0), *ranks)
 
 
-def evaluate(cards) -> Evaluation:
+def evaluate(cards, *, rules=RULE_VERSION) -> Evaluation:
     if (len(cards) not in (2, 5) or any(type(c) is not int or not 0 <= c <= JOKER for c in cards)
             or len(set(cards)) != len(cards)):
         raise ValueError('Expected two or five distinct physical cards')
     if JOKER not in cards:
-        return Evaluation(_score(cards))
+        return Evaluation(_score(cards, rules))
     natural = [c for c in cards if c != JOKER]
     # Duplicate represented cards are intentional: a Joker can make five of a kind.
-    candidates = [Evaluation(_score(natural + [c]), c) for c in range(52)]
+    candidates = [Evaluation(_score(natural + [c], rules), c) for c in range(52)]
     return max(candidates, key=lambda e: e.score)
 
 
@@ -71,18 +72,18 @@ def split(hand, front):
     return list(front), [c for c in hand if c not in front]
 
 
-def legal_split(hand, front):
+def legal_split(hand, front, *, rules=RULE_VERSION):
     try:
         low, high = split(hand, front)
         # Tuple comparison deliberately compares common ranks first, then length:
         # remaining back-hand kickers outrank an otherwise equal two-card hand.
-        return evaluate(high).score > evaluate(low).score
+        return evaluate(high, rules=rules).score > evaluate(low, rules=rules).score
     except (ValueError, TypeError):
         return False
 
 
-def house_way(hand):
-    """Version 1: MotorCity-inspired grouping, extended for a fully wild Joker.
+def house_way(hand, *, rules=RULE_VERSION):
+    """MotorCity-inspired grouping, evaluated under the selected rule version.
 
     Match the first applicable row below. Within a row maximize front, then back;
     equal ranks choose the lexicographically smallest physical front-card IDs.
@@ -96,7 +97,7 @@ def house_way(hand):
     choices = []
     for front in combinations(hand, 2):
         low, high = split(hand, front)
-        a, b = evaluate(low).score, evaluate(high).score
+        a, b = evaluate(low, rules=rules).score, evaluate(high, rules=rules).score
         if b > a:
             choices.append((list(front), a, b))
     counts = Counter(rank(c) for c in hand if c != JOKER)
@@ -173,7 +174,7 @@ def deal(cards):
 
 
 def validate(state):
-    if not isinstance(state, dict) or state.get('rules') != RULE_VERSION:
+    if not isinstance(state, dict) or state.get('rules') not in (RULE_VERSION, LEGACY_RULE_VERSION):
         raise ValueError('Invalid Pai Gow rule version')
     for key in ('deck', 'player', 'dealer', 'front', 'dealer_front', 'suggested_front'):
         if not isinstance(state.get(key), list):
@@ -182,9 +183,9 @@ def validate(state):
     if (len(cards) != 53 or any(type(c) is not int for c in cards) or set(cards) != set(range(53))
             or len(state['player']) != 7 or len(state['dealer']) != 7
             or type(state.get('confirmed')) is not bool
-            or not legal_split(state['dealer'], state['dealer_front'])
-            or not legal_split(state['player'], state['suggested_front'])
-            or (state['front'] and not legal_split(state['player'], state['front']))
+            or not legal_split(state['dealer'], state['dealer_front'], rules=state['rules'])
+            or not legal_split(state['player'], state['suggested_front'], rules=state['rules'])
+            or (state['front'] and not legal_split(state['player'], state['front'], rules=state['rules']))
             or (state['confirmed'] and not state['front'])):
         raise ValueError('Invalid persisted Pai Gow')
 
@@ -194,7 +195,7 @@ def act(state, action, front=None):
     if action == 'auto':
         state['front'] = list(state['suggested_front'])
     elif action == 'select':
-        if not legal_split(state['player'], front):
+        if not legal_split(state['player'], front, rules=state['rules']):
             raise CasinoError('請選擇兩張前墩牌，且後墩必須強於前墩；請重新選牌。')
         state['front'] = list(front)
     elif action == 'confirm':
@@ -205,21 +206,24 @@ def act(state, action, front=None):
         raise CasinoError('無效的牌局操作。')
 
 
-def compare(player_front, player_back, dealer_front, dealer_back):
+def compare(player_front, player_back, dealer_front, dealer_back, *, rules=RULE_VERSION):
     """Return each raw comparison (-1/0/1) and the bankroll outcome."""
     comparisons = []
     for player, dealer in ((player_front, dealer_front), (player_back, dealer_back)):
-        a, b = evaluate(player).score, evaluate(dealer).score
+        a, b = evaluate(player, rules=rules).score, evaluate(dealer, rules=rules).score
         comparisons.append((a > b) - (a < b))
-    wins = sum(value > 0 for value in comparisons)
-    return tuple(comparisons), ('loss', 'tie', 'win')[wins]
+    if rules == LEGACY_RULE_VERSION:
+        wins = sum(value > 0 for value in comparisons)
+        return tuple(comparisons), ('loss', 'tie', 'win')[wins]
+    total = sum(comparisons)
+    return tuple(comparisons), 'win' if total > 0 else 'loss' if total < 0 else 'tie'
 
 
 def result(state):
     if not state['confirmed']:
         return None
     return compare(*split(state['player'], state['front']),
-                   *split(state['dealer'], state['dealer_front']))[1]
+                   *split(state['dealer'], state['dealer_front']), rules=state['rules'])[1]
 
 
 def display_order(cards, *, joker_as=None):

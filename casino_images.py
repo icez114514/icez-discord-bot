@@ -100,6 +100,7 @@ class TableRenderer:
 
 
     def paigow_table(self, game):
+        rules = game.rules or paigow.RULE_VERSION
         image = self.background.copy()
         draw = ImageDraw.Draw(image)
         names = ('HIGH CARD', 'PAIR', 'TWO PAIR', 'THREE OF A KIND', 'STRAIGHT',
@@ -108,7 +109,7 @@ class TableRenderer:
         draw.text((1135, 52), 'WILD JOKER / NO COMMISSION', font=font(19), fill='#a8c4be', anchor='ra')
 
         def group(cards, x, y, indices=None):
-            joker = paigow.evaluate(cards).joker_as if None not in cards and len(cards) in (2, 5) else None
+            joker = paigow.evaluate(cards, rules=rules).joker_as if None not in cards and len(cards) in (2, 5) else None
             ordered = cards if None in cards else paigow.display_order(
                 cards, joker_as=joker if game.status == 'settled' else None)
             for card in ordered:
@@ -128,9 +129,9 @@ class TableRenderer:
             draw.text((80, y - 54), owner + ' / FRONT 2', font=font(22), fill='#e6d7b5')
             draw.text((475, y - 54), 'BACK 5', font=font(22), fill='#e6d7b5')
             for hand, x, ordinal in ((low, 80, 0), (high, 475, 1)):
-                caption = names[paigow.evaluate(hand).score[0]]
+                caption = names[paigow.evaluate(hand, rules=rules).score[0]]
                 if comparison is not None:
-                    caption += ' / ' + {1: 'WIN', 0: 'TIE: DEALER WINS', -1: 'LOSS'}[comparison[ordinal]]
+                    caption += ' / ' + {1: 'WIN', 0: 'TIE: DEALER WINS' if rules == paigow.LEGACY_RULE_VERSION else 'TIE', -1: 'LOSS'}[comparison[ordinal]]
                 draw.text((x, y + 203), caption, font=font(17), fill='#c6d8ce')
                 group(hand, x, y, indices)
 
@@ -148,7 +149,7 @@ class TableRenderer:
                 if game.status == 'settled':
                     player_low, player_high = paigow.split(game.player, game.front)
                     dealer_low, dealer_high = paigow.split(game.dealer, game.dealer_front)
-                    comparison, _ = paigow.compare(player_low, player_high, dealer_low, dealer_high)
+                    comparison, _ = paigow.compare(player_low, player_high, dealer_low, dealer_high, rules=rules)
                 split_row(game.player, game.front, 460, 'YOU', indices, comparison)
             else:
                 draw.text((80, 406), 'YOU / SELECT TWO CARDS FOR FRONT', font=font(22), fill='#e6d7b5')

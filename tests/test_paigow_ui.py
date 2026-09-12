@@ -22,6 +22,21 @@ def hand():
 
 
 class PaiGowUITests(unittest.IsolatedAsyncioTestCase):
+
+    async def test_tied_hand_text_and_rule_summary_use_new_rules(self):
+        from casino_commands import paigow_description
+        player = tuple(cards('4s 5s As 2h 3d 4c 5h'))
+        dealer = tuple(cards('4h 5d 2s 3h 4d 5c 6s'))
+        game = replace(hand(), status='settled', player=player, front=player[:2],
+                       dealer=dealer, dealer_front=dealer[:2], outcome='loss')
+        text = paigow_description(game)
+        self.assertIn('逐墩結果：前墩 平手／後墩 負', text)
+        self.assertEqual(text.splitlines()[-1], 'Joker 可當任意牌，五條最大')
+        self.assertNotIn('莊家勝', text)
+        legacy = paigow_description(replace(game, rules=paigow.LEGACY_RULE_VERSION))
+        self.assertIn('後墩 勝', legacy)
+        self.assertIn('莊家勝（舊局）', legacy)
+
     async def test_text_fallback_preserves_selection_and_hides_dealer(self):
         from casino_commands import PaiGowView
         feature, event, game = CasinoFeature(None), interaction(), hand()

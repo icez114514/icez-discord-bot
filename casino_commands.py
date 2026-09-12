@@ -244,8 +244,8 @@ class PaiGowView(OwnedView):
                     disabled=not game.front)
 
 
-def paigow_hand_text(cards, *, resolved=False):
-    evaluated = paigow.evaluate(cards)
+def paigow_hand_text(cards, *, resolved=False, rules=paigow.RULE_VERSION):
+    evaluated = paigow.evaluate(cards, rules=rules)
     ordered = paigow.display_order(cards, joker_as=evaluated.joker_as if resolved else None)
     text = ' · '.join(map(card_text, ordered)) + f'（{evaluated.name}）'
     if evaluated.joker_as is not None:
@@ -254,12 +254,13 @@ def paigow_hand_text(cards, *, resolved=False):
 
 
 def paigow_description(game):
+    rules = game.rules or paigow.RULE_VERSION
     resolved = game.status == 'settled'
     hand_label = '原手牌：' if resolved else '手牌：'
     lines = [hand_label + ' · '.join(f'{i + 1}:{card_text(card)}' for i, card in enumerate(paigow.display_order(game.player)))]
     if game.front:
         low, high = paigow.split(game.player, game.front)
-        lines += ['你的前墩：' + paigow_hand_text(low, resolved=resolved), '你的後墩：' + paigow_hand_text(high, resolved=resolved)]
+        lines += ['你的前墩：' + paigow_hand_text(low, resolved=resolved, rules=rules), '你的後墩：' + paigow_hand_text(high, resolved=resolved, rules=rules)]
     else:
         lines.append('請選前墩兩張牌，或使用自動分牌，再確認送出。')
     if game.status == 'active':
@@ -269,11 +270,13 @@ def paigow_description(game):
     else:
         low, high = paigow.split(game.dealer, game.dealer_front)
         player_low, player_high = paigow.split(game.player, game.front)
-        comparisons, _ = paigow.compare(player_low, player_high, low, high)
-        results = {1: '勝', 0: '同牌，莊家勝', -1: '負'}
-        lines += ['莊家前墩：' + paigow_hand_text(low, resolved=resolved), '莊家後墩：' + paigow_hand_text(high, resolved=resolved),
+        comparisons, _ = paigow.compare(player_low, player_high, low, high, rules=rules)
+        results = {1: '勝', 0: '平手', -1: '負'}
+        if rules == paigow.LEGACY_RULE_VERSION:
+            results[0] = '同牌，莊家勝（舊局）'
+        lines += ['莊家前墩：' + paigow_hand_text(low, resolved=resolved, rules=rules), '莊家後墩：' + paigow_hand_text(high, resolved=resolved, rules=rules),
                   f'逐墩結果：前墩 {results[comparisons[0]]}／後墩 {results[comparisons[1]]}']
-    lines.append('全萬用 Joker · 五條最高 · A2345 第二大順子 · 同牌莊家勝 · 免抽水')
+    lines.append('Joker 可當任意牌，五條最大')
     return '\n'.join(lines)
 
 
@@ -671,7 +674,7 @@ class CasinoFeature:
         if game_type == 'blackjack':
             embed.set_footer(text='首兩張可加倍；軟 17 停牌；120 秒無有效操作自動停牌。天然勝利返還 2.5 倍，普通勝利 2 倍。')
         if game_type == 'paigow':
-            embed.set_footer(text='前二後五；Joker 全萬用、五條最高、A2345 第二大順子、同牌莊家勝。免抽水，勝／和／負返還 2／1／0 倍；120 秒到期自動分牌結算。')
+            embed.set_footer(text='Joker 可當任意牌，五條最大')
         await self.render(interaction, embed, SettingsView(self, interaction.user.id, prefs, game_type))
 
     async def show_result(self, interaction, game):
