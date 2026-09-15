@@ -83,3 +83,31 @@ confirmation, failures, reconnect, public/private entry and 320/390px layouts.
 
 Real Discord OAuth, physical phone/Termux load, production HTTPS and deployment
 remain #26. No external service deployment or GitHub issue closure is implied.
+## Review and validation record (2026-09-16)
+
+Baseline: `62ca0224b6a8bfd7a752d72392403d02f43d3e38`.
+Implementation: `434b4df`; reviewed fixes: `de4951e`.
+
+- Full Poker suite: 50 passed. After consolidating capacity admission, all five
+  lobby API tests passed again.
+- Existing Bot suite: 160 collected, 101 passed, 59 opt-in database tests skipped.
+- TypeScript/Vite production build, mypy (20 service modules), Ruff F checks and
+  `pip check` passed.
+- Standards review: no documented violations. Both low-priority suggestions
+  (duplicate admission rules and player-name formatting) were resolved and rechecked.
+- Spec review: fixed stale public-table admission retry. The dialog now adopts
+  the returned table version, retains the buy-in input and requires confirmation.
+  Its browser regression first reproduced the failure, then passed with the fix.
+  Independent recheck found no remaining material Spec findings.
+- Final Chrome acceptance passed on the reviewed implementation: three consecutive
+  real settlements with two independent identities; all three themes; 320/390px
+  six-seat layouts with board-overlap and horizontal-overflow assertions; private
+  invitation rotation and old-link rejection; stale admission reconfirmation;
+  failed topup; failed theme save; all-in confirmation/settlement and bankrupt
+  return when applicable; same-hand navigation recovery and live transport reconnect.
+- A third browser with the same account was correctly denied operation. The second
+  device then stayed offline for the real 120-second grace (no accelerated clock);
+  its seat expired and both table chips and in-flight chips returned to zero.
+  HTTP/WebSocket projections contained no other unrevealed cards or full deck,
+  and there were no JavaScript page errors. Desktop and phone-width screenshots
+  were visually inspected. Discord identity remained explicitly simulated.

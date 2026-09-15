@@ -204,7 +204,7 @@ try {
   await duplicate.until("!!document.querySelector('.lobby')"); await duplicate.click('返回目前牌桌');
   await duplicate.until("document.querySelector('.connection')?.textContent.includes('另一個視窗持有操作權')");
   assert.equal((await duplicate.api()).id, afterDrop.id);
-  assert.equal(await duplicate.run("[...document.querySelectorAll('.table-controls button')].every(b=>b.disabled)"), true);
+  assert.equal(await duplicate.run("[...document.querySelectorAll('.action-panel .table-controls button')].every(b=>b.disabled)"), true);
   await duplicate.call('Page.navigate', { url: 'about:blank' });
   // Lose the second device for the actual two-minute grace; no clock fast-forward.
   console.log(JSON.stringify({ phase: 'waiting_for_disconnect_expiry', graceSeconds: 120 }));
@@ -227,7 +227,7 @@ try {
     }
   }
   console.log(JSON.stringify({ settledHands: finished.size, independentBrowsers: 2, themes: 3, mobileWidths: [390,320], privateInvitations: 'rotated and old rejected', topupFailure: true, allInConfirmed: true, reconnectPreserved: true, sixSeats: true, actualDisconnectExpiry: true, competingControllerBlocked: true, horizontalOverflow: false, privateCardsProtected: true, pageErrors: [], output }));
-} catch(error) { console.error(String(error)); console.error(serverOutput); for (let i=0;i<pages.length;i++) { await pages[i].screenshot('failure-'+i).catch(()=>{}); console.error(await pages[i].run('document.body.innerText.slice(-2200)').catch(()=>'')); } process.exitCode = 1; }
+} catch(error) { console.error(error.stack ?? String(error)); console.error(serverOutput); for (let i=0;i<pages.length;i++) { await pages[i].screenshot('failure-'+i).catch(()=>{}); console.error(await pages[i].run('document.body.innerText.slice(-2200)').catch(()=>'')); } process.exitCode = 1; }
 finally {
   for (const page of pages) { await page.call('Browser.close').catch(()=>{}); page.socket.close(); }
   for (const child of [...processes, service]) { try { execFileSync('taskkill', ['/PID',String(child.pid),'/T','/F'], { windowsHide: true, stdio: 'ignore' }); } catch {} }
