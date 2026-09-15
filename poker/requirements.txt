@@ -16,3 +16,7 @@ typing-inspection==0.4.4
 typing_extensions==4.16.0
 uvicorn==0.47.0
 websockets==15.0.1
+numpy==2.2.6
+eval7==0.1.10
+future==1.0.0
+pyparsing==3.3.2

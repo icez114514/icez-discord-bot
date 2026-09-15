@@ -72,7 +72,7 @@ class RuntimeTests(unittest.TestCase):
                         if process.poll() is not None or time.monotonic() > deadline:
                             self.fail("CLI listeners did not become ready")
                         time.sleep(0.05)
-                    self.assertEqual(public.json()["schema"], 1)
+                    self.assertEqual(public.json()["schema"], 2)
                     self.assertEqual(
                         client.get("http://127.0.0.1:" + str(first) + "/").status_code,
                         200,
@@ -86,7 +86,15 @@ class RuntimeTests(unittest.TestCase):
                     )
                     self.assertNotEqual(duplicate.returncode, 0)
             finally:
-                process.terminate()
+                if os.name == "nt":
+                    subprocess.run(
+                        ["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                        capture_output=True,
+                        timeout=10,
+                        creationflags=flags,
+                    )
+                else:
+                    process.terminate()
                 process.wait(10)
                 process.stdout.close()
                 process.stderr.close()

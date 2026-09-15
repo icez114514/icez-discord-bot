@@ -11,7 +11,7 @@ from .store import Store
 
 async def migrate(config):
     async with Store(config.data_dir / "poker.db", initialize=True):
-        print("Poker schema version 1 ready")
+        print("Poker schema version 2 ready")
 
 
 async def serve(config):
