@@ -39,5 +39,6 @@ CREATE TABLE presence(connection_id TEXT PRIMARY KEY, session_hash TEXT NOT NULL
 CREATE TABLE oauth_states(state_hash TEXT PRIMARY KEY, browser_hash TEXT NOT NULL, expires_at REAL NOT NULL);
 CREATE TABLE scans(day TEXT PRIMARY KEY, started_at REAL NOT NULL);
 CREATE TABLE scan_members(day TEXT REFERENCES scans, user_id TEXT REFERENCES accounts, status TEXT NOT NULL, presence_revision INTEGER NOT NULL, login_revision INTEGER NOT NULL, attempts INTEGER NOT NULL DEFAULT 0, next_attempt REAL NOT NULL DEFAULT 0, PRIMARY KEY(day,user_id));
+CREATE TABLE action_clocks(hand_id TEXT REFERENCES hands, user_id TEXT REFERENCES accounts, opportunity_id TEXT NOT NULL, deadline REAL NOT NULL, extensions INTEGER NOT NULL DEFAULT 0 CHECK(extensions BETWEEN 0 AND 4), active INTEGER NOT NULL DEFAULT 1, PRIMARY KEY(hand_id,opportunity_id));
 PRAGMA user_version=1;
 COMMIT;

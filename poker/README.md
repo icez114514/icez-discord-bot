@@ -129,7 +129,8 @@ Public browser routes cannot submit arbitrary engine commands.
 | `bet` | `hand_id, user_id, amount`; table to pot, preserve settled assets |
 | `settle` | `hand_id, payouts` mapping IDs to decimal strings; optional final `snapshot, opportunities`; sum payouts must equal contributions; atomically update ledger, terminal hand, statistics and Time Bank hand progress |
 | `void` | `hand_id`; return every contribution once, retain unrelated adjustments, no statistics/Time Bank rewards |
-| `event` | `hand_id, expected_version, snapshot`; persist the next version and event before acknowledgment |
+| `action`, `time_bank` | `hand_id,user_id,opportunity_id`; persist a 20-second action deadline or atomically spend 5 seconds and extend the saved deadline, at most four times per opportunity; active human participants only |
+| vent | `hand_id, expected_version, snapshot`; persist the next version and event before acknowledgment |
 | `subsidy` | `user_id`; no active hand or recovery funds; available+table strictly below 5,000; once per Taipei 04:00 day |
 | `adjust` | `user_id, amount` (signed string), `actor, reason`; audited admin change, no negative balances |
 | `npc_supply`, `npc_reclaim` | `user_id` prefixed `npc:`, positive `amount, actor, reason`; explicit system funding/recovery of idle NPC table stack |
@@ -159,9 +160,9 @@ Corrupt/unverifiable contributions must stay frozen for investigation, never gue
 Each valid settlement records opportunities and net result for each dealt human,
 including folded players. It advances a persisted modulo-10 progress counter and
 adds 5 seconds every ten valid hands, capped at 60 seconds. Void hands add neither.
-Action-time spending/timers and gameplay are the next ticket; no full game is
-claimed here. The persisted hand/event snapshots hold action deadlines and spending
-state, alongside the account Time Bank field, for that integration.
+Action timing decisions and gameplay are the next ticket; no full game is
+claimed here. Action-clock rows and hand/event snapshots hold action deadlines and spending
+state, alongside the account Time Bank field, for that integration. Each hand command increments its version; optional `expected_version` and `snapshot` join money changes in the same transaction. `store.hand(id)` returns the snapshot, ordered events and action clocks for recovery. Replayed HTTP subsidies return the frozen original result; use GET /api/account for the latest projection.
 
 ## Eligibility worker
 
@@ -197,12 +198,16 @@ No new Discord commands are published in this foundation ticket.
 ## Verification
 
 ```sh
+cd poker_web
+npm ci
+npm run build
+cd ..
+python -m pip install -r poker/requirements-dev.txt
 python -m unittest discover -s poker_tests
 python -m mypy --check-untyped-defs poker
-cd poker_web && npm run build
 ```
 
-Install mypy 1.19.1 separately for checks; it is not a runtime dependency.
+The dev requirements add mypy and ruff; neither is a runtime dependency. The runtime test starts both actual listeners and checks the built static homepage, so build the frontend before running the suite.
 Tests use temporary real SQLite databases and HTTPX's external Discord boundary.
 They cover concurrent/repeated login, subsidy concurrency and 04:00 rollover,
 failed/replayed commands, transfer/settlement conservation, void recovery,

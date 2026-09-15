@@ -17,28 +17,32 @@ class Membership:
 
 
 class EligibilityTests(unittest.IsolatedAsyncioTestCase):
-    async def test_scan_rechecks_presence_and_revokes_all_sessions_only_on_confirmed_absence(self):
+    async def test_scan_rechecks_presence_and_revokes_all_sessions_only_on_confirmed_absence(
+        self,
+    ):
         with tempfile.TemporaryDirectory() as directory:
-            async with Store(Path(directory) / 'poker.db', initialize=True) as store:
-                first = await store.login('111')
-                second = await store.login('111')
-                membership = Membership('absent')
+            async with Store(Path(directory) / "poker.db", initialize=True) as store:
+                first = await store.login("111")
+                second = await store.login("111")
+                membership = Membership("absent")
+
                 async def enter(user):
-                    await store.presence(first, 'connection1', 'enter', now=100)
+                    await store.presence(first, "connection1", "enter", now=100)
+
                 membership.before_reply = enter
                 scan = Eligibility(store, membership)
                 await scan.run(now=100)
-                self.assertEqual(await store.authenticate(second), '111')
-                await store.presence(first, 'connection1', 'leave', now=101)
+                self.assertEqual(await store.authenticate(second), "111")
+                await store.presence(first, "connection1", "leave", now=101)
                 membership.before_reply = None
                 await scan.run(now=102)
-                self.assertEqual(await store.authenticate(second), '111')
-                membership.result = 'retry'
-                await scan.run(now=100+86400)
-                self.assertEqual(await store.authenticate(second), '111')
-                membership.result = 'absent'
-                await scan.run(now=100+2*86400)
+                self.assertEqual(await store.authenticate(second), "111")
+                membership.result = "retry"
+                await scan.run(now=100 + 86400)
+                self.assertEqual(await store.authenticate(second), "111")
+                membership.result = "absent"
+                await scan.run(now=100 + 2 * 86400)
                 for token in (first, second):
                     with self.assertRaises(Unauthorized):
                         await store.authenticate(token)
-                self.assertEqual((await store.account('111'))['available'], '50000')
+                self.assertEqual((await store.account("111"))["available"], "50000")
