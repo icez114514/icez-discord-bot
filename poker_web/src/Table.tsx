@@ -125,6 +125,7 @@ export function Table({ user, onClose }: { user: string; onClose: () => void }) 
     } catch { setError('邀請操作未完成，請重試同一操作。'); }
     finally { setInviteBusy(false); }
   }
+  const playerName = (id: string) => id === user ? '你' : id.startsWith('npc:') ? '固定 NPC' : `玩家 ${id.slice(-4)}`;
   const seated = state?.members ?? [];
   const mySeat = mine?.seat ?? 0;
   const position = (seat: number) => ['s', 'sw', 'nw', 'n', 'ne', 'se'][(seat - mySeat + 6) % 6];
@@ -146,14 +147,14 @@ export function Table({ user, onClose }: { user: string; onClose: () => void }) 
           const acting = active && hand.actor !== null && hand.players[hand.actor]?.id === m.id;
           const dealer = hand?.players[hand.button]?.id === m.id;
           return <article className={`seat ${position(seat)} ${acting ? 'acting' : ''} ${m.id === user ? 'hero-seat' : ''}`} key={seat}>
-            <div className="seat-name"><span className="avatar" aria-hidden="true">{m.id === user ? '你' : m.id.startsWith('npc:') ? '♟' : m.id.slice(-2)}</span><strong title={m.id}>{m.id === user ? '你' : m.id.startsWith('npc:') ? '固定 NPC' : `玩家 ${m.id.slice(-4)}`}</strong>{dealer ? <span className="dealer" aria-label="莊位">D</span> : null}</div>
+            <div className="seat-name"><span className="avatar" aria-hidden="true">{m.id === user ? '♠' : m.id.startsWith('npc:') ? '♟' : m.id.slice(-2)}</span><strong title={m.id}>{playerName(m.id)}</strong>{dealer ? <span className="dealer" aria-label="莊位">D</span> : null}</div>
             <b className="seat-stack">{chips(m.stack)}</b><small>{m.leaving ? '手後離桌' : m.sitout ? '手後坐出' : labels[m.mode] ?? m.mode}</small>
             {player ? <><Cards cards={player.cards} hidden={player.cards.length === 0} /><small>{player.folded ? '已棄牌' : player.stack === '0' && active ? '全下' : acting ? '正在行動' : `本街投入 ${chips(player.bet)}`}</small></> : null}
             {occupants.length > 1 ? <small>真人等待接替</small> : null}
           </article>;
         })}
       </div>
-      {hand?.payouts ? <p role="status" className="settlement">本手結算：{Object.entries(hand.payouts).filter(([, value]) => BigInt(value) > 0n).map(([id, value]) => `${id === user ? '你' : id.startsWith('npc:') ? 'NPC' : `玩家 ${id.slice(-4)}`} 獲得 ${chips(value)}`).join(' · ')}</p> : null}
+      {hand?.payouts ? <p role="status" className="settlement">本手結算：{Object.entries(hand.payouts).filter(([, value]) => BigInt(value) > 0n).map(([id, value]) => `${playerName(id)} 獲得 ${chips(value)}`).join(' · ')}</p> : null}
       <section className="action-panel" aria-label="牌桌操作">
         <div className="turn-line"><strong>{active && hand.legal.fold ? '輪到你行動' : active ? '等待其他玩家' : '等待至少兩位參與者，其中一位真人'}</strong><span>{active && hand.deadline ? `${Math.max(0, Math.ceil(hand.deadline - now))} 秒` : '—'}</span></div>
         {active && hand.legal.fold ? <div className="action-buttons">
@@ -165,7 +166,7 @@ export function Table({ user, onClose }: { user: string; onClose: () => void }) 
         <div className="table-controls"><label>補碼金額<input inputMode="numeric" value={amount} onChange={e => setAmount(e.target.value)} /></label><button disabled={disabled || !!mine?.topup || mine?.leaving} onClick={() => command('topup', { amount })}>申請手後補碼</button><button disabled={disabled || mine?.leaving || mine?.sitout} onClick={() => command(mine?.mode === 'sitout' ? 'sit_in' : 'sitout')}>{mine?.mode === 'sitout' ? '重新坐入' : mine?.sitout ? '已排隊坐出' : '手後坐出'}</button><button disabled={disabled || mine?.leaving} onClick={() => command('leave')}>手後離桌</button></div>
         {mine?.expires ? <p>座位保留 {Math.max(0, Math.ceil(mine.expires - now))} 秒</p> : null}
       </section>
-      <section className="table-notices" aria-label="手間異動">{seated.filter(m => m.topup || m.notice || m.leaving || m.sitout || m.mode === 'pending').map(m => <p key={m.id}>{m.id === user ? '你' : m.id.startsWith('npc:') ? 'NPC' : `玩家 ${m.id.slice(-4)}`}：{m.topup ? `待補碼 ${chips(m.topup)}。` : ''}{m.leaving ? '已排隊手後離桌。' : m.sitout ? '已排隊手後坐出。' : m.mode === 'pending' ? '等待下一手加入。' : ''}{m.notice ? m.notice === 'topup_complete' ? '補碼完成。' : m.notice === 'topup_rejected' ? '補碼失敗：請確認可用餘額與上限。' : `NPC 暫時異常（連續 ${m.npc_failures} 次）。` : ''}</p>)}</section>
+      <section className="table-notices" aria-label="手間異動">{seated.filter(m => m.topup || m.notice || m.leaving || m.sitout || m.mode === 'pending').map(m => <p key={m.id}>{playerName(m.id)}：{m.topup ? `待補碼 ${chips(m.topup)}。` : ''}{m.leaving ? '已排隊手後離桌。' : m.sitout ? '已排隊手後坐出。' : m.mode === 'pending' ? '等待下一手加入。' : ''}{m.notice ? m.notice === 'topup_complete' ? '補碼完成。' : m.notice === 'topup_rejected' ? '補碼失敗：請確認可用餘額與上限。' : `NPC 暫時異常（連續 ${m.npc_failures} 次）。` : ''}</p>)}</section>
       {state.owner === user ? <details className="host-tools"><summary>房主選項</summary><div className="table-controls"><button disabled={disabled || state.closed} onClick={() => command('add_npc')}>新增固定 NPC</button>{seated.filter(m => m.id.startsWith('npc:')).map(m => <button key={m.id} disabled={disabled || m.leaving} onClick={() => command('remove_npc', { npc_id: m.id })}>移除座位 {m.seat + 1} NPC（手後）</button>)}<button disabled={disabled || state.closed} onClick={() => command('close')}>手後關桌</button>{state.private ? <button disabled={inviteBusy} onClick={() => void invitation()}>私人桌邀請</button> : null}</div></details> : null}
     </> : <button onClick={onClose}>回到大廳</button>}
     {confirm ? <Modal title="確認全下" onClose={() => setConfirm(null)}><p>將投入本手所有剩餘籌碼。確認後無法收回。</p><div className="table-controls"><button onClick={() => setConfirm(null)}>取消</button><button disabled={disabled || hand?.id !== confirm.hand_id || hand?.turn !== confirm.turn} onClick={() => { const payload = confirm; setConfirm(null); void send(payload); }}>確認全下</button></div></Modal> : null}

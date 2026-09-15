@@ -14,6 +14,9 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 const processes = [];
 const pages = [];
 async function ready(fn, label, timeout = 15000) { const end = Date.now() + timeout; while (Date.now() < end) { if (await fn()) return; await delay(100); } throw Error('Timed out: ' + label); }
+async function observeSockets(page) {
+  await page.run(`if (!window.WebSocket.pokerObserved) { window.pokerSockets=[]; const Native=window.WebSocket; window.WebSocket=class extends Native { constructor(...args){super(...args);window.pokerSockets.push(this);} }; window.WebSocket.pokerObserved=true; }`);
+}
 async function browser(index, width = 1440, height = 1100) {
   const port = 19340 + index;
   const child = spawn('C:/Program Files/Google/Chrome/Application/chrome.exe', ['--headless=new', '--disable-gpu', '--no-first-run', `--remote-debugging-port=${port}`, '--user-data-dir=' + path.join(directory, 'chrome' + index), 'about:blank'], { windowsHide: true, stdio: 'ignore' });
@@ -47,10 +50,17 @@ try {
   for (const [page, identity] of [[a, '111111111111111111'], [b, '222222222222222222']]) {
     await page.call('Page.navigate', { url: base + '/auth/login?identity=' + identity });
     await page.until("!!document.querySelector('.lobby')");
+    await observeSockets(page);
   }
   await a.click('開新桌'); await a.input('dialog input:not([type=checkbox])', '週末牌桌'); await a.click('確認帶入');
   await a.until("document.querySelector('.connection')?.textContent.includes('此視窗可操作')");
-  await b.until("!!document.querySelector('.room')"); await b.click('帶入並入座'); await b.click('確認帶入');
+  await b.until("!!document.querySelector('.room')"); await b.click('帶入並入座');
+  await a.click('手後坐出'); await a.until("document.body.innerText.includes('重新坐入')");
+  await b.click('確認帶入'); await b.until("document.querySelector('[role=alert]')?.textContent.includes('桌況已更新')");
+  await b.click('確認帶入');
+  await b.until("document.querySelector('.connection')?.textContent.includes('此視窗可操作')");
+  await a.until("document.querySelectorAll('.seat:not(.empty)').length === 2");
+  await a.click('重新坐入');
   await b.until("document.querySelector('.connection')?.textContent.includes('此視窗可操作')");
   await a.until("!!document.querySelector('.action-buttons')");
   const first = await a.api();
@@ -123,6 +133,7 @@ try {
   await ready(async () => (await a.api()).hand?.payouts === null, 'active hand before reconnect');
   const reconnect = await a.api();
   await a.call('Page.reload'); await a.until("!!document.querySelector('.lobby')");
+  await observeSockets(a);
   await a.click('返回目前牌桌');
   await a.until("document.querySelector('.connection')?.textContent.includes('此視窗可操作')");
   const resumed = await a.api();
@@ -179,6 +190,32 @@ try {
     await ready(async () => (await page.api()).members.find(m=>m.id===bankrupt.id).mode==='active', 'bankrupt player tops up and returns');
   }
   await a.screenshot('private-table');
+  // Drop the live transport without an interface leave, then let the real client reconnect.
+  const beforeDrop = await a.api();
+  const socketsBefore = await a.run('window.pokerSockets.length');
+  await a.run('window.pokerSockets.at(-1).close()');
+  await a.until(`window.pokerSockets.length > ${socketsBefore} && document.querySelector('.connection')?.textContent.includes('此視窗可操作')`);
+  const afterDrop = await a.api();
+  assert.equal(afterDrop.id, beforeDrop.id);
+  if (beforeDrop.hand?.payouts === null && afterDrop.hand?.id === beforeDrop.hand.id) assert.equal(afterDrop.hand.deadline, beforeDrop.hand.deadline);
+  // A third browser with the same account resumes the same table but cannot operate.
+  const duplicate = await browser(2, 1280, 900);
+  await duplicate.call('Page.navigate', { url: base + '/auth/login?identity=111111111111111111' });
+  await duplicate.until("!!document.querySelector('.lobby')"); await duplicate.click('返回目前牌桌');
+  await duplicate.until("document.querySelector('.connection')?.textContent.includes('另一個視窗持有操作權')");
+  assert.equal((await duplicate.api()).id, afterDrop.id);
+  assert.equal(await duplicate.run("[...document.querySelectorAll('.table-controls button')].every(b=>b.disabled)"), true);
+  await duplicate.call('Page.navigate', { url: 'about:blank' });
+  // Lose the second device for the actual two-minute grace; no clock fast-forward.
+  console.log(JSON.stringify({ phase: 'waiting_for_disconnect_expiry', graceSeconds: 120 }));
+  await b.call('Network.emulateNetworkConditions', { offline: true, latency: 0, downloadThroughput: 0, uploadThroughput: 0 });
+  await b.run('window.pokerSockets.at(-1).close()');
+  await ready(async () => !(await a.api()).members?.some(m=>m.id==='222222222222222222'), 'two-minute disconnected seat release', 140000);
+  await b.call('Network.emulateNetworkConditions', { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
+  await b.until("document.body.innerText.includes('已離桌')");
+  const expiredAccount = await b.api('/api/account');
+  assert.equal(expiredAccount.table, '0'); assert.equal(expiredAccount.in_flight, '0');
+
   for (const [page, identity] of [[a,'111111111111111111'],[b,'222222222222222222']]) {
     assert.deepEqual(page.errors, []);
     for (const state of page.projections) {
@@ -189,7 +226,7 @@ try {
       }
     }
   }
-  console.log(JSON.stringify({ settledHands: finished.size, independentBrowsers: 2, themes: 3, mobileWidths: [390,320], privateInvitations: 'rotated and old rejected', topupFailure: true, allInConfirmed: true, reconnectPreserved: true, sixSeats: true, horizontalOverflow: false, privateCardsProtected: true, pageErrors: [], output }));
+  console.log(JSON.stringify({ settledHands: finished.size, independentBrowsers: 2, themes: 3, mobileWidths: [390,320], privateInvitations: 'rotated and old rejected', topupFailure: true, allInConfirmed: true, reconnectPreserved: true, sixSeats: true, actualDisconnectExpiry: true, competingControllerBlocked: true, horizontalOverflow: false, privateCardsProtected: true, pageErrors: [], output }));
 } catch(error) { console.error(String(error)); console.error(serverOutput); for (let i=0;i<pages.length;i++) { await pages[i].screenshot('failure-'+i).catch(()=>{}); console.error(await pages[i].run('document.body.innerText.slice(-2200)').catch(()=>'')); } process.exitCode = 1; }
 finally {
   for (const page of pages) { await page.call('Browser.close').catch(()=>{}); page.socket.close(); }

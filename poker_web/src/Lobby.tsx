@@ -55,7 +55,13 @@ export function Lobby({ onEnter }: { onEnter: () => void }) {
       const result = await response.json();
       if (response.status >= 500) { setUncertain(true); throw new Error('結果尚未確認，請重送同一申請。'); }
       pending.current = null; setUncertain(false);
-      if (!response.ok) throw new Error(errors[result.result?.error ?? result.error] ?? '無法入座，請重新整理大廳後重試。');
+      if (!response.ok) {
+        const failure = result.result?.error ?? result.error;
+        if (failure === 'stale_table_version' && dialog && typeof dialog === 'object' && result.state?.id === dialog.id) {
+          setDialog({ ...dialog, version: result.state.version });
+        }
+        throw new Error(errors[failure] ?? '無法入座，請重新整理大廳後重試。');
+      }
       history.replaceState(null, '', location.pathname); setDialog(null); onEnter();
     } catch (cause) { if (pending.current) setUncertain(true); setError(cause instanceof Error ? cause.message : '連線中斷，請重送同一申請。'); }
     finally { setBusy(false); void refresh(); }

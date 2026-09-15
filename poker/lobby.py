@@ -47,10 +47,6 @@ async def create(tables, token, data):
         else:
             db.execute("SAVEPOINT create_table")
             try:
-                if current_table(db, user):
-                    raise Conflict("already_seated")
-                if sum(bool(t["members"] or t["hand"]) for t in all_tables(db)) >= 2:
-                    raise Conflict("table_capacity")
                 table = initial(secrets.token_hex(12))
                 table.update(
                     name=data["name"].strip() or "50 / 100", private=data["private"]
