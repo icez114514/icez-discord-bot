@@ -18,7 +18,7 @@ log = logging.getLogger("poker.table")
 class TableCommand(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     command_id: str = Field(min_length=1, max_length=80, pattern=r"^[A-Za-z0-9_-]+$")
-    table_id: Literal["main"]
+    table_id: str = Field(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9_-]+$")
     version: int = Field(ge=0)
     kind: Literal[
         "join",
@@ -31,6 +31,7 @@ class TableCommand(BaseModel):
         "remove_npc",
         "close",
     ]
+    invitation: str | None = Field(default=None, max_length=128)
     control: str | None = Field(default=None, max_length=128)
     hand_id: str | None = Field(default=None, max_length=128)
     turn: int | None = Field(default=None, ge=0)
@@ -38,6 +39,12 @@ class TableCommand(BaseModel):
     amount: str | None = Field(default=None, pattern=r"^(0|[1-9][0-9]{0,15})$")
     npc_id: str | None = Field(default=None, max_length=128)
 
+    def payload(self):
+        data = self.model_dump()
+        # Preserve fingerprints of pre-lobby commands across schema upgrades.
+        if data["invitation"] is None:
+            data.pop("invitation")
+        return data
 
     @model_validator(mode="after")
     def required_fields(self):
@@ -52,15 +59,24 @@ class TableCommand(BaseModel):
             raise ValueError("npc_id_required")
         return self
 
+
 def install(app, config, cookie):
+    from .lobby import install as install_lobby
+
+    install_lobby(app, cookie)
+
     @app.get("/api/table")
-    async def table(request: Request):
-        return await app.state.tables.view(request.cookies.get(cookie, ""))
+    async def table(request: Request, table_id: str | None = None):
+        return await app.state.tables.view(
+            request.cookies.get(cookie, ""),
+            table_id=table_id,
+            invitation=request.headers.get("x-table-invitation"),
+        )
 
     @app.post("/api/table/commands")
     async def command(data: TableCommand, request: Request):
         result = await app.state.tables.command(
-            request.cookies.get(cookie, ""), data.model_dump()
+            request.cookies.get(cookie, ""), data.payload()
         )
         return JSONResponse(
             result, status_code=409 if "error" in result["result"] else 200
@@ -109,7 +125,7 @@ def install(app, config, cookie):
                         if data.control != connection:
                             raise Conflict("not_control_endpoint")
                         result = await app.state.tables.command(
-                            token, data.model_dump()
+                            token, data.payload()
                         )
                     except (Conflict, ValidationError) as error:
                         result = {
