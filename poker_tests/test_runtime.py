@@ -72,7 +72,7 @@ class RuntimeTests(unittest.TestCase):
                         if process.poll() is not None or time.monotonic() > deadline:
                             self.fail("CLI listeners did not become ready")
                         time.sleep(0.05)
-                    self.assertEqual(public.json()["schema"], 2)
+                    self.assertEqual(public.json()["schema"], 3)
                     self.assertEqual(
                         client.get("http://127.0.0.1:" + str(first) + "/").status_code,
                         200,

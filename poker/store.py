@@ -68,7 +68,15 @@ class Store(Sessions):
                     encoding="utf-8"
                 )
             )
-        elif version != 2:
+            version = 2
+        if version == 2 and self.initialize:
+            self.db.executescript(
+                Path(__file__)
+                .with_name("preferences-schema.sql")
+                .read_text(encoding="utf-8")
+            )
+            version = 3
+        if version != 3:
             raise Conflict("database_schema_requires_migrate")
 
     async def run(self, operation, transaction=True):

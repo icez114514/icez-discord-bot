@@ -1,5 +1,7 @@
 # Issue #23 implementation notes
 
+For the subsequent multi-table lobby and schema 3 upgrade, see [MULTIPLAYER.md](MULTIPLAYER.md).
+
 This work adds a minimal single shared table at /api/table. Full multi-table lobby,
 private-table invitations, mobile art and deployment remain later tickets.
 

@@ -12,9 +12,9 @@ from .sessions import authenticate
 from .store import Conflict
 
 
-def initial():
+def initial(table_id="main"):
     return {
-        "id": "main",
+        "id": table_id,
         "version": 0,
         "owner": None,
         "members": [],
@@ -28,15 +28,37 @@ def initial():
     }
 
 
-def load(db):
-    row = db.execute("SELECT state FROM game_tables WHERE table_id='main'").fetchone()
-    return json.loads(row[0]) if row else initial()
+def load(db, table_id="main"):
+    row = db.execute(
+        "SELECT state FROM game_tables WHERE table_id=?", (table_id,)
+    ).fetchone()
+    if row:
+        return json.loads(row[0])
+    if table_id == "main":
+        return initial()
+    raise Conflict("table_unavailable")
+
+
+def all_tables(db):
+    return [json.loads(row[0]) for row in db.execute("SELECT state FROM game_tables")]
+
+
+def current_table(db, user):
+    return next((t for t in all_tables(db) if member(t, user)), None)
+
+
+def accessible(table, user, invitation=None):
+    if table.get("private") and not member(table, user):
+        if not invitation or not secrets.compare_digest(
+            table.get("invitation", "").encode(), invitation.encode()
+        ):
+            raise Conflict("table_unavailable")
 
 
 def save(db, table):
     db.execute(
-        "INSERT INTO game_tables VALUES('main',?) ON CONFLICT(table_id) DO UPDATE SET state=excluded.state",
-        (json.dumps(table),),
+        "INSERT INTO game_tables VALUES(?,?) ON CONFLICT(table_id) DO UPDATE SET state=excluded.state",
+        (table["id"], json.dumps(table)),
     )
 
 
@@ -54,16 +76,20 @@ def stack(db, user):
 def public(db, table, user, connection=None):
     me = member(table, user)
     if me is None:
+        if table.get("private"):
+            return {"joined": False}
         return {
-            "id": "main",
+            "id": table["id"],
             "version": table["version"],
             "joined": False,
             "closed": table["closed"],
         }
     return {
-        "id": "main",
+        "id": table["id"],
         "version": table["version"],
         "joined": True,
+        "name": table.get("name", "50 / 100"),
+        "private": table.get("private", False),
         "owner": table["owner"],
         "countdown": table["countdown"],
         "closed": table["closed"],
@@ -76,6 +102,7 @@ def public(db, table, user, connection=None):
                 "mode": m["mode"],
                 "stack": str(stack(db, m["id"])),
                 "leaving": m.get("leaving", False),
+                "sitout": m.get("sitout", False),
                 "topup": m.get("topup"),
                 "notice": m.get("notice"),
                 "expires": m.get("expires"),
@@ -187,7 +214,7 @@ class Transaction:
                 self.db.execute("SAVEPOINT queued_topup")
                 try:
                     self.funds(
-                        "buy_in", user_id=user, table_id="main", amount=m["topup"]
+                        "buy_in", user_id=user, table_id=table["id"], amount=m["topup"]
                     )
                     m["notice"] = "topup_complete"
                     m["mode"], m["expires"] = "active", None
@@ -218,6 +245,21 @@ class Transaction:
         humans = [m for m in table["members"] if not m["id"].startswith("npc:")]
         if not any(m["id"] == table["owner"] for m in humans):
             table["owner"] = humans[0]["id"] if humans else None
+        if not humans:
+            for npc in table["members"]:
+                chips = stack(self.db, npc["id"])
+                if chips:
+                    self.funds(
+                        "npc_reclaim",
+                        user_id=npc["id"],
+                        amount=str(chips),
+                        actor="system",
+                        reason="Last human left table",
+                    )
+            table["members"] = []
+            table["countdown"] = None
+            if table["id"] != "main":
+                table["closed"] = True
 
     def available(self):
         return [
@@ -304,7 +346,7 @@ class Transaction:
         self.funds(
             "start_hand",
             hand_id=hand["id"],
-            table_id="main",
+            table_id=table["id"],
             players=[p["id"] for p in hand["players"]],
             snapshot=hand,
         )
@@ -327,6 +369,14 @@ class Transaction:
         if kind == "join":
             if m or table["closed"]:
                 raise Conflict("cannot_join")
+            if current_table(self.db, user):
+                raise Conflict("already_seated")
+            if (
+                not table["members"]
+                and sum(bool(t["members"] or t["hand"]) for t in all_tables(self.db))
+                >= 2
+            ):
+                raise Conflict("table_capacity")
             occupied = {m["seat"] for m in table["members"]}
             seat = next((i for i in range(6) if i not in occupied), None)
             if seat is None:
@@ -342,7 +392,9 @@ class Transaction:
                     raise Conflict("table_full")
                 seat = replacement["seat"]
                 replacement["leaving"] = True
-            self.funds("buy_in", user_id=user, table_id="main", amount=data["amount"])
+            self.funds(
+                "buy_in", user_id=user, table_id=table["id"], amount=data["amount"]
+            )
             table["sequence"] += 1
             table["members"].append(
                 {
@@ -422,17 +474,31 @@ class Tables:
     def __init__(self, store):
         self.store = store
 
-    async def view(self, token, connection=None):
-        return await self.store.run(
-            lambda db: public(db, load(db), authenticate(db, token), connection)
-        )
+    async def view(self, token, connection=None, table_id=None, invitation=None):
+        def operation(db):
+            user = authenticate(db, token)
+            table = (
+                load(db, table_id) if table_id else current_table(db, user) or load(db)
+            )
+            accessible(table, user, invitation)
+            state = public(db, table, user, connection)
+            if not state["joined"]:
+                state = {
+                    "id": table["id"],
+                    "version": table["version"],
+                    "joined": False,
+                    "closed": table["closed"],
+                }
+            return state
+
+        return await self.store.run(operation)
 
     async def command(self, token, data, now=None):
         now = time.time() if now is None else now
 
         def operation(db):
             user = authenticate(db, token)
-            table = load(db)
+            table = load(db, data["table_id"])
             cid = "game:" + user + ":" + data["command_id"]
             fingerprint = json.dumps(data, sort_keys=True)
             old = db.execute(
@@ -450,10 +516,8 @@ class Tables:
                 }
             db.execute("SAVEPOINT table_command")
             try:
-                if (
-                    data.get("table_id") != "main"
-                    or data.get("version") != table["version"]
-                ):
+                accessible(table, user, data.get("invitation"))
+                if data.get("version") != table["version"]:
                     raise Conflict("stale_table_version")
                 m = member(table, user)
                 if data["kind"] != "join" and (
@@ -471,7 +535,7 @@ class Tables:
             except (Conflict, sqlite3.IntegrityError) as error:
                 db.execute("ROLLBACK TO table_command")
                 db.execute("RELEASE table_command")
-                table = load(db)
+                table = load(db, data["table_id"])
                 result = {
                     "error": str(error)
                     if isinstance(error, Conflict)
@@ -493,7 +557,7 @@ class Tables:
 
         def operation(db):
             user = authenticate(db, token)
-            table = load(db)
+            table = current_table(db, user) or load(db)
             m = member(table, user)
             if m:
                 if action in ("enter", "heartbeat"):
@@ -513,17 +577,22 @@ class Tables:
         now = time.time() if now is None else now
 
         def operation(db):
-            table = load(db)
-            before = copy.deepcopy(table)
-            Transaction(db, table, "tick:" + secrets.token_hex(16), now).tick()
-            if table != before:
-                table["version"] += 1
-                save(db, table)
-            hand = table["hand"]
-            if hand and hand["actor"] is not None and not table["frozen"]:
-                if hand["players"][hand["actor"]]["id"].startswith("npc:"):
-                    return copy.deepcopy(hand)
-            return None
+            candidates = []
+            for table in all_tables(db):
+                before = copy.deepcopy(table)
+                Transaction(db, table, "tick:" + secrets.token_hex(16), now).tick()
+                if table != before:
+                    table["version"] += 1
+                    save(db, table)
+                hand = table["hand"]
+                if hand and hand["actor"] is not None and not table["frozen"]:
+                    if hand["players"][hand["actor"]]["id"].startswith("npc:"):
+                        candidates.append(hand)
+            return (
+                copy.deepcopy(min(candidates, key=lambda h: h["deadline"]))
+                if candidates
+                else None
+            )
 
         return await self.store.run(operation)
 
@@ -531,7 +600,12 @@ class Tables:
         def operation(db, decision=decision, error=error):
             # Check after the single-writer queue, at the authority boundary.
             current_time = time.time() if now is None else now
-            table = load(db)
+            table = next(
+                (t for t in all_tables(db) if t["hand"] and t["hand"]["id"] == hand_id),
+                None,
+            )
+            if table is None:
+                return
             hand = table["hand"]
             if (
                 not hand
@@ -575,128 +649,138 @@ class Tables:
         now = time.time() if now is None else now
 
         def operation(db):
-            table = load(db)
-            for m in table["members"]:
-                if not m["id"].startswith("npc:") and m.get("control"):
-                    m["control"] = None
-                    m["disconnected"] = min(now + 120, m.get("heartbeat", now) + 150)
-            for row in db.execute(
-                "SELECT * FROM hands WHERE status='active'"
-            ).fetchall():
-                paid = {
-                    p["user_id"]: p["contribution"]
-                    for p in db.execute(
-                        "SELECT * FROM participants WHERE hand_id=?", (row["hand_id"],)
+            for table in all_tables(db) or [initial()]:
+                for m in table["members"]:
+                    if not m["id"].startswith("npc:") and m.get("control"):
+                        m["control"] = None
+                        m["disconnected"] = min(
+                            now + 120, m.get("heartbeat", now) + 150
+                        )
+                for row in db.execute(
+                    "SELECT * FROM hands WHERE status='active' AND table_id=?",
+                    (table["id"],),
+                ).fetchall():
+                    paid = {
+                        p["user_id"]: p["contribution"]
+                        for p in db.execute(
+                            "SELECT * FROM participants WHERE hand_id=?",
+                            (row["hand_id"],),
+                        )
+                    }
+                    ledger = {
+                        r["user_id"]: r["paid"]
+                        for r in db.execute(
+                            "SELECT user_id,SUM(flight_delta) AS paid FROM ledger WHERE reason=? AND source='pot_transfer' GROUP BY user_id",
+                            (row["hand_id"],),
+                        )
+                    }
+                    reliable = all(
+                        ledger.get(u, 0) == value for u, value in paid.items()
+                    ) and set(ledger) <= set(paid)
+                    reliable = reliable and all(
+                        db.execute(
+                            "SELECT in_flight FROM accounts WHERE user_id=?", (u,)
+                        ).fetchone()[0]
+                        == value
+                        for u, value in paid.items()
                     )
-                }
-                ledger = {
-                    r["user_id"]: r["paid"]
-                    for r in db.execute(
-                        "SELECT user_id,SUM(flight_delta) AS paid FROM ledger WHERE reason=? AND source='pot_transfer' GROUP BY user_id",
-                        (row["hand_id"],),
-                    )
-                }
-                reliable = all(
-                    ledger.get(u, 0) == value for u, value in paid.items()
-                ) and set(ledger) <= set(paid)
-                reliable = reliable and all(
-                    db.execute(
-                        "SELECT in_flight FROM accounts WHERE user_id=?", (u,)
-                    ).fetchone()[0]
-                    == value
-                    for u, value in paid.items()
-                )
-                if not reliable:
-                    table["frozen"] = True
-                    db.execute(
-                        "INSERT INTO game_audit(table_id,event,created_at) VALUES(?,?,?)",
-                        (row["table_id"], "unverifiable_contributions_frozen", now),
-                    )
-                    continue
-                try:
-                    hand = json.loads(row["snapshot"])
-                    valid = (
-                        table["hand"] == hand
-                        and hand["id"] == row["hand_id"]
-                        and {p["id"]: p["paid"] for p in hand["players"]} == paid
-                        and hand["payouts"] is None
-                    )
-                    cards = (
-                        hand["deck"]
-                        + hand["board"]
-                        + [c for p in hand["players"] for c in p["cards"]]
-                    )
-                    valid = (
-                        valid
-                        and len(cards) == len(set(cards))
-                        and set(cards) <= set(rules.CARDS)
-                        and 0 <= hand["actor"] < len(hand["players"])
-                        and isinstance(hand["deadline"], (int, float))
-                    )
-                    valid = valid and all(
-                        stack(db, p["id"]) == p["stack"]
-                        and p["start"] == p["stack"] + p["paid"]
-                        for p in hand["players"]
-                    )
-                    street = rules.STREETS.index(hand["street"])
-                    valid = (
-                        valid
-                        and len(cards) == 52 - street
-                        and len(hand["board"]) == (0, 3, 4, 5)[street]
-                    )
-                    valid = (
-                        valid
-                        and all(len(p["cards"]) == 2 for p in hand["players"])
-                        and math.isfinite(hand["deadline"])
-                    )
-                    actor = hand["players"][hand["actor"]]
-                    valid = valid and not actor["folded"] and actor["stack"] > 0
-                    event_row = db.execute(
-                        "SELECT event FROM hand_events WHERE hand_id=? ORDER BY id DESC LIMIT 1",
-                        (row["hand_id"],),
-                    ).fetchone()
-                    last_event = json.loads(event_row[0]) if event_row else {}
-                    valid = (
-                        valid
-                        and last_event.get("data", {}).get("snapshot") == hand
-                        and last_event.get("result", {}).get("version")
-                        == row["version"]
-                    )
-                    clocks = db.execute(
-                        "SELECT * FROM action_clocks WHERE hand_id=? AND active=1",
-                        (row["hand_id"],),
-                    ).fetchall()
-                    if actor["id"].startswith("npc:"):
-                        valid = valid and not clocks
-                    else:
+                    if not reliable:
+                        table["frozen"] = True
+                        db.execute(
+                            "INSERT INTO game_audit(table_id,event,created_at) VALUES(?,?,?)",
+                            (row["table_id"], "unverifiable_contributions_frozen", now),
+                        )
+                        continue
+                    try:
+                        hand = json.loads(row["snapshot"])
+                        valid = (
+                            table["hand"] == hand
+                            and hand["id"] == row["hand_id"]
+                            and {p["id"]: p["paid"] for p in hand["players"]} == paid
+                            and hand["payouts"] is None
+                        )
+                        cards = (
+                            hand["deck"]
+                            + hand["board"]
+                            + [c for p in hand["players"] for c in p["cards"]]
+                        )
                         valid = (
                             valid
-                            and len(clocks) == 1
-                            and clocks[0]["user_id"] == actor["id"]
-                            and clocks[0]["opportunity_id"] == str(hand["turn"])
-                            and clocks[0]["deadline"] == hand["deadline"]
-                            and clocks[0]["extensions"] == hand["extensions"]
+                            and len(cards) == len(set(cards))
+                            and set(cards) <= set(rules.CARDS)
+                            and 0 <= hand["actor"] < len(hand["players"])
+                            and isinstance(hand["deadline"], (int, float))
                         )
-                except (KeyError, TypeError, ValueError, IndexError, AttributeError):
-                    valid = False
-                if not valid:
-                    money.execute(
-                        db,
-                        "recovery:void:" + row["hand_id"],
-                        "void",
-                        {"hand_id": row["hand_id"]},
-                        now,
+                        valid = valid and all(
+                            stack(db, p["id"]) == p["stack"]
+                            and p["start"] == p["stack"] + p["paid"]
+                            for p in hand["players"]
+                        )
+                        street = rules.STREETS.index(hand["street"])
+                        valid = (
+                            valid
+                            and len(cards) == 52 - street
+                            and len(hand["board"]) == (0, 3, 4, 5)[street]
+                        )
+                        valid = (
+                            valid
+                            and all(len(p["cards"]) == 2 for p in hand["players"])
+                            and math.isfinite(hand["deadline"])
+                        )
+                        actor = hand["players"][hand["actor"]]
+                        valid = valid and not actor["folded"] and actor["stack"] > 0
+                        event_row = db.execute(
+                            "SELECT event FROM hand_events WHERE hand_id=? ORDER BY id DESC LIMIT 1",
+                            (row["hand_id"],),
+                        ).fetchone()
+                        last_event = json.loads(event_row[0]) if event_row else {}
+                        valid = (
+                            valid
+                            and last_event.get("data", {}).get("snapshot") == hand
+                            and last_event.get("result", {}).get("version")
+                            == row["version"]
+                        )
+                        clocks = db.execute(
+                            "SELECT * FROM action_clocks WHERE hand_id=? AND active=1",
+                            (row["hand_id"],),
+                        ).fetchall()
+                        if actor["id"].startswith("npc:"):
+                            valid = valid and not clocks
+                        else:
+                            valid = (
+                                valid
+                                and len(clocks) == 1
+                                and clocks[0]["user_id"] == actor["id"]
+                                and clocks[0]["opportunity_id"] == str(hand["turn"])
+                                and clocks[0]["deadline"] == hand["deadline"]
+                                and clocks[0]["extensions"] == hand["extensions"]
+                            )
+                    except (
+                        KeyError,
+                        TypeError,
+                        ValueError,
+                        IndexError,
+                        AttributeError,
+                    ):
+                        valid = False
+                    if not valid:
+                        money.execute(
+                            db,
+                            "recovery:void:" + row["hand_id"],
+                            "void",
+                            {"hand_id": row["hand_id"]},
+                            now,
+                        )
+                        if table["hand"] and table["hand"].get("id") == row["hand_id"]:
+                            table["hand"] = None
+                        event = "unrecoverable_hand_voided"
+                    else:
+                        event = "hand_restored_with_original_deadline"
+                    db.execute(
+                        "INSERT INTO game_audit(table_id,event,created_at) VALUES(?,?,?)",
+                        (row["table_id"], event, now),
                     )
-                    if table["hand"] and table["hand"].get("id") == row["hand_id"]:
-                        table["hand"] = None
-                    event = "unrecoverable_hand_voided"
-                else:
-                    event = "hand_restored_with_original_deadline"
-                db.execute(
-                    "INSERT INTO game_audit(table_id,event,created_at) VALUES(?,?,?)",
-                    (row["table_id"], event, now),
-                )
-            table["version"] += 1
-            save(db, table)
+                table["version"] += 1
+                save(db, table)
 
         await self.store.run(operation)
