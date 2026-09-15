@@ -1,4 +1,8 @@
-# Poker service and account system (#22)
+# Poker service, accounts and gameplay (#22 / #23)
+
+For the complete single-table game, fixed NPC, schema 2 upgrade and verification,
+see [GAMEPLAY.md](GAMEPLAY.md). Run `python -m poker migrate` with the service
+stopped before upgrading. The sections below retain the account foundation contract.
 
 Independent Python 3.10+ FastAPI service and React/TypeScript/Vite account page.
 The existing Bot, crystal balance and Neon database are not imported or migrated.
@@ -54,7 +58,7 @@ python -m poker serve
 
 `check` validates configuration and prints the actual SQLite version. It does not
 validate credentials, phone support, HTTPS or guild access. `migrate` explicitly
-initializes schema version 1 in a transaction; it preserves version 1 and refuses
+initializes schema 1 then upgrades to schema 2 in explicit transactions; it preserves existing accounts and refuses
 unknown versions. Stop the service before migrating. All entry points take the
 same OS exclusive lock, so a second worker or migrator fails before using the DB.
 `Ctrl+C` stops both listeners and drains the writer. The OS releases the lock on

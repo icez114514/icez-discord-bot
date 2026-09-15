@@ -61,7 +61,14 @@ class Store(Sessions):
             self.db.executescript(
                 (Path(__file__).with_name("schema.sql")).read_text(encoding="utf-8")
             )
-        elif version != 1:
+            version = 1
+        if version == 1 and self.initialize:
+            self.db.executescript(
+                (Path(__file__).with_name("game-schema.sql")).read_text(
+                    encoding="utf-8"
+                )
+            )
+        elif version != 2:
             raise Conflict("database_schema_requires_migrate")
 
     async def run(self, operation, transaction=True):

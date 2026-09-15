@@ -41,6 +41,18 @@ def create_app(config, transport=None, initialize=False):
             app.state.discord = Discord(config, client)
             app.state.scan = Eligibility(store, app.state.discord)
             await app.state.scan.recover()
+            from .tables import Tables
+            from .npc import NPC
+            from .table_api import run_tables
+
+            app.state.tables = Tables(store)
+            await app.state.tables.recover()
+            app.state.npc = NPC()
+            try:
+                await app.state.npc.start()
+            except Exception:
+                log.error("fixed_npc_unavailable_at_startup")
+            game_task = asyncio.create_task(run_tables(app.state.tables, app.state.npc))
 
             async def scheduler():
                 while True:
@@ -58,6 +70,10 @@ def create_app(config, transport=None, initialize=False):
             try:
                 yield
             finally:
+                game_task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await game_task
+                await app.state.npc.close()
                 if task:
                     task.cancel()
                     with contextlib.suppress(asyncio.CancelledError):
@@ -109,7 +125,7 @@ def create_app(config, transport=None, initialize=False):
     @app.get("/health")
     async def health():
         await app.state.store.run(lambda db: db.execute("SELECT 1").fetchone())
-        return {"status": "ok", "schema": 1}
+        return {"status": "ok", "schema": 2}
 
     @app.get("/auth/login")
     async def login():
@@ -253,4 +269,7 @@ def create_app(config, transport=None, initialize=False):
             return JSONResponse({"error": "frontend_build_required"}, status_code=503)
         return FileResponse(config.static_dir / "index.html")
 
+    from .table_api import install
+
+    install(app, config, COOKIE)
     return app
