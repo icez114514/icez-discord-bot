@@ -8,7 +8,7 @@ from typing import Literal
 
 from fastapi import Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 from .store import Conflict, Unauthorized
 
@@ -39,6 +39,19 @@ class TableCommand(BaseModel):
     npc_id: str | None = Field(default=None, max_length=128)
 
 
+    @model_validator(mode="after")
+    def required_fields(self):
+        if self.kind in ("join", "topup") and self.amount is None:
+            raise ValueError("amount_required")
+        if self.kind == "act":
+            if self.action is None or self.hand_id is None or self.turn is None:
+                raise ValueError("action_hand_turn_required")
+            if self.action == "raise" and self.amount is None:
+                raise ValueError("amount_required")
+        if self.kind == "remove_npc" and self.npc_id is None:
+            raise ValueError("npc_id_required")
+        return self
+
 def install(app, config, cookie):
     @app.get("/api/table")
     async def table(request: Request):
@@ -46,10 +59,6 @@ def install(app, config, cookie):
 
     @app.post("/api/table/commands")
     async def command(data: TableCommand, request: Request):
-        if data.kind in ("join", "topup") and data.amount is None:
-            return JSONResponse({"error": "amount_required"}, status_code=422)
-        if data.kind == "act" and data.action is None:
-            return JSONResponse({"error": "action_required"}, status_code=422)
         result = await app.state.tables.command(
             request.cookies.get(cookie, ""), data.model_dump()
         )

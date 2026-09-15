@@ -73,7 +73,7 @@ model-strength evaluation, GTO proof, or production deployment.
 
 ## Verification (2026-09-16)
 
-- All 43 poker tests passed with the dedicated Python 3.10 environment.
+- All 45 poker tests passed with the dedicated Python 3.10 environment.
 - Existing Bot suite: 160 collected, 101 passed, 59 opt-in database tests skipped.
 - TypeScript/Vite production build passed.
 - mypy checked 18 service modules; Ruff F checks passed; pip check passed.
@@ -95,5 +95,10 @@ The runtime test stops its own Windows process tree, including the NPC worker.
 
 ## Review
 
-Independent Standards and Spec reviews use baseline d7e3643 and the complete
-implementation diff. Their results and any corrections are recorded after review.
+Independent Standards and Spec reviews compared baseline d7e3643 with the
+implementation commit 64bb5bf. Standards found no hard rule violations and one
+shared-validation improvement; Spec found one NPC deadline authority gap.
+Both were fixed with red/green regression tests and independently rechecked:
+HTTP and WebSocket now share required-field validation, and NPC results recheck
+their deadline inside the serialized write transaction before applying an action.
+No unresolved Standards or Spec findings remain.

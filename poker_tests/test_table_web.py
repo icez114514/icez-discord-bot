@@ -534,3 +534,44 @@ class TableWebTests(unittest.TestCase):
         self.assertEqual(self.account(A)["in_flight"], "0")
         self.assertEqual(self.account(B)["in_flight"], "0")
         self.assertEqual(self.account(A)["hand_progress"], 0)
+
+
+    def test_required_command_fields_are_shared_by_http_and_websocket(self):
+        socket = self.join(A)
+        payload = {"command_id": "missing-amount", "table_id": "main",
+                   "version": self.view()["version"], "kind": "topup", "control": self.controls[A]}
+        response = self.client.post("/api/table/commands", headers=self.headers(A), json=payload)
+        self.assertEqual(response.status_code, 422)
+        socket.send_json({"type": "command", "command": payload})
+        while True:
+            message = socket.receive_json()
+            if message["type"] == "result":
+                break
+        self.assertEqual(message["result"]["error"], "invalid_command")
+        self.assertEqual(self.account()["table"], "2000")
+    def test_late_legal_npc_raise_falls_back_to_check(self):
+        import asyncio
+
+        async def stop_scheduler():
+            for task in asyncio.all_tasks():
+                if task.get_coro().__name__ == "run_tables":
+                    task.cancel()
+                    with contextlib.suppress(asyncio.CancelledError):
+                        await task
+
+        self.client.portal.call(stop_scheduler)
+        self.join(A)
+        self.command(A, "add_npc")
+        self.start_hand()
+        self.act(A, "call")
+        hand = self.view()["hand"]
+        self.assertTrue(hand["players"][hand["actor"]]["id"].startswith("npc:"))
+        self.client.portal.call(
+            self.app.state.tables.npc_result, hand["id"], hand["turn"],
+            {"action": "raise", "amount": 200}, None, self.now + 3,
+        )
+        state = self.view()
+        npc = next(m for m in state["members"] if m["id"].startswith("npc:"))
+        self.assertEqual(npc["npc_failures"], 1)
+        self.assertEqual(npc["notice"], "npc_timeout")
+        self.assertEqual(state["hand"]["street"], "flop")

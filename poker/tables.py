@@ -528,9 +528,9 @@ class Tables:
         return await self.store.run(operation)
 
     async def npc_result(self, hand_id, turn, decision, error=None, now=None):
-        now = time.time() if now is None else now
-
         def operation(db, decision=decision, error=error):
+            # Check after the single-writer queue, at the authority boundary.
+            current_time = time.time() if now is None else now
             table = load(db)
             hand = table["hand"]
             if (
@@ -544,6 +544,8 @@ class Tables:
             if not user.startswith("npc:"):
                 raise Conflict("npc_actor_required")
             m = member(table, user)
+            if current_time >= hand["deadline"]:
+                error = "npc_timeout"
             if error is None:
                 try:
                     rules.act(
@@ -561,7 +563,7 @@ class Tables:
                 decision = {"action": "check" if rules.legal(hand)["check"] else "fold"}
             else:
                 m["failures"], m["notice"] = 0, None
-            Transaction(db, table, "npc:" + secrets.token_hex(16), now).action(
+            Transaction(db, table, "npc:" + secrets.token_hex(16), current_time).action(
                 user, decision["action"], decision.get("amount"), True
             )
             table["version"] += 1
