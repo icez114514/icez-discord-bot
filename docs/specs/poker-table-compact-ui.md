@@ -50,3 +50,10 @@
 - 由 BTN 開始順時針：6 人 BTN／SB／BB／UTG／HJ／CO；5 人 BTN／SB／BB／HJ／CO；4 人 BTN／SB／BB／CO；3 人 BTN／SB／BB；2 人 BTN / SB／BB。
 - 每名本手玩家頭像上方顯示位置標籤，莊位另有桌面 BTN 圓形按鈕標記；換手跟隨新的莊位，尚無手牌時不猜測位置。
 - 命名參考：[PokerStars 位置說明](https://www.pokerstars.com/poker/learn/news/hijack-cutoff-and-under-the-gun-pokers-seating-positions-explained-pokerstars-blog/)，雙人盲注依本專案 rules.create 的既有規則。
+
+## 桌機短視窗排版（2026-09-17）
+
+- 桌機牌桌採獨立固定操作列，公共牌與本人座位不得互相覆蓋。
+- 桌機容器最寬 1480px，牌桌區至少 600px 高（放大牌面為 620px），最高 720px；視窗較矮時頁面垂直捲動，不壓縮牌桌。
+- 等待開局、本人回合、他人回合及結算沿用相同尺寸；回歸檢查包含 1100×500、1200×540、1366×768、1920×1080、2560×1440。
+- 結算摘要放在公共牌下方的固定資訊區，不隨整頁高度偏移或覆蓋下注區；一般與放大牌面皆驗證矮視窗捲動可達操作按鈕。

@@ -45,6 +45,37 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));let chrome,ws;
  assert.equal(await run("document.body.innerText.includes('ICEZ POKER')||document.body.innerText.includes('等待下一手')"),false);
  assert.equal(await run("document.querySelector('.action-panel').inert"),true);
  assert.deepEqual(await run("[...document.querySelectorAll('.preselection button')].map(b=>b.textContent)"),['棄牌／過牌','跟任何注']);
+ // Short desktop viewports must scroll instead of compressing the board into seats.
+ const savedHand=await run('JSON.stringify(snapshot.hand)');
+ for(const [width,height] of [[1100,500],[1200,540],[1366,768],[1920,1080],[2560,1440]]){
+  await call('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:false});
+  for(const large of [false,true]){
+   await run(`document.querySelector('.game').classList.toggle('large-cards',${large})`);
+  for(const idle of [true,false]){
+   await publish(idle?'snapshot.hand=null':`snapshot.hand=${savedHand}`);
+   const layout=await run(`(()=>{const rect=q=>{const r=document.querySelector(q).getBoundingClientRect();return {x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height}};return {board:rect('.board .cards'),hero:rect('.hero-seat'),scene:rect('.table-scene'),hole:document.querySelector('.hero-seat .seat-cards')?rect('.hero-seat .seat-cards'):null}})()`);
+   assert(layout.board.bottom+12<=(layout.hole||layout.hero).y,`board overlaps hero at ${width}x${height}, idle=${idle}: ${JSON.stringify(layout)}`);
+   assert(layout.scene.width/layout.scene.height<=2.6,`table too flat at ${width}x${height}`);
+   if(!idle){
+    await publish("snapshot.hand.payouts={me:'1000'};snapshot.hand.actor=null");
+    assert(await run("(()=>{const s=document.querySelector('.settlement').getBoundingClientRect(),b=document.querySelector('.board-phase').getBoundingClientRect();return s.top>=b.top&&s.bottom<=b.bottom})()"),`settlement detached from board at ${width}x${height}, large=${large}`);
+    await publish(`snapshot.hand=${savedHand};snapshot.hand.actor=0;snapshot.hand.legal={fold:true,check:true,raise:true,min_raise_to:'100',max_raise_to:'1000'}`);
+    assert.equal(await run("document.querySelector('.action-panel').inert"),false);
+    await run("document.querySelector('.action-buttons').scrollIntoView({block:'end'})");
+    assert(await run("(()=>{const r=document.querySelector('.action-buttons').getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight})()"),`actions unreachable at ${width}x${height}`);
+    await run('scrollTo(0,0)');
+   }
+  }
+  }
+ }
+ await run("document.querySelector('.game').classList.remove('large-cards')");
+ await call('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,deviceScaleFactor:1,mobile:false});
+ await publish(`snapshot.hand=${savedHand}`);
+ fs.writeFileSync(path.join(root,'tmp/table-desktop-fixed.png'),Buffer.from((await call('Page.captureScreenshot',{format:'png'})).data,'base64'));
+ const savedMembers=await run('JSON.stringify(snapshot.members)');
+ await publish('snapshot.hand=null;snapshot.members=snapshot.members.filter(m=>m.id==="me")');
+ fs.writeFileSync(path.join(root,'tmp/table-desktop-idle-fixed.png'),Buffer.from((await call('Page.captureScreenshot',{format:'png'})).data,'base64'));
+ await publish(`snapshot.hand=${savedHand};snapshot.members=${savedMembers}`);
  for(const width of [320,390,1440]){
   await call('Emulation.setDeviceMetricsOverride',{width,height:1000,deviceScaleFactor:1,mobile:width<600});
   for(const theme of ['classic_walnut','midnight_oak','burgundy_leather']){
@@ -113,5 +144,5 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));let chrome,ws;
  await publish("snapshot.owner='someone-else';snapshot.members=snapshot.members.filter(m=>m.seat!==5)");
  assert.equal(await run("document.querySelectorAll('.empty-seat-button').length"),0);
  assert.equal(await run("document.querySelector('.empty-seat-number').textContent"),'6');
- assert.deepEqual(errors,[]);console.log('PASS: 18 viewport/theme/font combinations, stable geometry, pot alignment, preselection single-send/all-in guard, avatar leave, settings deduplication, keyboard and long-press hints.');
+ assert.deepEqual(errors,[]);console.log('PASS: 5 desktop viewport sizes with idle/active overlap guards; 18 viewport/theme/font combinations, stable geometry, pot alignment, preselection single-send/all-in guard, avatar leave, settings deduplication, keyboard and long-press hints.');
 })().catch(e=>{console.error(e);process.exitCode=1;}).finally(()=>{ws?.close();chrome?.kill();server.close();});

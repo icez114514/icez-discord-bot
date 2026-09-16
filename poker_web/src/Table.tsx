@@ -290,7 +290,7 @@ export function Table({ user, onClose, initialHistory = false }: { user: string;
     {state?.closed ? <p className="table-closed">牌桌已關閉；當手完成後退回剩餘籌碼。</p> : null}
     {state?.joined ? <>
       <div className="table-scene" ref={scene}><ChipFlights events={presentation.view.flights} scene={scene} /><div className="felt" aria-hidden="true" />
-        <div className="board"><strong className={`pot ${chips(hand?.pot ?? '0').length > 18 ? 'long-pot' : ''}`}><span>總底池</span><b>{chips(hand?.pot ?? '0')}</b></strong><Cards cards={hand?.board ?? []} slots={5} /><div className="board-phase">{state.countdown ? <IconButton icon="clock" label={`下一手倒數 ${Math.max(0, Math.ceil(state.countdown - now))} 秒`} /> : active ? <IconButton icon="info" label={labels[hand.street] ?? hand.street} onClick={() => setInfo('hand')} /> : null}</div></div>
+        <div className="board"><strong className={`pot ${chips(hand?.pot ?? '0').length > 18 ? 'long-pot' : ''}`}><span>總底池</span><b>{chips(hand?.pot ?? '0')}</b></strong><Cards cards={hand?.board ?? []} slots={5} /><div className="board-phase">{state.countdown ? <IconButton icon="clock" label={`下一手倒數 ${Math.max(0, Math.ceil(state.countdown - now))} 秒`} /> : active ? <IconButton icon="info" label={labels[hand.street] ?? hand.street} onClick={() => setInfo('hand')} /> : null}{hand?.payouts ? <p role="status" className="settlement">{settlement ? `${settlement.void ? '作廢' : `派彩 ${chips(awardTotal.toString())}`} · 退款 ${chips(refundTotal.toString())}` : '本手已結算'}</p> : null}</div></div>
         {Array.from({ length: 6 }, (_, seat) => {
           const occupants = seated.filter(m => m.seat === seat);
           const m = occupants.find(m => hand?.players.some(p => p.id === m.id)) ?? occupants[0];
@@ -310,7 +310,6 @@ export function Table({ user, onClose, initialHistory = false }: { user: string;
           </article>;
         })}
       </div>
-      {hand?.payouts ? <p role="status" className="settlement">{settlement ? `${settlement.void ? '作廢' : `派彩 ${chips(awardTotal.toString())}`} · 退款 ${chips(refundTotal.toString())}` : '本手已結算'}</p> : null}
       <div className="table-action-slot">
       <section className={`action-panel ${ownTurn ? '' : 'action-panel-hidden'}`} aria-label="牌桌操作" aria-hidden={!ownTurn} inert={!ownTurn}>
         <div className="turn-line"><strong>輪到你行動</strong><span className="timebank" title="行動時間用盡時自動補時，每次 5 秒，每手最多 4 次">◷ 補時池 {state.time_bank ?? 0}s{active && hand.extensions > 0 ? ` · 已用 ${hand.extensions}/4` : ''}</span></div>

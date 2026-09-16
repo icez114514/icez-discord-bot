@@ -202,23 +202,24 @@ main.table-mode { max-width: 1800px; padding: 12px 24px; }
 .game .avatar { position: relative; overflow: hidden; }
 .game .avatar img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .game .avatar-countdown { position: absolute; inset: 0; display: grid; place-items: center; background: #0006; color: #fff; font: bold 26px system-ui,sans-serif; text-shadow: 0 1px 4px #000; }
+/* Short desktop windows scroll rather than compress fixed-size cards into seats. */
 @media (min-width: 1100px) {
-  main.table-mode { height: 100dvh; max-width: 1920px; padding: 10px 20px; display: grid; grid-template: minmax(0,1fr) / minmax(0,1fr); }
-  .table-mode > .game { grid-area: 1 / 1; min-height: 0; display: grid; grid-template-columns: minmax(0,1fr) 196px minmax(0,1fr); grid-template-rows: 44px 24px minmax(0,1fr) 174px 100px; }
+  main.table-mode { min-height: 100dvh; max-width: 1480px; padding: 10px 20px; display: grid; grid-template: minmax(0,1fr) / minmax(0,1fr); }
+  .table-mode > .game { grid-area: 1 / 1; min-height: 0; display: grid; grid-template-columns: minmax(0,1fr) 196px minmax(0,1fr); grid-template-rows: 44px clamp(600px,68dvh,720px) 174px; gap: 16px 0; align-content: start; }
   .game .game-toolbar { grid-column: 1 / -1; grid-row: 1; }
   .game .connection { grid-column: 1 / -1; grid-row: 2; margin: 2px 0; }
-  .game .table-scene { grid-column: 1 / -1; grid-row: 3 / 5; height: auto; width: 100%; max-width: none; margin: 0; }
+  .game .table-scene { grid-column: 1 / -1; grid-row: 2; height: auto; width: 100%; max-width: none; margin: 0; }
   .game .felt { inset: 22px 5% 62px; border-width: 15px; }
   .game .seat { width: 180px; }
   .game .portrait { width: 64px; height: 64px; }
   .game .seat-plaque { min-height: 58px; }
   .game .seat-info strong { font-size: 12px; }
   .game .seat-stack { font-size: 18px; }
-  .game .seat.n { top: 8px; }
+  .game .seat.n { top: 44px; }
   .game .seat.nw, .game .seat.ne { top: 24%; }
   .game .seat.sw, .game .seat.se { top: 59%; }
   .game .seat.sw { left: 5%; } .game .seat.se { right: 5%; }
-  .game .seat.s { top: auto; bottom: 44px; width: 196px; }
+  .game .seat.s { top: auto; bottom: 24px; width: 196px; }
   .game .seat.hero-seat .card { width: 57px; height: 79px; }
   .game .seat.hero-seat .card b { font-size: 27px; }
   .game .seat.hero-seat .card > span { font-size: 30px; }
@@ -287,7 +288,7 @@ main.table-mode { max-width: 1800px; padding: 12px 24px; }
 
 @media (min-width: 1100px) {
   .game .preselection { height: 100px; grid-column: 3; grid-row: 5; width: calc(100% - 20px); margin: 8px 0 0 auto; z-index: 4; }
-  .game.large-cards { grid-template-rows: 44px 44px minmax(380px,1fr) 230px 150px; min-height: 860px; }
+  .game.large-cards { grid-template-rows: 44px clamp(620px,68dvh,720px) 230px; }
   .game.large-cards .raise-range { line-height: 1.4; }
   .game > .retry-command { position: absolute; right: 0; top: 65px; z-index: 7; }
 }
@@ -380,7 +381,7 @@ main.table-mode { max-width: 1800px; padding: 12px 24px; }
   .game .table-tools, .game .game-toolbar { gap: 3px; }
 }
 @media (min-width: 1100px) {
-  .game .table-action-slot { grid-column: 3; grid-row: 4; align-self: center; justify-self: end; width: calc(100% - 20px); max-width: 480px; height: 174px; margin: 0; }
+  .game .table-action-slot { grid-column: 3; grid-row: 3; align-self: center; justify-self: end; width: calc(100% - 20px); max-width: 480px; height: 174px; margin: 0; }
   .game.large-cards .table-action-slot { height: 230px; }
 }
 
@@ -404,3 +405,6 @@ main.table-mode { max-width: 1800px; padding: 12px 24px; }
   .game .n .dealer { top: 76px; right: -4px; }
   .game .s .dealer { top: -28px; right: -6px; }
 }
+
+/* Settlement belongs to the board, independent of viewport and action-row height. */
+.game .board-phase .settlement { position: static; align-self: center; width: auto; max-width: 100%; max-height: 44px; overflow: auto; margin: 0; padding: 4px 8px; overflow-wrap: anywhere; }
