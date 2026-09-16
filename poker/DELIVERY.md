@@ -57,7 +57,8 @@ rejecting new joins/table creation and stopping subsequent hands.
   proof of an error.
 - User initially reported an invalid OAuth response, then updated settings.
   Service was drained (zero active hands), backed up, restarted and resumed to
-  load the updated .env. User browser login outcome remains pending.
+  load the updated .env. User then confirmed successful real Discord login.
+  An additional consistent snapshot was saved after that login.
 - No actual Discord message or slash-command response was sent during this work.
 - Browser automation runtime was unavailable; no simulated login was claimed as
   real OAuth acceptance.
@@ -72,7 +73,7 @@ review. Zero outstanding findings on either axis.
 ## Remaining acceptance
 
 The user owns later physical-phone testing. See DEPLOYMENT.md for the complete
-matrix: real browser OAuth outcome, authenticated WebSocket gameplay, real
+matrix: authenticated WebSocket gameplay, real
 Discord command delivery, two-hour two-table phone load/thermal measurements,
 Android lifecycle/storage/network faults, real-device restore and upgrade drills,
 and cross-device privacy/UI checks. Metrics from an idle Windows server do not
