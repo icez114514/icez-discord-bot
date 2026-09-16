@@ -1,6 +1,7 @@
 """Poker service and local backup/maintenance operations. See DEPLOYMENT.md."""
 
 import argparse
+import httpx
 import asyncio
 import logging
 import json
@@ -97,7 +98,7 @@ def main():
             logging.getLogger("httpx").setLevel(logging.WARNING)
             logging.getLogger("httpcore").setLevel(logging.WARNING)
             asyncio.run(serve(config))
-    except (ValueError, RuntimeError, OSError, sqlite3.Error) as error:
+    except (ValueError, RuntimeError, OSError, sqlite3.Error, httpx.HTTPError) as error:
         # Configuration errors name keys, never their values. Runtime errors are sanitized.
         if isinstance(error, ValueError):
             parser.exit(2, str(error) + "\n")

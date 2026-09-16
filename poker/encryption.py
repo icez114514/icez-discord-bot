@@ -32,7 +32,7 @@ def transform(source, destination, password, decrypt=False):
     temporary = destination.with_name("." + uuid.uuid4().hex + ".partial")
     try:
         fd = os.open(temporary, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
-        with source.open("rb") as src, os.fdopen(fd, "wb") as dst:
+        with os.fdopen(fd, "wb") as dst, source.open("rb") as src:
             if decrypt:
                 header = src.read(HEADER_SIZE)
                 if len(header) != HEADER_SIZE or header[:8] != MAGIC:

@@ -2,6 +2,7 @@
 import asyncio
 import getpass
 import json
+import secrets
 import time
 
 import httpx
@@ -48,14 +49,19 @@ async def operate(args, config):
                 result = await take_backup(store, config.backup_dir)
         print(json.dumps(result, indent=2))
     elif command in ("export", "decrypt"):
-        if args.source is None or args.destination is None:
-            raise ValueError("source_and_destination_required")
+        if args.source is None:
+            raise ValueError("source_required")
+        destination = args.destination
+        if destination is None and command == "export" and config.export_dir is not None:
+            destination = config.export_dir / ("export-" + secrets.token_hex(12) + ".enc")
+        if destination is None:
+            raise ValueError("decrypt_destination_required")
         from .encryption import transform
         password = getpass.getpass("Export password (12+ characters): ")
         if command == "export" and getpass.getpass("Confirm password: ") != password:
             raise ValueError("password_confirmation_mismatch")
-        await asyncio.to_thread(transform, args.source, args.destination, password, command == "decrypt")
-        print(json.dumps({"sha256": file_hash(args.destination), "status": "completed"}))
+        await asyncio.to_thread(transform, args.source, destination, password, command == "decrypt")
+        print(json.dumps({"file": str(destination), "sha256": file_hash(destination), "status": "completed"}))
     elif command == "restore":
         if args.source is None or args.destination is None or not args.sha256:
             raise ValueError("source_destination_and_trusted_sha256_required")

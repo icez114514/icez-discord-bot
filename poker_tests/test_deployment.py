@@ -88,6 +88,26 @@ class BackupTests(unittest.IsolatedAsyncioTestCase):
                     await take_backup(store, root / "snapshots")
             self.assertEqual(list((root / "snapshots").glob("snapshot-*.db")), [])
 
+    async def test_operator_export_uses_configured_destination(self):
+        import contextlib
+        import io
+        import json
+        from types import SimpleNamespace
+        from poker.operator_cli import operate
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            async with Store(root / "live/poker.db", initialize=True) as store:
+                result = await take_backup(store, root / "snapshots")
+            source = root / "snapshots" / result["file"]
+            config = Config(data_dir=root / "live", export_dir=root / "exports")
+            args = SimpleNamespace(command="export", source=source, destination=None)
+            output = io.StringIO()
+            with patch("getpass.getpass", return_value="correct horse battery staple"), contextlib.redirect_stdout(output):
+                await operate(args, config)
+            exported = Path(json.loads(output.getvalue())["file"])
+            self.assertEqual(exported.parent, root / "exports")
+            self.assertTrue(exported.is_file())
+
     async def test_failed_backup_keeps_previous_snapshot(self):
         from unittest.mock import patch
         with tempfile.TemporaryDirectory() as folder:

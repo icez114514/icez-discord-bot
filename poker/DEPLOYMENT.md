@@ -88,6 +88,9 @@ Export a completed snapshot interactively (password is never an argv argument):
     python -m poker export --source backups/poker/snapshots/SNAPSHOT.db --destination backups/poker/exports/EXPORT.enc
     python -m poker decrypt --source backups/poker/exports/EXPORT.enc --destination backups/poker/exports/RESTORED.db
 
+Omit --destination on export to use POKER_EXPORT_DIR with a unique filename.
+Decrypt always requires an explicit private destination.
+
 Use a unique strong passphrase, at least 12 characters, and store it separately.
 Encryption uses Scrypt (N=131072,r=8,p=1), random 16-byte salt, AES-256-GCM,
 random 12-byte nonce, authenticated version/header, and a 16-byte tag.
