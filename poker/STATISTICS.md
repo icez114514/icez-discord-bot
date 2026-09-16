@@ -137,3 +137,8 @@ and deployment remain #26.
   regression for non-account members, cross-account denial and disabled accounts.
 - Desktop/mobile statistics screenshots were visually inspected. OAuth and Discord
   delivery remain simulated; no production deployment or live Discord messaging.
+
+Final recheck at `2757e32`: Standards 0 findings; Spec 0 findings. The initial
+public-ranking P2 is resolved. All 21 statistics/management acceptance tests passed
+on the final implementation, alongside the earlier 50-game baseline run. The
+focused management browser screenshots were also visually inspected.
