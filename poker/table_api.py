@@ -64,6 +64,8 @@ def install(app, config, cookie):
     from .lobby import install as install_lobby
 
     install_lobby(app, cookie)
+    from .replay import install as install_replay
+    install_replay(app, cookie)
 
     @app.get("/api/table")
     async def table(request: Request, table_id: str | None = None):

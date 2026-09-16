@@ -1,0 +1,16 @@
+.hand-history { display: grid; gap: 1rem; min-width: 0; }
+.hand-history select { width: 100%; min-width: 0; margin-top: .5rem; }
+.replay-live { display: grid; gap: .65rem; padding: .8rem; border: 1px solid var(--accent, #d8ba73); border-radius: .7rem; }
+.replay-controls { display: flex; flex-wrap: wrap; gap: .5rem; }
+.replay-controls button { padding: .55rem .75rem; min-height: 42px; }
+.replay-board { text-align: center; }
+.replay-players { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: .75rem; }
+.replay-players article { display: grid; gap: .6rem; padding: .75rem; border: 1px solid var(--border, #777); border-radius: .7rem; overflow-wrap: anywhere; }
+.replay-players .cards { justify-content: flex-start; }
+.replay-summary section { border-top: 1px solid var(--border, #777); margin-top: 1rem; }
+.replay-summary li { margin: .4rem 0; overflow-wrap: anywhere; }
+.replay-policy { opacity: .75; line-height: 1.7; }
+.replay-step { margin: 0; }
+.hand-history > *, .replay-live > * { min-width: 0; overflow-wrap: anywhere; }
+.replay-board .cards, .replay-summary .cards { display: flex; gap: 4px; justify-content: center; }
+.replay-board .card, .replay-summary .card { width: clamp(28px, 8vw, 58px); height: clamp(42px, 11vw, 80px); flex-shrink: 1; }

@@ -1,3 +1,5 @@
+import { HandHistory } from './HandHistory';
+import { Cards } from './Cards';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Modal } from './Modal';
 import { ThemePicker } from './Theme';
@@ -15,7 +17,6 @@ type Hand = { settlement?: Settlement | null; id: string; button: number; player
 type State = import('./tableAudio').EventState & { id: string; name?: string; private?: boolean; version: number; joined: boolean; closed: boolean; frozen?: boolean; control?: boolean; owner?: string; members?: Member[]; hand?: Hand | null; countdown?: number | null; time_bank?: number };
 type Payload = { command_id: string; table_id: string; version: number; kind: string; control: string | null; hand_id?: string; turn?: number; action?: string; amount?: string; npc_id?: string };
 const chips = (value: string) => BigInt(value).toLocaleString('zh-TW');
-const suits: Record<string, string> = { c: '♣', d: '♦', h: '♥', s: '♠' };
 const labels: Record<string, string> = { preflop: '翻牌前', flop: '翻牌', turn: '轉牌', river: '河牌', active: '在座', pending: '下手加入', sitout: '坐出' };
 const errors: Record<string, string> = {
   topup_required: '桌上籌碼不足，請先補碼再重新坐入。',
@@ -31,16 +32,10 @@ const errors: Record<string, string> = {
   raise_out_of_range: '加注超過可用籌碼或低於目前下注。',
   topup_already_queued: '已有一筆待處理補碼。', buy_in_range: '帶入後桌上籌碼需為 2,000～10,000。',
 };
-function Cards({ cards, slots = 2, hidden = false }: { cards: string[]; slots?: number; hidden?: boolean }) {
-  return <span className="cards">{Array.from({ length: slots }, (_, index) => {
-    const card = cards[index];
-    if (!card) return <span key={index} aria-label={hidden ? '未公開底牌' : '尚未發牌'} className={hidden ? 'card back' : 'card blank'}>{hidden ? '♠' : '·'}</span>;
-    const value = card[0] === 'T' ? '10' : card[0];
-    return <span key={index} aria-label={`${value}${suits[card[1]]}`} className={card.endsWith('h') || card.endsWith('d') ? 'card red' : 'card'}><b>{value}<small>{suits[card[1]]}</small></b><span>{suits[card[1]]}</span></span>;
-  })}</span>;
-}
-
-export function Table({ user, onClose }: { user: string; onClose: () => void }) {
+export function Table({ user, onClose, initialHistory = false }: { user: string; onClose: () => void; initialHistory?: boolean }) {
+  const [historyOpen, setHistoryOpen] = useState(initialHistory);
+  const replaying = useRef(initialHistory);
+  function toggleHistory(open: boolean) { replaying.current = open; presentation.reset(); setHistoryOpen(open); }
   const [state, setState] = useState<State | null>(null);
   const [connected, setConnected] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -68,7 +63,7 @@ export function Table({ user, onClose }: { user: string; onClose: () => void }) 
     const prior = latest.current;
     if (prior?.id === next.id && next.version < prior.version) return;
     latest.current = next;
-    const events = presentation.receive(next, baseline);
+    const events = presentation.receive(next, baseline || replaying.current);
     const lines = events.flatMap(event => {
       if (event.kind === 'action') return [(event.user === user ? '你' : '座上玩家') + ' · ' + actionLabel(event)];
       if (event.kind === 'payout' || event.kind === 'refund') return [(event.user === user ? '你' : '座上玩家') + (event.kind === 'refund' ? ' 退款 ' : ' 派彩 ') + chips(event.amount ?? '0')];
@@ -114,7 +109,7 @@ export function Table({ user, onClose }: { user: string; onClose: () => void }) 
     };
   }, []);
   async function send(payload: Payload) {
-    if (busy) return;
+    if (busy || replaying.current) return;
     setBusy(true); setError(''); pending.current = payload;
     try {
       const response = await fetch('/api/table/commands', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
@@ -160,7 +155,7 @@ export function Table({ user, onClose }: { user: string; onClose: () => void }) 
     const key = `${turnKey}:${hand?.extensions}:${seconds}`;
     if (tick.current === key) return;
     tick.current = key;
-    if (ownTurn && connected && state?.control && !state.frozen && seconds > 0 && seconds <= 5) void sound.play('tick');
+    if (!replaying.current && ownTurn && connected && state?.control && !state.frozen && seconds > 0 && seconds <= 5) void sound.play('tick');
   }, [seconds, turnKey, hand?.extensions, ownTurn, connected, state?.control, state?.frozen]);
   useEffect(() => () => sound.stop(), []);
   const act = (action: string, amount?: string) => {
@@ -187,7 +182,7 @@ export function Table({ user, onClose }: { user: string; onClose: () => void }) 
   const mySeat = mine?.seat ?? 0;
   const position = (seat: number) => ['s', 'sw', 'nw', 'n', 'ne', 'se'][(seat - mySeat + 6) % 6];
   return <section className={prefs.reduced ? 'game reduced-motion' : 'game'} aria-label="德州撲克牌桌">
-    <div className="game-toolbar"><button className="back-button" onClick={onClose} aria-label="返回大廳" title="返回大廳（保留座位）">↶</button><div className="table-title"><h1>{state?.name ?? '牌桌'}</h1><small>50 / 100 · 無限注德州撲克{state?.private ? ' · 私人桌' : ''}</small></div><div className="table-tools"><button className="text" aria-pressed={!muted} onClick={() => sound.mute(!muted)} aria-label={muted ? '開啟音效' : '關閉音效'}>{muted ? '音效：關' : '音效：開'}</button><button className="text" onClick={() => setOptions(true)}>牌桌選項</button></div></div>
+    <div className="game-toolbar"><button className="back-button" onClick={onClose} aria-label="返回大廳" title="返回大廳（保留座位）">↶</button><div className="table-title"><h1>{state?.name ?? '牌桌'}</h1><small>50 / 100 · 無限注德州撲克{state?.private ? ' · 私人桌' : ''}</small></div><div className="table-tools"><button className="text" onClick={() => toggleHistory(true)}>上一手／回放</button><button className="text" aria-pressed={!muted} onClick={() => sound.mute(!muted)} aria-label={muted ? '開啟音效' : '關閉音效'}>{muted ? '音效：關' : '音效：開'}</button><button className="text" onClick={() => setOptions(true)}>牌桌選項</button></div></div>
     <p role="status" className="connection">{connected ? state?.joined ? state.control ? '● 已連線 · 此視窗可操作' : '已連線 · 另一個視窗持有操作權' : '已離桌，請回大廳選擇牌桌。' : '連線中斷，正在恢復同桌…'}</p>
     {error ? <p role="alert" className="message error">{error}</p> : null}
     {pending.current && !busy ? <button onClick={() => pending.current && void send(pending.current)}>重送同一指令</button> : null}
@@ -230,6 +225,7 @@ export function Table({ user, onClose }: { user: string; onClose: () => void }) 
       {state.owner === user ? <details className="host-tools"><summary>房主選項</summary><div className="table-controls"><button disabled={disabled || state.closed} onClick={() => command('add_npc')}>新增固定 NPC</button>{seated.filter(m => m.id.startsWith('npc:')).map(m => <button key={m.id} disabled={disabled || m.leaving} onClick={() => command('remove_npc', { npc_id: m.id })}>移除座位 {m.seat + 1} NPC（手後）</button>)}{state.private ? <button disabled={inviteBusy} onClick={() => void invitation()}>私人桌邀請</button> : null}</div></details> : null}
       </Modal> : null}
     </> : <button onClick={onClose}>回到大廳</button>}
+    {historyOpen ? <HandHistory user={user} ownTurn={ownTurn} seconds={seconds} connected={connected} onClose={() => toggleHistory(false)} /> : null}
     {confirm ? <Modal title="確認全下" onClose={() => setConfirm(null)}><p>將投入本手所有剩餘籌碼。確認後無法收回。</p><div className="table-controls"><button onClick={() => setConfirm(null)}>取消</button><button disabled={disabled || hand?.id !== confirm.hand_id || hand?.turn !== confirm.turn} onClick={() => { const payload = confirm; setConfirm(null); void send(payload); }}>確認全下</button></div></Modal> : null}
     {invite ? <Modal title="私人桌邀請" onClose={() => setInvite('')}><p>持有效邀請的已登入成員可入座；重設後舊連結立即失效。</p><label>邀請連結<input readOnly value={invite} onFocus={event => event.target.select()} /></label><div className="table-controls"><button onClick={() => void navigator.clipboard.writeText(invite).catch(() => setError('請選取邀請連結並手動複製。'))}>複製邀請</button><button disabled={disabled || inviteBusy} onClick={() => void invitation(true)}>重設邀請</button></div></Modal> : null}
   </section>;
