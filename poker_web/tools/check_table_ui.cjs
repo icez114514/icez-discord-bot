@@ -47,7 +47,7 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));let chrome,ws;
  assert.deepEqual(await run("[...document.querySelectorAll('.preselection button')].map(b=>b.textContent)"),['棄牌／過牌','跟任何注']);
  // Desktop controls stay visible without scrolling; the table scales uniformly.
  const savedHand=await run('JSON.stringify(snapshot.hand)');
- for(const [width,height] of [[1100,500],[1200,540],[1366,768],[1920,1080],[2560,1440]]){
+ for(const [width,height] of [[601,650],[699,650],[800,650],[1000,650],[1099,650],[1100,650],[1100,500],[1200,540],[1366,768],[1920,1080],[2560,1440]]){
   await call('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:false});
   for(const large of [false,true]){
    await run(`document.querySelector('.game').classList.toggle('large-cards',${large})`);
@@ -56,6 +56,9 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));let chrome,ws;
    const layout=await run(`(()=>{const rect=q=>{const r=document.querySelector(q).getBoundingClientRect();return {x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height}};return {board:rect('.board .cards'),hero:rect('.hero-seat'),scene:rect('.table-scene'),hole:document.querySelector('.hero-seat .seat-cards')?rect('.hero-seat .seat-cards'):null}})()`);
    assert(layout.board.bottom+12<=(layout.hole||layout.hero).y,`board overlaps hero at ${width}x${height}, idle=${idle}: ${JSON.stringify(layout)}`);
    assert(layout.scene.width/layout.scene.height<=2.6,`table too flat at ${width}x${height}`);
+   assert(Math.abs(layout.scene.x+layout.scene.width/2-width/2)<1,`table not centered at ${width}x${height}`);
+   assert(layout.scene.x>=12&&layout.scene.right<=width-12,`missing side gutters ${width}x${height}`);
+   assert(await run("(()=>{const a=document.querySelector('.table-scene').getBoundingClientRect(),b=document.querySelector('.table-action-slot').getBoundingClientRect();return a.bottom+8<=b.top})()"),'table collides with controls');
    if(!idle){
     await publish("snapshot.hand.payouts={me:'1000'};snapshot.hand.actor=null");
     assert(await run("(()=>{const s=document.querySelector('.settlement').getBoundingClientRect(),b=document.querySelector('.board-phase').getBoundingClientRect();return s.top>=b.top&&s.bottom<=b.bottom})()"),`settlement detached from board at ${width}x${height}, large=${large}`);
@@ -86,9 +89,15 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));let chrome,ws;
   await call('Emulation.setDeviceMetricsOverride',{width,height:1000,deviceScaleFactor:1,mobile:width<600});
   for(const theme of ['classic_walnut','midnight_oak','burgundy_leather']){
    await run(`document.documentElement.dataset.theme=${JSON.stringify(theme)}`);
+   let normalRankSize;
    for(const large of [false,true]){
     await run(`document.querySelector('.game').classList.toggle('large-cards',${large})`);
     await publish("snapshot.hand.actor=1;snapshot.hand.payouts=null;snapshot.hand.legal={};snapshot.hand.pot='0'");
+    if(width>=601){
+     const rank=await run("parseFloat(getComputedStyle(document.querySelector('.board .card b')).fontSize)*Number(document.querySelector('.table-stage').style.getPropertyValue('--table-scale'))");
+     if(!large)normalRankSize=rank;else assert(rank>normalRankSize,'large cards must enlarge rank text');
+     assert(await run("(()=>{const s=getComputedStyle(document.querySelector('.raise-range'));return parseFloat(s.height)>=parseFloat(s.fontSize)&&parseFloat(s.lineHeight)>=parseFloat(s.fontSize)})()"),'range text vertically clipped');
+    }
     const before=await geometry();
     assert(await run("Math.abs(document.querySelector('.preselection').getBoundingClientRect().top-document.querySelector('.action-panel').getBoundingClientRect().top)<1"),JSON.stringify({width,theme,large,rects:await run("['.preselection','.action-panel','.table-action-slot'].map(q=>{const e=document.querySelector(q),r=e.getBoundingClientRect(),s=getComputedStyle(e);return {q,top:r.top,height:r.height,align:s.alignSelf,margin:s.margin,position:s.position};})")}));
     await publish("snapshot.hand.actor=0;snapshot.hand.legal={fold:true,call:'50',raise:true,min_raise_to:'100',max_raise_to:'1000'};snapshot.hand.pot='999999999999999999999999999999'");
@@ -156,5 +165,5 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));let chrome,ws;
  await publish("snapshot.owner='someone-else';snapshot.members=snapshot.members.filter(m=>m.seat!==5)");
  assert.equal(await run("document.querySelectorAll('.empty-seat-button').length"),0);
  assert.equal(await run("document.querySelector('.empty-seat-number').textContent"),'6');
- assert.deepEqual(errors,[]);console.log('PASS: 5 desktop viewport sizes with idle/active overlap guards; 18 viewport/theme/font combinations, stable geometry, pot alignment, preselection single-send/all-in guard, avatar leave, settings deduplication, keyboard and long-press hints.');
+ assert.deepEqual(errors,[]);console.log('PASS: 11 tablet/desktop viewport sizes with idle/active overlap guards; 18 viewport/theme/font combinations, stable geometry, pot alignment, preselection single-send/all-in guard, avatar leave, settings deduplication, keyboard and long-press hints.');
 })().catch(e=>{console.error(e);process.exitCode=1;}).finally(()=>{ws?.close();chrome?.kill();server.close();});

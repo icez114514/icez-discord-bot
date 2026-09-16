@@ -8,7 +8,11 @@ export function TableStage({ children }: { children: ReactNode }) {
     if (!stage) return;
     const fit = () => {
       if (!stage.clientWidth || !stage.clientHeight) return;
-      const scale = Math.min(stage.clientWidth / 1100, stage.clientHeight / 620, 1.2);
+      const width = Math.max(1, stage.clientWidth - 24);
+      const height = Math.max(1, stage.clientHeight - 16);
+      const canvasWidth = Math.min(1600, Math.max(1100, width / height * 620));
+      const scale = Math.min(width / canvasWidth, height / 620, 1.2);
+      stage.style.setProperty('--table-width', canvasWidth + 'px');
       stage.style.setProperty('--table-scale', String(scale));
     };
     const observer = new ResizeObserver(fit);

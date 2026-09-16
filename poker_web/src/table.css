@@ -203,7 +203,7 @@ main.table-mode { max-width: 1800px; padding: 12px 24px; }
 .game .avatar img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .game .avatar-countdown { position: absolute; inset: 0; display: grid; place-items: center; background: #0006; color: #fff; font: bold 26px system-ui,sans-serif; text-shadow: 0 1px 4px #000; }
 /* Short desktop windows scroll rather than compress fixed-size cards into seats. */
-@media (min-width: 1100px) {
+@media (min-width: 601px) {
   main.table-mode { min-height: 100dvh; max-width: 1480px; padding: 10px 20px; display: grid; grid-template: minmax(0,1fr) / minmax(0,1fr); }
   .table-mode > .game { grid-area: 1 / 1; min-height: 0; display: grid; grid-template-columns: minmax(0,1fr) 196px minmax(0,1fr); grid-template-rows: 44px clamp(600px,68dvh,720px) 174px; gap: 16px 0; align-content: start; }
   .game .game-toolbar { grid-column: 1 / -1; grid-row: 1; }
@@ -286,7 +286,7 @@ main.table-mode { max-width: 1800px; padding: 12px 24px; }
 
 .connection-announcement { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
-@media (min-width: 1100px) {
+@media (min-width: 601px) {
   .game .preselection { height: 100px; grid-column: 3; grid-row: 5; width: calc(100% - 20px); margin: 8px 0 0 auto; z-index: 4; }
   .game.large-cards { grid-template-rows: 44px clamp(620px,68dvh,720px) 230px; }
   .game.large-cards .raise-range { line-height: 1.4; }
@@ -303,7 +303,7 @@ main.table-mode { max-width: 1800px; padding: 12px 24px; }
 .game .action-buttons > button { height: 74px; overflow: hidden; }
 .game .action-label { box-sizing: border-box; display: block; height: 30px; line-height: 28px; margin: 5px auto 0; max-width: 100%; padding: 0 8px; border-radius: 6px; border: 1px solid var(--trim); background: var(--panel); color: var(--ink); font-size: 14px; font-weight: 800; overflow: hidden; text-overflow: ellipsis; box-shadow: 0 2px 5px #0005; }
 .game .all-in-label { background: #9c273b; color: white; border-color: #efb9b0; }
-@media (min-width: 1100px) {
+@media (min-width: 601px) {
   .game .action-buttons > button { height: 60px; }
   .game.large-cards .connection { height: 40px; }
   .game.large-cards .raise-range { height: 23px; }
@@ -347,7 +347,7 @@ main.table-mode { max-width: 1800px; padding: 12px 24px; }
   .game .action-panel { min-height: 214px; }
   .game .seat-status { white-space: normal; }
 }
-@media (min-width: 1100px) {
+@media (min-width: 601px) {
   .game .action-panel { min-height: 174px; }
 }
 
@@ -380,7 +380,7 @@ main.table-mode { max-width: 1800px; padding: 12px 24px; }
   .game .table-action-slot { width: 100%; height: 214px; margin: 8px 0 0; }
   .game .table-tools, .game .game-toolbar { gap: 3px; }
 }
-@media (min-width: 1100px) {
+@media (min-width: 601px) {
   .game .table-action-slot { grid-column: 3; grid-row: 3; align-self: center; justify-self: end; width: calc(100% - 20px); max-width: 480px; height: 174px; margin: 0; }
   .game.large-cards .table-action-slot { height: 230px; }
 }
@@ -432,7 +432,7 @@ main.table-mode { max-width: 1800px; padding: 12px 24px; }
 .game .s .seat-bet { top: -42px; bottom: auto; right: auto; left: calc(100% + 16px); }
 .game .s .dealer { top: 24px; right: -42px; }
 .game .n .dealer { top: 18px; right: -42px; }
-@media (min-width: 1100px) {
+@media (min-width: 601px) {
   main.table-mode { height: 100dvh; min-height: 0; max-width: 1920px; }
   .table-mode > .game, .table-mode > .game.large-cards { grid-template-columns: minmax(0,1fr) 360px; grid-template-rows: 44px minmax(0,1fr); gap: 16px; min-height: 0; }
   .game .table-stage { display: block; position: relative; grid-column: 1; grid-row: 2; min-width: 0; min-height: 0; }
@@ -456,7 +456,7 @@ main.table-mode { max-width: 1800px; padding: 12px 24px; }
 /* Preserve physical hit targets after fitting the desktop scene. */
 .game .pot-presets button { min-height: 44px; }
 .game .bet-slider button, .game .bet-slider input[type=range] { min-height: 44px; height: 44px; }
-@media (min-width: 1100px) {
+@media (min-width: 601px) {
   .game .table-stage .own-stack { min-height: calc(44px / var(--table-scale,1)); }
   .game .table-stage .portrait { min-width: calc(44px / var(--table-scale,1)); min-height: calc(44px / var(--table-scale,1)); }
   .game .table-stage .icon-button { width: max(44px,calc(44px / var(--table-scale,1))); height: max(44px,calc(44px / var(--table-scale,1))); min-width: calc(44px / var(--table-scale,1)); min-height: calc(44px / var(--table-scale,1)); flex-basis: max(44px,calc(44px / var(--table-scale,1))); }
@@ -466,4 +466,54 @@ main.table-mode { max-width: 1800px; padding: 12px 24px; }
 @media (max-width: 600px) {
   .game .s .seat-bet { top: auto; bottom: calc(100% + 12px); width: 72px; flex-wrap: wrap; justify-content: center; white-space: normal; gap: 2px; }
   .game .s .seat-bet b { max-width: 100%; overflow-wrap: anywhere; }
+}
+
+/* One centered composition across tablet and desktop, with a reserved control strip. */
+@media (min-width: 601px) {
+  main.table-mode { height: 100dvh; min-height: 0; max-width: 1920px; padding: 10px 20px; }
+  .table-mode > .game, .table-mode > .game.large-cards { display: grid; grid-template-columns: minmax(0,1fr); grid-template-rows: 44px minmax(0,1fr) 148px; gap: 12px; min-height: 0; }
+  .game .table-stage { grid-column: 1; grid-row: 2; }
+  .game .table-stage .table-scene { top: 50%; transform: translate(-50%,-50%) scale(var(--table-scale,1)); transform-origin: center; }
+  .game .table-action-slot, .game.large-cards .table-action-slot { position: relative; inset: auto; grid-column: 1; grid-row: 3; align-self: stretch; justify-self: center; width: min(100%,1000px); max-width: none; height: 148px; margin: 0; }
+  .game .table-action-slot > .action-panel { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); grid-template-rows: 20px minmax(0,1fr); column-gap: 16px; padding: 8px 12px; }
+  .game .turn-line { grid-column: 1 / -1; margin: 0; font-size: 11px; }
+  .game .bet-sizing { grid-column: 1; grid-row: 2; }
+  .game .action-buttons { grid-column: 2; grid-row: 2; align-self: center; }
+  .game .action-buttons > button { height: 68px; }
+  .game .raise-range { font-size: 10px; line-height: 12px; height: 12px; margin: 2px 0 0; }
+  .game.large-cards .raise-range { height: 12px; line-height: 12px; }
+  .game .table-action-slot > .preselection { justify-content: center; align-items: center; }
+  .game .preselection button { flex: 0 1 280px; }
+  .game .board { top: 21%; }
+  .game .pot { height: 72px; gap: 2px; padding: 4px 12px; }
+  .game .pot > b { height: 38px; }
+  .game .n .seat-bet { top: 24px; left: calc(100% + 44px); transform: none; }
+  .game .seat.hero-seat { min-width: calc(100px / var(--table-scale,1)); }
+  .game .table-stage .own-stack { min-width: calc(44px / var(--table-scale,1)); }
+}
+
+@media (min-width: 601px) {
+  .game .table-stage .table-scene { width: var(--table-width,1100px); }
+  .game .seat-info strong { font-size: max(12px,calc(10px / var(--table-scale,1))); }
+  .game .seat-stack { font-size: max(18px,calc(12px / var(--table-scale,1))); }
+  .game .seat-bet { font-size: max(12px,calc(10px / var(--table-scale,1))); }
+  .game .board .card { min-width: calc(40px / var(--table-scale,1)); min-height: calc(54px / var(--table-scale,1)); }
+  .game .board .card b { font-size: max(25px,calc(18px / var(--table-scale,1))); }
+  .game .board .card > span { font-size: max(29px,calc(20px / var(--table-scale,1))); }
+  .game .pot > span { font-size: max(13px,calc(10px / var(--table-scale,1))); }
+  .game .pot > b { font-size: max(20px,calc(16px / var(--table-scale,1))); }
+  .game .board-phase { justify-content: flex-end; }
+}
+
+@media (min-width: 601px) {
+  .game .hero-seat .seat-cards { left: auto; right: calc(100% + 24px); bottom: 32px; transform: none; }
+  .game .seat.hero-seat .card { min-width: calc(40px / var(--table-scale,1)); min-height: calc(54px / var(--table-scale,1)); }
+}
+
+@media (min-width: 601px) {
+  .table-mode > .game.large-cards { grid-template-rows: 44px minmax(0,1fr) 164px; }
+  .game.large-cards .table-action-slot { height: 164px; }
+  .game.large-cards .raise-range { height: 22px; line-height: 22px; font-size: 16px; }
+  .game.large-cards .board .card b { font-size: max(30px,calc(22px / var(--table-scale,1))); }
+  .game .position-badge { font-size: max(12px,calc(10px / var(--table-scale,1))); line-height: max(18px,calc(14px / var(--table-scale,1))); }
 }
