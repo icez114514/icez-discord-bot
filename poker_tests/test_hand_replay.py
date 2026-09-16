@@ -103,15 +103,24 @@ class HandReplayTests(unittest.TestCase):
         hand_id = self.start_hand()["id"]
         self.act(A, "fold")
 
+        original = []
+
         async def corrupt(mode):
             def change(db):
                 row = db.execute(
                     "SELECT e.id,e.event FROM hand_events e JOIN settlements s ON s.command_id=e.command_id WHERE s.hand_id=?",
                     (hand_id,),
                 ).fetchone()
-                event = json.loads(row["event"])
+                if not original:
+                    original.append(row["event"])
+                event = json.loads(original[0])
                 if mode == "missing":
                     event["data"]["snapshot"]["presentation"].pop(1)
+                elif mode == "collection":
+                    hand = event["data"]["snapshot"]
+                    hand["presentation"] = [
+                        e for e in hand["presentation"] if e["kind"] != "collect"
+                    ]
                 else:
                     event["data"]["snapshot"].pop("replay_version", None)
                 db.execute(
@@ -121,7 +130,7 @@ class HandReplayTests(unittest.TestCase):
 
             await self.app.state.store.run(change)
 
-        for mode in ("missing", "old"):
+        for mode in ("missing", "old", "collection"):
             self.client.portal.call(corrupt, mode)
             data = self.history(suffix="/" + hand_id).json()
             self.assertFalse(data["complete"])

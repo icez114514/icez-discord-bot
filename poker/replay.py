@@ -160,7 +160,8 @@ def frames(hand, user):
     for p in hand["players"]:
         actual = players[p["id"]]
         if (
-            int(actual["paid"]) != p["paid"]
+            int(actual["bet"]) != 0
+            or int(actual["paid"]) != p["paid"]
             or actual["folded"] != p["folded"]
             or int(actual["stack"]) != p["stack"] + received[p["id"]]
         ):

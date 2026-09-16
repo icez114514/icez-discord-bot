@@ -73,3 +73,19 @@ on close. There is no pause or extension of server action deadlines.
   Evidence is written to `tmp/issue33-browser/` (not committed).
 
 No deployment or real Discord OAuth verification is part of this change.
+
+### Recorded result (2026-09-16)
+
+- Poker suite: 100 passed, including six new history HTTP tests.
+- Frontend unit tests: 12 passed; TypeScript and production build passed.
+- Existing Bot suite: 162 tests, 59 existing opt-in database tests skipped.
+- Browser acceptance: all scenarios above passed with no JavaScript exceptions;
+  the 320px screenshot was visually inspected after fixing the responsive grid.
+- Ruff F checks and diff whitespace checks passed. All changed files strictly
+  decode as UTF-8 without BOM; existing LF/CRLF conventions were preserved.
+- First-party mypy (`--check-untyped-defs --exclude poker/vendor poker`) still
+  reports eight existing errors in `statistics.py` and `management.py`. Running
+  the identical command against fixed base
+  `75710b2c0f65677767fd9d8ee18d01a1f467cbd3` produces the same eight diagnostics;
+  the new replay module adds none. Including vendored sources reports additional
+  pre-existing vendor typing problems.
