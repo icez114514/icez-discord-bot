@@ -9,6 +9,8 @@ from .presentation import collect, hand_event
 
 CARDS = tuple(r + s for r in "23456789TJQKA" for s in "cdhs")
 STREETS = ("preflop", "flop", "turn", "river")
+SMALL_BLIND = 50
+BIG_BLIND = 100
 
 
 def strength(cards):
@@ -76,8 +78,8 @@ def create(players, button, hand_id):
         "deck": deck,
         "board": [],
         "street": "preflop",
-        "current_bet": 100,
-        "increment": 100,
+        "current_bet": BIG_BLIND,
+        "increment": BIG_BLIND,
         "actor": None,
         "turn": 0,
         "history": [],
@@ -97,7 +99,7 @@ def create(players, button, hand_id):
                 "cards": [],
                 "folded": False,
                 "acted_at": None,
-                "reopen": 100,
+                "reopen": BIG_BLIND,
             }
         )
     for _ in range(2):
@@ -106,7 +108,7 @@ def create(players, button, hand_id):
     hand_event(hand, "deal")
     sb = button if len(players) == 2 else (button + 1) % len(players)
     bb = (sb + 1) % len(players)
-    for i, blind in ((sb, 50), (bb, 100)):
+    for i, blind in ((sb, SMALL_BLIND), (bb, BIG_BLIND)):
         paid = min(blind, hand["players"][i]["stack"])
         contribute(hand["players"][i], paid)
         hand_event(
@@ -154,8 +156,8 @@ def legal(hand):
         "check": owed == 0,
         "call": min(owed, p["stack"]),
         "raise": reopened and opponents and maximum > hand["current_bet"],
-        "min_raise_to": 100
-        if hand["current_bet"] < 100
+        "min_raise_to": BIG_BLIND
+        if hand["current_bet"] < BIG_BLIND
         else hand["current_bet"] + hand["increment"],
         "max_raise_to": maximum,
     }
@@ -248,7 +250,7 @@ def advance(hand, after):
     for _ in range(3 if hand["street"] == "flop" else 1):
         hand["board"].append(hand["deck"].pop())
     hand_event(hand, "board", board=list(hand["board"]))
-    hand["current_bet"], hand["increment"] = 0, 100
+    hand["current_bet"], hand["increment"] = 0, BIG_BLIND
     for p in hand["players"]:
         p["bet"], p["acted_at"], p["reopen"] = 0, None, 100
     advance(hand, hand["button"])
@@ -323,6 +325,7 @@ def finish(hand):
 def project(hand, user):
     if hand is None:
         return None
+    own = next((p for p in hand["players"] if p["id"] == user), None)
     players = []
     for p in hand["players"]:
         shown = p["id"] == user or (hand["showdown"] and not p["folded"])
@@ -345,6 +348,9 @@ def project(hand, user):
         "actor": hand["actor"],
         "turn": hand["turn"],
         "pot": str(sum(p["paid"] for p in hand["players"])),
+        "call_amount": str(min(max(0, hand["current_bet"] - own["bet"]), own["stack"]))
+        if own and not own["folded"] and hand["payouts"] is None
+        else None,
         "legal": {k: str(v) if type(v) is int else v for k, v in legal(hand).items()}
         if hand["actor"] is not None and hand["players"][hand["actor"]]["id"] == user
         else {},

@@ -244,3 +244,48 @@ main.table-mode { max-width: 1800px; padding: 12px 24px; }
   .table-mode > .message { grid-area: 1 / 1; align-self: start; justify-self: center; max-width: 42%; z-index: 4; margin: 0; padding: 4px 8px; font-size: 10px; }
   .game > .message, .game > [role=alert] { position: absolute; top: 64px; left: 20%; right: 20%; z-index: 5; margin: 0; background: var(--bg); }
 }
+
+/* Personal preferences also apply to shared cards inside the replay dialog. */
+.game.four-color .card[data-suit=c] { color: #087344; }
+.game.four-color .card[data-suit=d] { color: #1757bb; }
+.game.large-cards .card b { font-size: 30px; }
+.game.large-cards .card b small { font-size: 18px; }
+.game.large-cards .seat .card b { font-size: 22px; left: 2px; top: 2px; }
+.game.large-cards .seat .card b small { font-size: 14px; }
+.game.large-cards .hero-seat .card b { font-size: 34px; }
+.game.large-cards .connection, .game.large-cards .turn-line,
+.game.large-cards .raise-range, .game.large-cards .preselection { font-size: 16px; }
+.game .own-stack { padding: 2px; min-height: 32px; width: 100%; border: 0; border-radius: 4px; background: transparent; color: var(--ink); box-shadow: none; overflow-wrap: anywhere; white-space: normal; font-family: inherit; }
+.game .seat-stack, .game .pot { overflow-wrap: anywhere; }
+.game .own-stack:focus-visible { outline: 2px solid var(--accent); }
+.personal-settings { min-width: 0; border: 1px solid var(--line); padding: 12px; margin: 16px 0; }
+.personal-settings label { display: block; margin: 10px 0; }
+.personal-settings input[type=checkbox] { width: auto; min-height: 0; }
+.personal-settings p { font-size: 13px; }
+.game .preselection { position: relative; margin: 20px 0 0 auto; max-width: 640px; display: flex; flex-wrap: wrap; gap: 8px; }
+.game .preselection p { flex-basis: 100%; margin: 0; }
+.game .preselection button { min-height: 44px; white-space: normal; }
+.game .preselection button[aria-pressed=true] { outline: 2px solid var(--accent); outline-offset: 2px; }
+.game .action-buttons button, .game .pot-presets button { overflow-wrap: anywhere; min-width: 0; }
+.game.large-cards .pot-presets button { font-size: 16px; }
+@media (max-width: 600px) {
+  .game.large-cards .board .card b { font-size: 25px; left: 2px; top: 3px; }
+  .game.large-cards .board .card b small { font-size: 17px; }
+  .game.large-cards .board .card > span { display: none; }
+  .game.large-cards .seat .card b { font-size: 18px; }
+  .game.large-cards .seat .card b small { font-size: 12px; }
+  .game.large-cards .hero-seat .card b { font-size: 30px; }
+  .game.large-cards .hero-seat .card b small { font-size: 18px; }
+  .game .preselection { max-width: 100%; }
+  .game .table-title { min-width: 0; }
+  .game .table-title small { overflow-wrap: anywhere; }
+}
+
+.connection-announcement { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+@media (min-width: 1100px) {
+  .game .preselection { grid-column: 3; grid-row: 5; width: calc(100% - 20px); margin: 8px 0 0 auto; z-index: 4; }
+  .game.large-cards { grid-template-rows: 44px 44px minmax(380px,1fr) 210px; min-height: 820px; }
+  .game.large-cards .raise-range { line-height: 1.4; }
+  .game > button { grid-column: 3; grid-row: 6; justify-self: end; z-index: 4; }
+}
