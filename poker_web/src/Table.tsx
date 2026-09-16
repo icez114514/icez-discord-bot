@@ -223,7 +223,7 @@ export function Table({ user, onClose, initialHistory = false }: { user: string;
     clearSelection();
     const payload: Payload = { command_id: crypto.randomUUID(), table_id: state.id, version: state.version, kind: 'act', control: control.current, hand_id: hand.id, turn: hand.turn, action, ...(amount === undefined ? {} : { amount }) };
     const player = hand.players.find(p => p.id === user);
-    const allIn = action === 'all_in' || action === 'call' && player && BigInt(hand.legal.call ?? '0') >= BigInt(player.stack) || action === 'raise' && amount === hand.legal.max_raise_to;
+    const allIn = action === 'all_in' || action === 'call' && player && BigInt(hand.legal.call ?? '0') >= BigInt(player.stack) || action === 'raise' && amount !== undefined && BigInt(amount) === BigInt(hand.legal.max_raise_to ?? '0');
     if (allIn) setConfirm(payload); else void send(payload);
   };
   async function invitation(reset = false) {

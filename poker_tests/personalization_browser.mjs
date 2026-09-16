@@ -186,11 +186,24 @@ try {
   await page.wait("document.querySelector('.connection').textContent.includes('已離桌')");
   assert.equal(await page.run('window.commands.length'),4);
   await feed(page,state(true));
+
+  const full=state(true);await feed(page,full);
+  await page.run("{ const field=document.querySelector('[aria-label=加注至]');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(field,'02000');field.dispatchEvent(new Event('input',{bubbles:true})); }");
+  await page.wait("document.querySelector('.action-buttons button:last-child').textContent.includes('全下')");
+  await page.run("document.querySelector('.action-buttons button:last-child').click()");
+  await page.wait("document.querySelector('dialog')?.textContent.includes('確認全下')");
+  assert.equal(await page.run('window.commands.length'),4);
+  await page.click('取消');
   // Saved settings and shared four-color card styles across themes and widths.
   await feed(page,state(true));await page.click('牌桌選項');
   await page.run("const boxes=document.querySelectorAll('.personal-settings input[type=checkbox]');boxes[0].click();boxes[1].click()");
   await page.wait("document.querySelector('.game').classList.contains('large-cards')");
+  await page.run("{ const field=document.querySelector('[aria-label=\"翻牌前 BB 倍數\"]');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(field,'2.25, 2.5, 3, 4, 6');field.dispatchEvent(new Event('input',{bubbles:true})); }");
+  await page.click('儲存下注按鈕');
   await page.run("document.querySelector('dialog button[aria-label=關閉對話框]').click()");
+  await page.click('2.25 BB');
+  assert.equal(await page.run("document.querySelector('[aria-label=加注至]').value"),'225');
+  assert.equal(await page.run('window.commands.length'),4);
   for(const width of [1440,390,320]) for(const theme of ['classic_walnut','midnight_oak','burgundy_leather']) {
     await page.call('Emulation.setDeviceMetricsOverride',{width,height:1000,deviceScaleFactor:1,mobile:width<600});
     await page.run('document.documentElement.dataset.theme='+JSON.stringify(theme));
