@@ -42,6 +42,9 @@ def main():
             return httpx.Response(
                 200, json={"id": request.headers["authorization"].split()[-1]}
             )
+        if "/members/" in request.url.path:
+            user = request.url.path.rsplit("/", 1)[-1]
+            return httpx.Response(200, json={"nick": "桌上的長暱稱測試玩家", "user": {"id": user, "username": "table_player", "avatar": None, "discriminator": "0"}})
         return httpx.Response(200, json={})
 
     app = create_app(config, transport=httpx.MockTransport(discord), initialize=True)

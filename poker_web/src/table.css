@@ -3,7 +3,7 @@ main.table-mode { max-width: 1800px; padding: 12px 24px; }
 .table-mode > header, .table-mode > footer, .table-mode > .account-footer { display: none; }
 .table-mode > .account-tools { position: absolute; top: 760px; left: 28px; z-index: 3; max-width: 38%; gap: 4px; }
 .table-mode > .account-tools button { font-size: 12px; padding: 8px; }
-.game { position: relative; min-height: 840px; }
+.game { position: relative; min-height: 0; }
 .game-toolbar { display: flex; align-items: center; gap: 14px; position: relative; z-index: 2; }
 .game .back-button { border-radius: 50%; width: 48px; height: 48px; padding: 0; font-size: 30px; background: var(--panel); color: var(--ink); border-color: var(--line); }
 .game .table-title h1 {  margin: 0; font-family: inherit; font-size: 18px; }
@@ -167,4 +167,52 @@ main.table-mode { max-width: 1800px; padding: 12px 24px; }
 @media (max-width: 600px) {
   .game .table-links { position: static; margin-top: 10px; }
   .game .table-links button { font-size: 12px; }
+}
+
+.game .avatar { position: relative; overflow: hidden; }
+.game .avatar img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.game .avatar-countdown { position: absolute; inset: 0; display: grid; place-items: center; background: #0006; color: #fff; font: bold 26px system-ui,sans-serif; text-shadow: 0 1px 4px #000; }
+@media (min-width: 1100px) {
+  main.table-mode { height: 100dvh; max-width: 1920px; padding: 10px 20px; display: grid; grid-template: minmax(0,1fr) / minmax(0,1fr); }
+  .table-mode > .game { grid-area: 1 / 1; min-height: 0; display: grid; grid-template-columns: minmax(0,1fr) 196px minmax(0,1fr); grid-template-rows: 44px 24px minmax(0,1fr) 162px; }
+  .game .game-toolbar { grid-column: 1 / -1; grid-row: 1; }
+  .game .connection { grid-column: 1 / -1; grid-row: 2; margin: 2px 0; }
+  .game .table-scene { grid-column: 1 / -1; grid-row: 3 / 5; height: auto; width: 100%; max-width: none; margin: 0; }
+  .game .felt { inset: 22px 5% 62px; border-width: 15px; }
+  .game .seat { width: 180px; }
+  .game .portrait { width: 64px; height: 64px; }
+  .game .seat-plaque { min-height: 58px; }
+  .game .seat-info strong { font-size: 12px; }
+  .game .seat-stack { font-size: 18px; }
+  .game .seat.n { top: 8px; }
+  .game .seat.nw, .game .seat.ne { top: 24%; }
+  .game .seat.sw, .game .seat.se { top: 59%; }
+  .game .seat.sw { left: 5%; } .game .seat.se { right: 5%; }
+  .game .seat.s { top: auto; bottom: 44px; width: 196px; }
+  .game .seat.hero-seat .card { width: 57px; height: 79px; }
+  .game .seat.hero-seat .card b { font-size: 27px; }
+  .game .seat.hero-seat .card > span { font-size: 30px; }
+  .game .board { top: 28%; }
+  .game .table-wordmark { font-size: 18px; margin-bottom: 5px; }
+  .game .pot { font-size: 17px; margin-bottom: 12px; }
+  .game .board .card { width: 54px; height: 75px; }
+  .game .board .card b { font-size: 25px; }
+  .game .board .card > span { font-size: 29px; }
+  .game .board p { margin-top: 10px; font-size: 11px; }
+  .game .action-panel { grid-column: 3; grid-row: 4; width: calc(100% - 20px); max-width: 480px; margin: 0; justify-self: end; align-self: center; }
+  .game .turn-line { line-height: 16px; font-size: 11px; margin-bottom: 4px; }
+  .game .bet-sizing { width: 100%; }
+  .game .pot-presets button { min-height: 28px; padding: 2px; font-size: 12px; }
+  .game .bet-slider { grid-template-columns: 32px minmax(40px,1fr) 32px 90px; gap: 4px; margin-top: 4px; }
+  .game .bet-slider button, .game .bet-slider input[type=range] { min-height: 32px; height: 32px; }
+  .game .bet-slider input:not([type=range]) { padding: 4px 8px; height: 32px; font-size: 14px; }
+  .game .raise-range { line-height: 12px; min-height: 12px; margin: 2px 0; }
+  .game .action-buttons { gap: 8px; }
+  .game .action-buttons > button { min-height: 60px; padding: 6px; font-size: 18px; line-height: 1.2; }
+  .game .action-buttons > button > span { font-size: 15px; margin-top: 3px; }
+  .game .table-links { grid-column: 1; grid-row: 4; position: static; align-self: center; }
+  .table-mode > .account-tools { grid-area: 1 / 1; position: static; align-self: end; justify-self: start; max-width: 38%; margin: 0; z-index: 3; }
+  .game .settlement { top: 62%; left: 30%; width: 40%; margin: 0; font-size: 11px; }
+  .table-mode > .message { grid-area: 1 / 1; align-self: start; justify-self: center; max-width: 42%; z-index: 4; margin: 0; padding: 4px 8px; font-size: 10px; }
+  .game > .message, .game > [role=alert] { position: absolute; top: 64px; left: 20%; right: 20%; z-index: 5; margin: 0; background: var(--bg); }
 }

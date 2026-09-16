@@ -4,6 +4,7 @@ import { ThemePicker } from './Theme';
 import { clamp, potPreset, sliderAmount } from './betting';
 import { sound } from './sound';
 import { tableSoundEvents } from './tableAudio';
+import { PlayerAvatar, usePlayerProfiles } from './PlayerProfiles';
 import './table.css';
 
 type Player = { id: string; stack: string; bet: string; paid: string; cards: string[]; folded: boolean };
@@ -112,6 +113,8 @@ export function Table({ user, onClose }: { user: string; onClose: () => void }) 
     if (!state || pending.current) return;
     void send({ command_id: crypto.randomUUID(), table_id: state.id, version: state.version, kind, control: control.current, ...extra });
   }
+  const memberIds = (state?.members ?? []).filter(m => !m.id.startsWith('npc:')).map(m => m.id).sort().join(',');
+  const profiles = usePlayerProfiles(state?.joined ? state.id : undefined, memberIds);
   const hand = state?.hand;
   const active = hand && !hand.payouts;
   const mine = state?.members?.find(m => m.id === user);
@@ -133,7 +136,7 @@ export function Table({ user, onClose }: { user: string; onClose: () => void }) 
     previous.current = connected ? state : null;
     if (!connected || !before || !state?.hand) return;
     const old = before.hand, next = state.hand;
-    const describe = (id: string) => id === user ? '你' : id.startsWith('npc:') ? `NPC ${state.members?.find(m => m.id === id)?.seat ?? ''}` : `玩家 ${id.slice(-4)}`;
+    const describe = (id: string) => id.startsWith('npc:') ? `NPC ${(state.members?.find(m => m.id === id)?.seat ?? 0) + 1}` : profiles[id]?.display_name ?? '玩家';
     const events: string[] = [];
     if (!old || old.id !== next.id) events.push('新的一手開始');
     else {
@@ -149,7 +152,7 @@ export function Table({ user, onClose }: { user: string; onClose: () => void }) 
     if (events.length) setLog(entries => [...entries, ...events].slice(-80));
     if (document.hidden) return;
     for (const cue of tableSoundEvents(old, next, !!state.control)) void sound.play(cue);
-  }, [state, connected, user]);
+  }, [state, connected, profiles]);
   useEffect(() => {
     const key = `${turnKey}:${hand?.extensions}:${seconds}`;
     if (tick.current === key) return;
@@ -176,7 +179,7 @@ export function Table({ user, onClose }: { user: string; onClose: () => void }) 
     } catch { setError('邀請操作未完成，請重試同一操作。'); }
     finally { setInviteBusy(false); }
   }
-  const playerName = (id: string) => id === user ? '你' : id.startsWith('npc:') ? '固定 NPC' : `玩家 ${id.slice(-4)}`;
+  const playerName = (id: string) => id.startsWith('npc:') ? '固定 NPC' : profiles[id]?.display_name ?? '玩家';
   const seated = state?.members ?? [];
   const mySeat = mine?.seat ?? 0;
   const position = (seat: number) => ['s', 'sw', 'nw', 'n', 'ne', 'se'][(seat - mySeat + 6) % 6];
@@ -199,7 +202,7 @@ export function Table({ user, onClose }: { user: string; onClose: () => void }) 
           const dealer = hand?.players[hand.button]?.id === m.id;
           return <article className={`seat ${position(seat)} ${acting ? 'acting' : ''} ${player?.folded ? 'folded' : ''} ${m.id === user ? 'hero-seat' : ''}`} key={seat} aria-label={`${playerName(m.id)}，${chips(m.stack)} 籌碼`}>
             {player ? <div className="seat-cards"><Cards cards={player.cards} hidden={player.cards.length === 0} /></div> : null}
-            <div className="seat-plaque"><div className="portrait"><span className="avatar" aria-hidden="true">{acting ? seconds : m.id === user ? '♠' : m.id.startsWith('npc:') ? '♟' : m.id.slice(-2)}</span>{acting ? <svg className="countdown-ring" viewBox="0 0 100 100" aria-label={`剩餘 ${seconds} 秒`}><circle cx="50" cy="50" r="46" pathLength="100" /><circle cx="50" cy="50" r="46" pathLength="100" strokeDasharray={`${Math.min(100, seconds / (m.id.startsWith('npc:') ? 2 : hand?.extensions ? 5 : 20) * 100)} 100`} /></svg> : null}</div><div className="seat-info"><strong title={m.id}>{playerName(m.id)}</strong><b className="seat-stack">{chips(m.stack)}</b></div></div>
+            <div className="seat-plaque"><div className="portrait"><PlayerAvatar url={profiles[m.id]?.avatar_url} npc={m.id.startsWith('npc:')} countdown={acting ? seconds : null} />{acting ? <svg className="countdown-ring" viewBox="0 0 100 100" aria-label={`剩餘 ${seconds} 秒`}><circle cx="50" cy="50" r="46" pathLength="100" /><circle cx="50" cy="50" r="46" pathLength="100" strokeDasharray={`${Math.min(100, seconds / (m.id.startsWith('npc:') ? 2 : hand?.extensions ? 5 : 20) * 100)} 100`} /></svg> : null}</div><div className="seat-info"><strong title={playerName(m.id)}>{playerName(m.id)}</strong><b className="seat-stack">{chips(m.stack)}</b></div></div>
             <small className="seat-status">{player?.folded ? '已棄牌' : player?.stack === '0' && active ? '全下' : m.leaving ? '手後離桌' : m.sitout ? '手後坐出' : acting ? '正在行動' : labels[m.mode] ?? m.mode}{occupants.length > 1 ? ' · 真人等待接替' : ''}</small>
             {dealer ? <span className="dealer" aria-label="莊位">D</span> : null}
             {player && BigInt(player.bet) > 0n ? <span className="seat-bet"><span aria-hidden="true">◉</span> {chips(player.bet)}</span> : null}

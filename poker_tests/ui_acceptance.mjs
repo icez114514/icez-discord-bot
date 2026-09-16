@@ -74,6 +74,14 @@ try {
   await a.run("document.querySelector('[aria-label=\"關閉音效\"]').click()");
   assert.equal(await a.run("localStorage.getItem('poker-muted')"),'true');
   await a.run("document.querySelector('[aria-label=\"開啟音效\"]').click()");
+  await a.until("document.querySelector('.hero-seat .seat-info strong')?.textContent === '桌上的長暱稱測試玩家'");
+  await a.until("!!document.querySelector('.hero-seat .avatar img')");
+  for(const [width,height] of [[1280,720],[1366,768],[1920,1080],[1280,640]]) {
+    await a.call('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:false});
+    await a.until('document.documentElement.scrollWidth <= innerWidth && document.documentElement.scrollHeight <= innerHeight');
+    assert(await a.run(`(()=>{const hero=document.querySelector('.hero-seat .seat-plaque').getBoundingClientRect(), action=document.querySelector('.action-panel').getBoundingClientRect();return action.left >= hero.right && action.top < hero.bottom && action.bottom > hero.top && action.bottom <= innerHeight})()`));
+    await a.screenshot('fit-'+width+'x'+height);
+  }
   for (const theme of ['classic_walnut','midnight_oak','burgundy_leather']) {
     await a.run(`document.documentElement.dataset.theme='${theme}'`); await a.screenshot('desktop-'+theme);
   }
@@ -82,7 +90,11 @@ try {
     await a.until('document.documentElement.scrollWidth <= innerWidth');
     await a.screenshot('mobile-'+width);
   }
+  await a.until("document.querySelector('.hero-seat .avatar img')?.naturalWidth > 0");
+  await a.run("document.querySelector('.hero-seat .avatar img').dispatchEvent(new Event('error'))");
+  await a.until("!document.querySelector('.hero-seat .avatar img')");
+  assert.equal(await a.run("document.querySelector('.hero-seat .seat-info strong').textContent"), '桌上的長暱稱測試玩家');
   assert.deepEqual(a.errors,[]);
-  console.log(JSON.stringify({sixSeats:true,illegalRaiseBlocked:true,allInConfirmation:true,presetClamped:true,muteStored:true,actualAudioPlayback:true,audioDurations:decoded,mobileWidths:[390,320],pageErrors:a.errors,output}));
+  console.log(JSON.stringify({sixSeats:true,discordNickname:true,desktopFit:[[1280,720],[1366,768],[1920,1080],[1280,640]],illegalRaiseBlocked:true,allInConfirmation:true,presetClamped:true,muteStored:true,actualAudioPlayback:true,audioDurations:decoded,mobileWidths:[390,320],pageErrors:a.errors,output}));
 } catch(error) { console.error(error.stack ?? String(error));console.error(serverOutput);for(const page of pages){await page.screenshot('failure').catch(()=>{});console.error(await page.run('document.body.innerText.slice(-1600)').catch(()=>''));}process.exitCode=1; }
 finally { for(const page of pages){await page.call('Browser.close').catch(()=>{});page.socket.close();}for(const child of [...processes,service]){try{execFileSync('taskkill',['/PID',String(child.pid),'/T','/F'],{windowsHide:true,stdio:'ignore'});}catch{}} }

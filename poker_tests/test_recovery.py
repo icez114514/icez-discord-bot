@@ -24,6 +24,10 @@ async def work():
         for n in range(300):
             await store.command('debit'+str(n), 'adjust', user_id='111', amount='-1', reason='Crash exercise', actor='999')
             print(n, flush=True)
+            if n == 9:
+                # Keep the child alive after the parent's readiness marker so
+                # the test always interrupts a live writer, even on fast disks.
+                await asyncio.Event().wait()
 asyncio.run(work())
 """
             process = subprocess.Popen(
