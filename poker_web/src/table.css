@@ -22,7 +22,7 @@ main.table-mode { max-width: 1800px; padding: 12px 24px; }
 .game .board .cards { gap: 10px; }
 .game .board .card { width: 66px; height: 92px; }
 .game .board .card b { font-size: 28px; }
-.game .board .card > span { font-size: 35px; }
+.game .board .card > span:not(.card-face) { font-size: 35px; }
 .game .board p { font-size: 12px; margin: 18px 0; }
 .game .seat { position: absolute; text-align: center; width: 212px; padding: 0; background: none; border: 0; box-shadow: none; outline: 0; z-index: 1; }
 .game .seat-plaque { position: relative; display: flex; align-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; min-height: 70px; box-shadow: 0 5px 12px #0004; }
@@ -39,7 +39,7 @@ main.table-mode { max-width: 1800px; padding: 12px 24px; }
 .game .seat .card { width: 40px; height: 55px; transform: rotate(-12deg); }
 .game .seat .card b { font-size: 17px; top: 3px; left: 4px; }
 .game .seat .card b small { font-size: 11px; color: inherit; }
-.game .seat .card > span { display: none; }
+.game .seat .card > span:not(.card-face) { display: none; }
 .game .seat .card + .card { transform: rotate(10deg); margin-left: -10px; }
 .game .seat.folded .seat-cards { opacity: .3; }
 .game .seat.empty { border: 1px dashed var(--trim); border-radius: 50px; padding: 16px; width: 150px; color: var(--trim); background: var(--felt-dark); opacity: .75; }
@@ -51,7 +51,7 @@ main.table-mode { max-width: 1800px; padding: 12px 24px; }
 .game .seat.s { top: 530px; left: 50%; transform: translateX(-50%); }
 .game .seat.hero-seat .card { width: 68px; height: 94px; }
 .game .seat.hero-seat .card b { font-size: 30px; }
-.game .seat.hero-seat .card > span { display: block; font-size: 36px; }
+.game .seat.hero-seat .card > span:not(.card-face) { display: block; font-size: 36px; }
 .game .seat-bet { position: absolute; font-size: 14px; white-space: nowrap; color: var(--ink); text-shadow: 0 1px 3px var(--bg); }
 .game .seat-bet > span { color: var(--accent); font-size: 22px; vertical-align: middle; }
 .game .n .seat-bet { top: 100%; left: 50%; transform: translateX(-50%); }
@@ -120,14 +120,14 @@ main.table-mode { max-width: 1800px; padding: 12px 24px; }
   .game .seat .card { width: 28px; height: 38px; }
   .game .seat.hero-seat .card { width: 48px; height: 65px; }
   .game .seat.hero-seat .card b { font-size: 23px; }
-  .game .seat.hero-seat .card > span { font-size: 25px; }
+  .game .seat.hero-seat .card > span:not(.card-face) { font-size: 25px; }
   .game .board { top: 210px; width: 88%; }
   .game .table-wordmark { font-size: 15px; margin-bottom: 5px; }
   .game .pot { font-size: 16px; margin-bottom: 12px; }
   .game .board .cards { gap: 5px; }
   .game .board .card { width: 39px; height: 55px; }
   .game .board .card b { font-size: 20px; }
-  .game .board .card > span { font-size: 22px; }
+  .game .board .card > span:not(.card-face) { font-size: 22px; }
   .game .board p { font-size: 10px; margin-top: 12px; }
   .game .seat-bet { font-size: 10px; }
   .game .nw .seat-bet, .game .sw .seat-bet { left: 30px; top: auto; bottom: -24px; }
@@ -222,13 +222,13 @@ main.table-mode { max-width: 1800px; padding: 12px 24px; }
   .game .seat.s { top: auto; bottom: 24px; width: 196px; }
   .game .seat.hero-seat .card { width: 57px; height: 79px; }
   .game .seat.hero-seat .card b { font-size: 27px; }
-  .game .seat.hero-seat .card > span { font-size: 30px; }
+  .game .seat.hero-seat .card > span:not(.card-face) { font-size: 30px; }
   .game .board { top: 28%; }
   .game .table-wordmark { font-size: 18px; margin-bottom: 5px; }
   .game .pot { font-size: 17px; margin-bottom: 12px; }
   .game .board .card { width: 54px; height: 75px; }
   .game .board .card b { font-size: 25px; }
-  .game .board .card > span { font-size: 29px; }
+  .game .board .card > span:not(.card-face) { font-size: 29px; }
   .game .board p { margin-top: 10px; font-size: 11px; }
   .game .action-panel { grid-column: 3; grid-row: 4; width: calc(100% - 20px); max-width: 480px; margin: 0; justify-self: end; align-self: center; }
   .game .turn-line { line-height: 16px; font-size: 11px; margin-bottom: 4px; }
@@ -274,7 +274,7 @@ main.table-mode { max-width: 1800px; padding: 12px 24px; }
 @media (max-width: 600px) {
   .game.large-cards .board .card b { font-size: 25px; left: 2px; top: 3px; }
   .game.large-cards .board .card b small { font-size: 17px; }
-  .game.large-cards .board .card > span { display: none; }
+  .game.large-cards .board .card > span:not(.card-face) { display: none; }
   .game.large-cards .seat .card b { font-size: 18px; }
   .game.large-cards .seat .card b small { font-size: 12px; }
   .game.large-cards .hero-seat .card b { font-size: 30px; }
@@ -497,7 +497,7 @@ main.table-mode { max-width: 1800px; padding: 12px 24px; }
   .game .board .card { width: clamp(44px,5cqw,82px); height: clamp(61px,7cqw,114px); min-width: 0; min-height: 0; }
   .game .board .card b { font-size: clamp(26px,3cqw,38px); }
   .game.large-cards .board .card b { font-size: clamp(30px,3.6cqw,44px); }
-  .game .board .card > span { font-size: clamp(28px,3.2cqw,42px); }
+  .game .board .card > span:not(.card-face) { font-size: clamp(28px,3.2cqw,42px); }
   .game .board-phase { justify-content: flex-end; }
   .game .empty-seat-button { min-height: 76px; }
   .game .empty-seat-button strong { font-size: 36px; }
@@ -531,7 +531,7 @@ main.table-mode { max-width: 1800px; padding: 12px 24px; }
   .game .board .card { width: 42px; height: 58px; }
   .game .board .card b { font-size: 25px; }
   .game.large-cards .board .card b { font-size: 29px; }
-  .game .board .card > span { font-size: 28px; }
+  .game .board .card > span:not(.card-face) { font-size: 28px; }
   .game .seat.hero-seat .card { width: 46px; height: 64px; }
 }
 @media (min-width: 601px) and (max-width: 900px) {
@@ -570,7 +570,7 @@ main.table-mode { max-width: 1800px; padding: 12px 24px; }
 @media (min-width: 601px) and (max-width: 900px) {
   .game .seat.sw, .game .seat.se { bottom: 6%; }
   .game .hero-seat .seat-cards { left: 50%; right: auto; bottom: calc(100% - 8px); transform: translateX(-50%); }
-  .game .seat:not(.hero-seat) .card { width: 30px; height: 42px; }
+
 }
 
 /* Extremely short windows keep controls visible and scroll only the table. */
@@ -642,20 +642,20 @@ main.table-mode { max-width: 1800px; padding: 12px 24px; }
 
 
 /* Portrait and hole cards share a row above the player information. */
-.game .seat:not(.empty), .game .seat.s:not(.empty) { width: 172px; --portrait-size: 76px; }
+.game .seat:not(.empty), .game .seat.s:not(.empty) { width: 190px; --portrait-size: 84px; }
 .game .seat-plaque { flex-direction: column; align-items: flex-start; min-height: 0; border: 0; background: none; box-shadow: none; border-radius: 0; }
-.game .portrait { width: 76px; height: 76px; margin: 0; z-index: 1; }
+.game .portrait { width: 84px; height: 84px; margin: 0; z-index: 1; }
 .game .avatar { box-sizing: border-box; overflow: hidden; position: relative; }
 .game .avatar img { border-radius: 50%; object-position: center; }
-.game .seat-info { flex: none; width: 100%; min-height: 44px; box-sizing: border-box; padding: 3px 8px; margin-top: 5px; border: 1px solid var(--line); border-radius: 7px; background: var(--panel); box-shadow: 0 3px 8px #0004; z-index: 2; }
+.game .seat-info { flex: none; width: 100%; min-height: 44px; box-sizing: border-box; padding: 3px 8px; margin-top: -5px; border: 1px solid var(--line); border-radius: 7px; background: var(--panel); box-shadow: 0 3px 8px #0004; z-index: 2; }
 .game .seat-info strong { font-size: 12px; line-height: 17px; padding: 0; }
 .game .seat-stack { font-size: 18px; line-height: 23px; }
 .game .seat .seat-cards { left: auto; right: 3px; top: 7px; bottom: auto; transform: none; z-index: 0; }
-.game .seat .card, .game .seat.hero-seat .card { width: 40px; height: 56px; transform: rotate(-5deg); }
+.game .seat .card, .game .seat.hero-seat .card { width: 44px; height: 62px; transform: rotate(-5deg); }
 .game .seat .card + .card { margin-left: 2px; transform: rotate(5deg); }
 .game .position-badge, .game .seat.n .position-badge { left: 50%; right: auto; bottom: calc(100% + 3px); transform: translateX(-50%); font-size: 10px; line-height: 16px; }
 .game .action-label { height: 24px; line-height: 22px; font-size: 11px; margin-top: 3px; }
-.game .seat-status { top: calc(var(--portrait-size) + 7px); right: 0; z-index: 3; }
+.game .seat-status { top: calc(var(--portrait-size) - 3px); right: 0; z-index: 3; }
 .game .seat:has(.seat-status .icon-button) .seat-info { padding-right: 48px; }
 .game .seat:has(.seat-status .icon-button) .seat-stack { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .game .seat .dealer { top: 88px; }
@@ -663,7 +663,7 @@ main.table-mode { max-width: 1800px; padding: 12px 24px; }
 .game .s .seat-bet { top: 6px; bottom: auto; left: calc(100% + 8px); }
 .game .board .card { width: clamp(48px,5cqw,72px); height: clamp(67px,7cqw,101px); }
 @media (min-width: 601px) {
-  .game .seat.n { top: 24px; }
+  .game .seat.n { top: 0; }
   .game .nw .seat-bet, .game .sw .seat-bet { left: calc(100% + 14px); }
   .game .ne .seat-bet, .game .se .seat-bet { right: calc(100% + 14px); }
   .game .seat.nw, .game .seat.ne { top: 23%; }
@@ -671,34 +671,34 @@ main.table-mode { max-width: 1800px; padding: 12px 24px; }
   .game .board { top: 32%; }
 }
 @container (max-height: 500px) {
-  .game .portrait { width: 60px; height: 60px; }
-  .game .seat:not(.empty), .game .seat.s:not(.empty) { width: 146px; --portrait-size: 60px; }
+  .game .portrait { width: 64px; height: 64px; }
+  .game .seat:not(.empty), .game .seat.s:not(.empty) { width: 158px; --portrait-size: 64px; }
   .game .seat .seat-cards { top: 5px; }
-  .game .seat .card, .game .seat.hero-seat .card { width: 34px; height: 48px; }
+  .game .seat .card, .game .seat.hero-seat .card { width: 38px; height: 53px; }
   .game .seat.n { top: 24px; }
   .game .board { top: 26%; }
-  .game .seat.n:not(.empty) { width: 264px; }
-  .game .n .seat-plaque { width: 180px; flex-direction: row; align-items: center; gap: 6px; }
+  .game .seat.n:not(.empty) { width: 280px; }
+  .game .n .seat-plaque { width: 184px; flex-direction: row; align-items: center; gap: 6px; }
   .game .n .seat-info { width: 114px; margin-top: 0; }
-  .game .n .seat-status { top: 8px; right: 84px; }
+  .game .n .seat-status { top: 8px; right: 96px; }
   .game .board .card { width: 46px; height: 64px; }
 }
 @container (max-height: 360px) {
-  .game .seat.n:not(.empty), .game .seat.s:not(.empty) { width: 264px; }
-  .game .s .seat-plaque { width: 180px; flex-direction: row; align-items: center; gap: 6px; }
+  .game .seat.n:not(.empty), .game .seat.s:not(.empty) { width: 280px; }
+  .game .s .seat-plaque { width: 184px; flex-direction: row; align-items: center; gap: 6px; }
   .game .s .seat-info { width: 114px; margin-top: 0; }
-  .game .s .seat-status { top: 8px; right: 84px; }
+  .game .s .seat-status { top: 8px; right: 96px; }
   .game .seat.n { top: -32px; }
   .game .seat.nw, .game .seat.ne { top: 0; }
   .game .seat.sw, .game .seat.se { bottom: 0; }
-  .game .board { top: 22%; }
+  .game .board { top: 20%; }
   .game .pot { height: 32px; margin-bottom: 4px; }
   .game .pot > span { line-height: 12px; font-size: 10px; }
   .game .pot > b { height: 18px; font-size: 18px; }
 }
 @media (max-width: 600px) {
-  .game .seat:not(.empty), .game .seat.s:not(.empty) { width: 114px; --portrait-size: 54px; }
-  .game .portrait { width: 54px; height: 54px; }
+  .game .seat:not(.empty), .game .seat.s:not(.empty) { width: 124px; --portrait-size: 58px; }
+  .game .portrait { width: 58px; height: 58px; }
   .game .seat-info { padding: 2px 4px; }
   .game .seat-info strong { font-size: 11px; }
   .game .seat-stack { font-size: 16px; }
@@ -706,7 +706,7 @@ main.table-mode { max-width: 1800px; padding: 12px 24px; }
   .game .seat.sw, .game .seat.se { top: 360px; }
   .game .board { top: 190px; }
   .game .seat .seat-cards { top: 6px; right: 2px; }
-  .game .seat .card, .game .seat.hero-seat .card { width: 25px; height: 35px; }
+  .game .seat .card, .game .seat.hero-seat .card { width: 27px; height: 38px; }
   .game .position-badge { font-size: 9px; padding: 0 2px; }
   .game .board .card { width: 43px; height: 60px; }
   .game .s .seat-bet { top: -12px; bottom: auto; width: 56px; }
@@ -715,3 +715,39 @@ main.table-mode { max-width: 1800px; padding: 12px 24px; }
 @media (min-width: 601px) and (max-height: 450px) {
   .game .seat.n { top: 32px; }
 }
+
+
+/* Board arrivals are short, staggered transforms; table geometry stays fixed. */
+.game .board-deal { animation: board-arrive 280ms cubic-bezier(0.23,1,0.32,1) both; }
+.game .board-deal .card-face { animation: board-face 280ms cubic-bezier(0.77,0,0.175,1) both; }
+.game .deal-back { position: absolute; inset: 0; width: 100%; height: 100%; animation: board-back 280ms cubic-bezier(0.77,0,0.175,1) both; }
+@keyframes board-arrive { from { opacity: 0; transform: translateY(-24%) scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes board-face { 0%,40% { opacity: 0; transform: perspective(500px) rotateY(90deg); } 100% { opacity: 1; transform: perspective(500px) rotateY(0); } }
+@keyframes board-back { 0%,35% { opacity: 1; transform: perspective(500px) rotateY(0); } 55%,100% { opacity: 0; transform: perspective(500px) rotateY(-90deg); } }
+.game.reduced-motion .board-deal, .game.reduced-motion .board-deal .card-face { animation: none; }
+.game.reduced-motion .deal-back { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .game .board-deal, .game .board-deal .card-face { animation: none; }
+  .game .deal-back { display: none; }
+}
+.game .poker-chips { display: inline-flex; align-items: end; width: auto; height: 34px; }
+.game .chip-pile { width: 32px; height: 34px; flex: none; }
+.game .chip-pile + .chip-pile { margin-left: -16px; }
+.game .pot-chips { position: absolute; top: 8px; right: 0; pointer-events: none; }
+@media (max-width: 600px) {
+  .game .poker-chips, .game .chip-pile { height: 27px; }
+  .game .chip-pile { width: 26px; }
+  .game .chip-pile + .chip-pile { margin-left: -14px; }
+}
+
+@media (min-width: 601px) {
+  .game .felt { inset: 24px 5% 24px; }
+  .game .table-action-slot { width: min(100%,1040px); }
+}
+
+.card.casino-card > .card-face, .game .card.casino-card > .card-face { display: block; position: static; inset: auto; width: 100%; height: 100%; }
+
+/* Reserve a separate header lane for collected chips, clear of cards and seats. */
+.game .pot { width: min(220px,calc(100% - 160px)); }
+.game .pot-chips .chip-pile { width: 24px; height: 30px; }
+.game .pot-chips .chip-pile + .chip-pile { margin-left: -16px; }

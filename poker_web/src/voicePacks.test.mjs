@@ -102,3 +102,34 @@ test('all 18 shipped voice clips match the approved hashes', () => {
     }
   }
 });
+
+test('remote actor voice does not change listener preference', async () => {
+  const { sound } = await import('./sound.ts?remote-actor');
+  sound.setUser('listener');
+  await sound.selectVoice('shoujo');
+  await sound.play('voice_call', false, 'nekomimi');
+  assert.match(played.at(-1), /voices\/nekomimi\/voice-call/);
+  assert.equal(sound.preferences().voicePack, 'shoujo');
+  sound.stop();
+});
+
+test('late voice-save failure notifies the settings snapshot after preview finishes', async () => {
+  const original = fetch;
+  let finish;
+  const pending = new Promise(resolve => { finish = resolve; });
+  globalThis.fetch = async (url, options) => url === '/api/preferences' ? pending : original(url, options);
+  const { sound } = await import('./sound.ts?save-failure');
+  sound.setUser('save-failure');
+  try {
+    await sound.selectVoice('shoujo');
+    const before = sound.preferences();
+    let notified = 0;
+    const unsubscribe = sound.subscribe(() => notified++);
+    finish({ok:false});
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(sound.voiceSyncFailed(), true);
+    assert(notified > 0);
+    assert.notEqual(sound.preferences(), before);
+    unsubscribe();
+  } finally { finish({ok:false}); sound.stop(); globalThis.fetch = original; }
+});

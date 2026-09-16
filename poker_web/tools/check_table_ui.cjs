@@ -45,6 +45,46 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));let chrome,ws;
  assert.equal(await run("document.body.innerText.includes('ICEZ POKER')||document.body.innerText.includes('等待下一手')"),false);
  assert.equal(await run("document.querySelector('.action-panel').inert"),true);
  assert.deepEqual(await run("[...document.querySelectorAll('.preselection button')].map(b=>b.textContent)"),['棄牌／過牌','跟任何注']);
+ // BB is a table-wide display preference, never a money conversion.
+ await run("document.querySelector('.own-stack').click()");
+ assert(await run("[...document.querySelectorAll('.seat-stack,.seat-bet b')].every(e=>e.textContent.includes('BB'))"),'BB does not cover every player');
+ assert(await run("document.querySelector('.pot b').textContent.includes('BB')"),'pot not in BB');
+ await run("document.querySelector('.own-stack').click()");
+ const originalHand=await run('JSON.stringify(snapshot.hand)');
+ await publish("snapshot.hand.id='animation-test';snapshot.hand.board=[];snapshot.hand.pot='300';snapshot.hand.players.forEach(p=>p.bet='0')");
+ assert(await run("document.querySelectorAll('.pot-chips .chip-pile').length>0"),'collected pot has no chips');
+ async function revealBoard(cards) {
+  await publish(`snapshot.hand.board=${JSON.stringify(cards)};snapshot.event_seq++;snapshot.events=[{id:'board:'+snapshot.event_seq,seq:snapshot.event_seq,at:Date.now()/1000,hand_id:snapshot.hand.id,kind:'board',board:${JSON.stringify(cards)}}]`);
+  await until(`document.querySelectorAll('.board .casino-art').length===${cards.length}`);
+ }
+ await revealBoard(['As','Kd','7h']);
+ assert.equal(await run("document.querySelectorAll('.board-deal').length"),3);
+ assert.equal(await run("getComputedStyle(document.querySelector('.board-deal')).animationName"),'board-arrive');
+ const firstCard=await run("document.querySelector('.board .card').outerHTML");
+ await publish('');
+ assert.equal(await run("document.querySelector('.board .card').outerHTML"),firstCard,'same snapshot retriggers deal');
+ await revealBoard(['As','Kd','7h','2c']);
+ assert.equal(await run("document.querySelectorAll('.board-deal').length"),1);
+ await run("document.querySelector('.game').classList.add('reduced-motion')");
+ await revealBoard(['As','Kd','7h','2c','9d']);
+ assert.equal(await run("getComputedStyle(document.querySelector('.board-deal')).animationName"),'none');
+ assert.equal(await run("getComputedStyle(document.querySelector('.deal-back')).display"),'none');
+ await run("document.querySelector('.game').classList.remove('reduced-motion')");
+ await publish("snapshot.hand.id='lost-event';snapshot.hand.board=[]");
+ await revealBoard(['As','Kd','7h']);
+ await publish("snapshot.hand.board=['As','Kd','7h','2c'];snapshot.event_seq+=2;snapshot.events=[]");
+ await until("document.querySelectorAll('.board .casino-art').length===4");
+ assert.equal(await run("document.querySelectorAll('.board-deal').length"),0,'gap must become silent baseline');
+ await publish("snapshot.hand.board=['As','Kd','7h','2c','9d'];snapshot.event_seq++;snapshot.server_time=Date.now()/1000;snapshot.events=[{id:'late',seq:snapshot.event_seq,at:Date.now()/1000-10,kind:'board',hand_id:snapshot.hand.id,board:snapshot.hand.board}]");
+ await until("document.querySelectorAll('.board .casino-art').length===5");
+ assert.equal(await run("document.querySelectorAll('.board-deal').length"),0,'expired event must not freeze board');
+ await publish("snapshot.hand.players[1].cards=['Qc','Qd']");
+ assert(await run("[...document.querySelectorAll('.card-face')].every(e=>getComputedStyle(e).display!=='none'&&getComputedStyle(e).position==='static')"),'public card artwork hidden or offset');
+ await publish("delete snapshot.server_time");
+ await publish("snapshot.hand.id='next-hand';snapshot.hand.board=[];snapshot.event_seq+=3;snapshot.events=[{id:'newdeal',seq:snapshot.event_seq-2,at:Date.now()/1000,kind:'deal',hand_id:'next-hand'},{id:'newblind',seq:snapshot.event_seq-1,at:Date.now()/1000,kind:'action',hand_id:'next-hand',user:'me',action:'small_blind',amount:'50'},{id:'newturn',seq:snapshot.event_seq,at:Date.now()/1000,kind:'turn',hand_id:'next-hand',user:'me'}]");
+ await until("document.querySelector('.hero-seat .action-label').textContent.includes('小盲')");
+
+ await publish(`snapshot.hand=${originalHand}`);
  // Desktop controls stay visible without scrolling; the table scales uniformly.
  const savedHand=await run('JSON.stringify(snapshot.hand)');
  for(const [width,height] of [[844,540],[601,650],[699,650],[800,650],[1000,650],[1099,650],[1100,650],[1100,500],[1200,540],[1366,768],[1920,1080],[2560,1440],[3440,1440],[3840,2160],[900,1400]]){
@@ -141,6 +181,7 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));let chrome,ws;
     assert(await run("(()=>{const a=document.querySelector('.board .cards').getBoundingClientRect();return [...document.querySelectorAll('.seat-cards')].every(e=>{const b=e.getBoundingClientRect();return a.right<=b.left||b.right<=a.left||a.bottom<=b.top||b.bottom<=a.top})})()"),`board overlaps player cards ${width}/${theme}/${large}`);
     assert(await run("(()=>{const ps=[...document.querySelectorAll('.seat-plaque')].map(e=>e.getBoundingClientRect());return ps.every((a,i)=>ps.slice(i+1).every(b=>a.right<=b.left||b.right<=a.left||a.bottom<=b.top||b.bottom<=a.top))})()"),`player plaques overlap ${width}/${theme}/${large}`);
     assert(await run("[...document.querySelectorAll('.seat-cards')].every(c=>{const a=c.closest('.seat').querySelector('.portrait').getBoundingClientRect(),b=c.getBoundingClientRect();return a.right+4<=b.left})"),`cards cover avatar ${width}/${theme}/${large}`);
+    assert(await run("[...document.querySelectorAll('.board .card-face')].every(e=>getComputedStyle(e).display!=='none')"),`large mobile card artwork hidden ${width}/${large}`);
     const before=await geometry();
     assert(await run("Math.abs(document.querySelector('.preselection').getBoundingClientRect().top-document.querySelector('.action-panel').getBoundingClientRect().top)<1"),JSON.stringify({width,theme,large,rects:await run("['.preselection','.action-panel','.table-action-slot'].map(q=>{const e=document.querySelector(q),r=e.getBoundingClientRect(),s=getComputedStyle(e);return {q,top:r.top,height:r.height,align:s.alignSelf,margin:s.margin,position:s.position};})")}));
     await publish("snapshot.hand.actor=0;snapshot.hand.legal={fold:true,call:'50',raise:true,min_raise_to:'100',max_raise_to:'1000'};snapshot.hand.pot='999999999999999999999999999999'");

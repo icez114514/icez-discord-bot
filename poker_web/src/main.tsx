@@ -27,7 +27,7 @@ function App() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
-  useEffect(() => { sound.setUser(account?.user_id ?? ''); }, [account?.user_id]);
+  useEffect(() => { sound.setUser(account?.user_id ?? ''); if (account) void sound.loadVoicePreference(); }, [account?.user_id]);
   async function refresh(signal?: AbortSignal) {
     try {
       const response = await fetch('/api/account', { signal, credentials: 'same-origin' });

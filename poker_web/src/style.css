@@ -86,7 +86,7 @@ dialog form > button { width: 100%; }
 .card.red { color: #C51E32; }
 .card b { position: absolute; top: 5px; left: 6px; font-size: 24px; line-height: 1; }
 .card b small { display: block; font-size: 14px; text-align: center; color: inherit; margin-top: 2px; }
-.card > span { position: absolute; bottom: 6px; right: 5px; font-size: 27px; line-height: 1; }
+.card > span:not(.card-face) { position: absolute; bottom: 6px; right: 5px; font-size: 27px; line-height: 1; }
 .card.blank { background: transparent; border: 1px solid var(--trim); box-shadow: none; display: grid; place-items: center; color: var(--trim); }
 .card.back { background: repeating-linear-gradient(45deg,var(--felt-dark),var(--felt-dark) 4px,var(--felt) 4px,var(--felt) 5px); color: var(--trim); border: 1px solid var(--trim); display: grid; place-items: center; }
 .table-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; margin: 16px 0; }

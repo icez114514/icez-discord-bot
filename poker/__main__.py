@@ -18,7 +18,7 @@ async def migrate(config):
     require_sqlite(config)
     backup = config.backup_dir / ("upgrade-" + secrets.token_hex(12) + ".db")
     async with Store(config.data_dir / "poker.db", initialize=True, migration_backup=backup):
-        print("Poker schema version 4 ready; existing databases remain in maintenance")
+        print("Poker schema version 5 ready; existing databases remain in maintenance")
 
 
 async def serve(config):

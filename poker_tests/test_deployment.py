@@ -1,4 +1,5 @@
 import asyncio
+from contextlib import closing
 import os
 import sqlite3
 import tempfile
@@ -24,7 +25,7 @@ class BackupTests(unittest.IsolatedAsyncioTestCase):
                 account, ledger = await store.account("111"), await store.ledger("111")
                 result = await take_backup(store, root / "snapshots")
                 source = root / "snapshots" / result["file"]
-                self.assertEqual(inspect_snapshot(source)["schema"], 4)
+                self.assertEqual(inspect_snapshot(source)["schema"], 5)
                 self.assertEqual(result["sha256"], file_hash(source))
                 restore(source, root / "restored", result["sha256"])
                 async with Store(root / "restored/poker.db") as recovered:
@@ -121,6 +122,20 @@ class BackupTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(file_hash(root / "snapshots" / first["file"]), first["sha256"])
                 self.assertEqual(len(list((root / "snapshots").glob("snapshot-*.db"))), 1)
 
+    async def test_voice_schema_upgrade_preserves_theme_and_accounts(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "poker.db"
+            async with Store(path, initialize=True) as store:
+                await store.login("111")
+                await store.run(lambda db: db.execute("INSERT INTO account_preferences VALUES('111','midnight_oak')"))
+            with closing(sqlite3.connect(path)) as db:
+                db.execute("DROP TABLE account_voices")
+                db.execute("PRAGMA user_version=4")
+            async with Store(path, initialize=True) as store:
+                self.assertEqual((await store.account("111"))["available"], "50000")
+                self.assertEqual(await store.run(lambda db: db.execute("SELECT theme FROM account_preferences").fetchone()[0]), "midnight_oak")
+                self.assertEqual(await store.run(lambda db: db.execute("PRAGMA user_version").fetchone()[0]), 5)
+
     async def test_migration_backs_up_and_leaves_maintenance(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
@@ -130,7 +145,7 @@ class BackupTests(unittest.IsolatedAsyncioTestCase):
             async with Store(root / "live/poker.db", initialize=True, migration_backup=before) as store:
                 self.assertTrue(store.maintenance)
                 self.assertEqual((await store.account("111"))["available"], "50000")
-            self.assertEqual(inspect_snapshot(before)["schema"], 4)
+            self.assertEqual(inspect_snapshot(before)["schema"], 5)
 
 
 class DeploymentConfigTests(unittest.TestCase):

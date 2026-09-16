@@ -43,7 +43,7 @@ def inspect_snapshot(path):
         if db.execute("PRAGMA foreign_key_check").fetchone():
             raise ValueError("snapshot_foreign_keys_failed")
         schema = db.execute("PRAGMA user_version").fetchone()[0]
-        if schema not in (1, 2, 3, 4):
+        if schema not in (1, 2, 3, 4, 5):
             raise ValueError("snapshot_schema_unsupported")
         mismatch = db.execute("""
             SELECT 1 FROM accounts a LEFT JOIN (

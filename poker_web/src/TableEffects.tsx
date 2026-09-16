@@ -4,7 +4,7 @@ import type { PublicEvent } from './tableAudio';
 import { chips } from './tablePresentation';
 
 type Flight = { id: string; amount: string; kind: string; style: CSSProperties };
-export function ChipFlights({ events, scene }: { events: PublicEvent[]; scene: RefObject<HTMLDivElement | null> }) {
+export function ChipFlights({ events, scene, format = chips }: { events: PublicEvent[]; scene: RefObject<HTMLDivElement | null>; format?: (amount: string) => string }) {
   const [flights, setFlights] = useState<Flight[]>([]);
   useLayoutEffect(() => {
     const root = scene.current;
@@ -25,7 +25,7 @@ export function ChipFlights({ events, scene }: { events: PublicEvent[]; scene: R
       } as CSSProperties }];
     })));
   }, [events, scene]);
-  return <div className="chip-layer" aria-hidden="true">{flights.map(f => <span key={f.id} className={'chip-flight ' + f.kind} style={f.style}><PokerChips /> {f.kind === 'refund' ? '退回 ' : ''}{chips(f.amount)}</span>)}</div>;
+  return <div className="chip-layer" aria-hidden="true">{flights.map(f => <span key={f.id} className={'chip-flight ' + f.kind} style={f.style}><PokerChips amount={f.amount} /> {f.kind === 'refund' ? '退回 ' : ''}{format(f.amount)}</span>)}</div>;
 }
 export type Settlement = { pots: { id: string; amount: string; winners: string[]; awards: Record<string, string> }[]; refunds: Record<string, string>; void: boolean };
 export function SettlementDetails({ settlement, name }: { settlement: Settlement; name: (id: string) => string }) {

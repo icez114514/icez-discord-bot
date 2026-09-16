@@ -38,8 +38,27 @@ const sources = new Map<AudioBufferSourceNode, number>();
 let voiceSource: AudioBufferSourceNode | undefined;
 let voiceRequest = 0;
 let resuming: Promise<void> | undefined;
-function cueFile(cue: typeof catalog[Sound]) {
-  return cue.group === 'voice' ? `voices/${prefs.voicePack}/${cue.file}` : cue.file;
+let voiceSyncFailed = false, voiceRevision = 0;
+let voiceSave = Promise.resolve();
+function setVoiceSyncFailed(value: boolean) {
+  if (voiceSyncFailed === value) return;
+  voiceSyncFailed = value; prefs = { ...prefs };
+  for (const listener of listeners) listener();
+}
+function saveVoice(pack: VoicePack) {
+  const owner = user;
+  voiceSave = voiceSave.then(async () => {
+    if (owner !== user || !owner) return;
+    try {
+      const response = await fetch('/api/preferences', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ voice_pack: pack }) });
+      if (!response.ok) throw Error('save');
+      if (owner === user) setVoiceSyncFailed(false);
+    } catch { if (owner === user) setVoiceSyncFailed(true); }
+  });
+  return voiceSave;
+}
+function cueFile(cue: typeof catalog[Sound], pack: VoicePack = prefs.voicePack) {
+  return cue.group === 'voice' ? `voices/${pack}/${cue.file}` : cue.file;
 }
 function buffer(file: string, audio: AudioContext) {
   let pending = buffers.get(file);
@@ -61,11 +80,24 @@ export const sound = {
   preferences: () => prefs,
   subscribe(listener: () => void) { listeners.add(listener); return () => { listeners.delete(listener); }; },
   diagnosis: () => diagnostic,
+  voiceSyncFailed: () => voiceSyncFailed,
+  async loadVoicePreference() {
+    const owner = user, revision = voiceRevision;
+    try {
+      const response = await fetch('/api/preferences');
+      if (!response.ok) throw Error('load');
+      const data = await response.json();
+      if (owner !== user || revision !== voiceRevision) return;
+      const pack = voicePacks.find(p => p.id === data.voice_pack)?.id;
+      if (pack) sound.configure({ voicePack: pack });
+      else await saveVoice(prefs.voicePack);
+    } catch { if (owner === user) setVoiceSyncFailed(true); }
+  },
   storageFailed: () => storageFailed,
   isMuted: () => prefs.muted,
   setUser(next: string) {
     if (user === next) return;
-    sound.stop(); user = next; storageFailed = false;
+    sound.stop(); user = next; storageFailed = false; voiceSyncFailed = false; voiceRevision++;
     let saved = sessions.get(user);
     if (!saved) {
       try { saved = normalize(JSON.parse(localStorage.getItem('poker-sound:v1:' + user) ?? 'null')); }
@@ -85,7 +117,7 @@ export const sound = {
       context ??= new AudioContext();
       const audio = context;
       const resumed = resuming = audio.resume();
-      for (const file of new Set(Object.values(catalog).map(cueFile))) void buffer(file, audio).catch(() => {});
+      for (const file of new Set(Object.values(catalog).flatMap(cue => cue.group === 'voice' ? voicePacks.map(p => cueFile(cue, p.id)) : [cueFile(cue)]))) void buffer(file, audio).catch(() => {});
       await resumed;
       diagnostic = audio.state === 'running' ? 'ready' : 'locked';
     } catch { diagnostic = 'unavailable'; }
@@ -103,10 +135,11 @@ export const sound = {
     if (revision === epoch) await sound.play(name, true);
   },
   async selectVoice(voicePack: VoicePack) {
-    sound.configure({ voicePack });
+    voiceRevision++; sound.configure({ voicePack });
+    void saveVoice(voicePack);
     await sound.preview('voice_allin');
   },
-  async play(name: Sound, preview = false) {
+  async play(name: Sound, preview = false, pack: VoicePack = prefs.voicePack) {
     const requestEpoch = epoch, started = performance.now();
     if (context?.state !== 'running' && resuming) {
       try { await resuming; } catch { diagnostic = 'locked'; return; }
@@ -118,7 +151,7 @@ export const sound = {
     const revision = epoch, cue = catalog[name];
     const voiceRevision = cue.group === 'voice' ? ++voiceRequest : null;
     try {
-      const decoded = await buffer(cueFile(cue), audio);
+      const decoded = await buffer(cueFile(cue, pack), audio);
       const reason = blocked(name);
       if (reason) { diagnostic = reason; return; }
       if (revision !== epoch || (voiceRevision !== null && voiceRevision !== voiceRequest) || performance.now() - started > (preview ? 10000 : 600)) { diagnostic = 'expired'; return; }

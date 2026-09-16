@@ -1,23 +1,24 @@
 import { useEffect, useRef, useState } from 'react';
-import { EventCursor, eventSound, eventVoice, type EventState, type PublicEvent } from './tableAudio';
+import { EventCursor, eventSound, eventVoice, actorVoice, type EventState, type PublicEvent } from './tableAudio';
 import { sound } from './sound';
 
 export const chips = (value: string) => BigInt(value).toLocaleString('zh-TW');
 const actions: Record<string, string> = { small_blind: '小盲', big_blind: '大盲', check: '過牌', fold: '棄牌', call: '跟注', bet: '下注', raise: '加注' };
-export function actionLabel(event: PublicEvent) {
+export function actionLabel(event: PublicEvent, format = chips) {
   const label = event.all_in ? 'ALL-IN 全下' : event.action === 'raise' && (event.bet_level ?? 0) >= 3 ? `${event.bet_level}-BET 再加注` : actions[event.action ?? ''] ?? '';
   if (!event.amount || event.amount === '0') return label;
   return event.action === 'raise'
-    ? label + '至 ' + chips(event.raise_to ?? '0')
-    : label + ' ' + chips(event.amount);
+    ? label + '至 ' + format(event.raise_to ?? '0')
+    : label + ' ' + format(event.amount);
 }
-type View = { context: string; flights: PublicEvent[]; actions: Record<string, PublicEvent>; wins: Record<string, PublicEvent> };
-type Snapshot = EventState & { control?: boolean; hand?: { id: string } | null; members?: { id: string; seat: number }[] };
+type View = { board?: PublicEvent; context: string; flights: PublicEvent[]; actions: Record<string, PublicEvent>; wins: Record<string, PublicEvent> };
+type Snapshot = EventState & { control?: boolean; hand?: { id: string; board?: string[] } | null; members?: { id: string; seat: number; voice_pack?: import("./sound").VoicePack }[] };
 const empty = (context = ''): View => ({ context, flights: [], actions: {}, wins: {} });
 export function useTablePresentation(user: string) {
   const [view, setView] = useState<View>(() => empty());
   const cursor = useRef(new EventCursor());
   const context = useRef('');
+  const boardSnapshot = useRef({ hand: '', cards: '' });
   const timers = useRef(new Set<ReturnType<typeof setTimeout>>());
   const celebrated = useRef(new Set<string>());
   const announced = useRef(new Set<string>());
@@ -42,7 +43,14 @@ export function useTablePresentation(user: string) {
     const key = state.id + ':' + (state.hand?.id ?? '') + ':' + (state.members ?? []).map(m => m.id + '@' + m.seat).sort().join(',');
     if (context.current !== key) { context.current = key; clear(); }
     if (baseline || document.hidden) reset();
-    const events = cursor.current.consume(state).filter(e => !e.hand_id || e.hand_id === state.hand?.id);
+    let events = cursor.current.consume(state).filter(e => !e.hand_id || e.hand_id === state.hand?.id);
+    const boardKey = (state.hand?.board ?? []).join(',');
+    const latestBoard = events.filter(e => e.kind === 'board').at(-1)?.board;
+    if (boardSnapshot.current.hand === state.hand?.id && boardSnapshot.current.cards !== boardKey && (!latestBoard || latestBoard.join(',') !== (state.hand?.board ?? []).join(','))) {
+      // A missing/expired range is a silent authoritative baseline, never stale artwork.
+      clear(); events = [];
+    }
+    boardSnapshot.current = { hand: state.hand?.id ?? '', cards: boardKey };
     const step = Math.min(240, 1600 / Math.max(1, events.length));
     for (const event of events) {
       const cue = eventSound(event, user, !!state.control);
@@ -59,12 +67,13 @@ export function useTablePresentation(user: string) {
         }
         const flight = event.kind === 'collect' || ['payout', 'refund'].includes(event.kind) || event.kind === 'action' && BigInt(event.amount ?? '0') > 0n;
         setView(old => ({ ...old,
+          board: event.kind === 'board' ? event : old.board,
           flights: flight ? [...old.flights, event] : old.flights,
           actions: event.kind === 'action' && event.user ? { ...old.actions, [event.user]: event } : old.actions,
         }));
         // Keep each confirmed action visible until that player's next action or new hand.
         const voice = eventVoice(event);
-        if (voice) void sound.play(voice);
+        if (voice) void sound.play(voice, false, actorVoice(event, state.members ?? []));
         if (flight) delay(280, () => {
           setView(old => ({ ...old, flights: old.flights.filter(e => e.id !== event.id) }));
           if (event.kind !== 'payout' || !event.user || celebrated.current.has(event.user)) return;

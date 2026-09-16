@@ -135,6 +135,33 @@ class TableWebTests(unittest.TestCase):
         return self.connect(user)
 
 
+    def test_voice_preferences_are_public_per_actor_and_npc_choice_is_durable(self):
+        self.join(A)
+        self.join(B)
+        for user, pack in ((A, "shoujo"), (B, "nekomimi")):
+            response = self.client.put("/api/preferences", headers=self.headers(user), json={"voice_pack": pack})
+            self.assertEqual(response.status_code, 200, response.text)
+        voices = {m["id"]: m["voice_pack"] for m in self.view(B)["members"]}
+        self.assertEqual(voices[A], "shoujo")
+        self.assertEqual(voices[B], "nekomimi")
+        self.client.put("/api/preferences", headers=self.headers(A), json={"theme": "midnight_oak"})
+        self.assertEqual(self.client.get("/api/preferences", headers=self.headers(A)).json()["voice_pack"], "shoujo")
+        self.assertEqual(self.client.put("/api/preferences", headers=self.headers(A), json={"voice_pack":"../bad"}).status_code, 422)
+        with patch("poker.tables.secrets.choice", return_value="nekomimi"):
+            response, payload = self.command(A, "add_npc", seat=4)
+        self.assertEqual(response.status_code, 200)
+        self.client.post("/api/table/commands", headers=self.headers(A), json=payload)
+        npc = next(m for m in self.view()["members"] if m["id"].startswith("npc:"))
+        self.assertEqual(npc["voice_pack"], "nekomimi")
+        self.assertEqual(next(m for m in self.view(B)["members"] if m["id"] == npc["id"])["voice_pack"], "nekomimi")
+        self.start_hand()
+        state = self.view()
+        actor = state["hand"]["players"][state["hand"]["actor"]]["id"]
+        if actor in (A, B):
+            self.command(actor, "act", hand_id=state["hand"]["id"], turn=state["hand"]["turn"], action="fold")
+            event = next(e for e in reversed(self.view()["events"]) if e.get("user") == actor and e.get("action") == "fold")
+            self.assertEqual(event["voice_pack"], voices[actor])
+
     def test_host_adds_bot_to_selected_seat_once(self):
         self.join(A)
         response, payload = self.command(A, "add_npc", seat=4)

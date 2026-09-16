@@ -54,7 +54,7 @@ class SchedulerTests(unittest.IsolatedAsyncioTestCase):
             await asyncio.wait_for(wait_complete(), timeout=4)
             self.assertEqual(calls, ["slow", "fast"])
             self.assertEqual(list(completed), ["fast", "slow"])
-            self.assertTrue(all(1 <= n < 5 for n in completed.values()))
+            self.assertTrue(all(1 <= n < 5 for n in completed.values()), completed)
         finally:
             task.cancel()
             await asyncio.gather(task, return_exceptions=True)

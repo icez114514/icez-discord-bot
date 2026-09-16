@@ -29,3 +29,12 @@ test('board, payouts and refunds in one delivery all retain distinct sound cues'
   assert.equal(eventSound(event(5, 'turn', { user: 'a' }), 'a', false), null);
   assert.equal(eventSound(event(6, 'bank', { user: 'a' }), 'a', true), 'bank');
 });
+
+test('action voice follows its actor and the event preserves the chosen voice', async () => {
+  const { actorVoice } = await import('./tableAudio.ts');
+  const members = [{id:'alice',voice_pack:'shoujo'},{id:'bob',voice_pack:'nekomimi'},{id:'npc:1',voice_pack:'oneesan'}];
+  assert.equal(actorVoice({user:'bob'},members),'nekomimi');
+  assert.equal(actorVoice({user:'alice'},members),'shoujo');
+  assert.equal(actorVoice({user:'npc:1'},members),'oneesan');
+  assert.equal(actorVoice({user:'alice',voice_pack:'nekomimi'},members),'nekomimi');
+});

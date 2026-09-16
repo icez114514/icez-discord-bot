@@ -67,7 +67,7 @@ python -m poker serve
 
 `check` validates configuration and prints the actual SQLite version. It does not
 validate credentials, phone support, HTTPS or guild access. `migrate` explicitly
-initializes schema 1 then upgrades through schema 4 in explicit transactions; it preserves existing accounts and refuses
+initializes schema 1 then upgrades through schema 5 in explicit transactions; it preserves existing accounts and refuses
 unknown versions. Stop the service before migrating. All entry points take the
 same OS exclusive lock, so a second worker or migrator fails before using the DB.
 `Ctrl+C` stops both listeners and drains the writer. The OS releases the lock on

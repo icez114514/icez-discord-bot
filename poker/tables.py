@@ -11,6 +11,7 @@ from . import money, rules
 from .presentation import emit, publish_hand
 from .sessions import authenticate
 from .store import Conflict
+from .voices import VOICE_PACKS, voice_for
 
 
 def initial(table_id="main"):
@@ -112,6 +113,7 @@ def public(db, table, user, connection=None):
                 "notice": m.get("notice"),
                 "expires": m.get("expires"),
                 "npc_failures": m.get("failures", 0),
+                "voice_pack": voice_for(db, m),
                 "connected": bool(m.get("control")),
             }
             for m in table["members"]
@@ -172,7 +174,7 @@ class Transaction:
 
     def finish_action(self, before):
         hand = self.table["hand"]
-        publish_hand(self.table, self.now)
+        publish_hand(self.table, self.now, self.db)
         for p in hand["players"]:
             chips = p["paid"] - before.get(p["id"], 0)
             if chips:
@@ -502,7 +504,7 @@ class Transaction:
                     reason="Fixed NPC table entry",
                 )
                 table["members"].append(
-                    {"id": npc, "seat": seat, "mode": "pending", "failures": 0}
+                    {"id": npc, "seat": seat, "mode": "pending", "failures": 0, "voice_pack": secrets.choice(VOICE_PACKS)}
                 )
         else:
             raise Conflict("unknown_table_command")

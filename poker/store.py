@@ -102,7 +102,10 @@ class Store(Sessions):
                 self.db.execute("ROLLBACK")
                 raise
             version = 4
-        if version != 4:
+        if version == 4 and self.initialize:
+            self.db.executescript(Path(__file__).with_name("voices-schema.sql").read_text(encoding="utf-8"))
+            version = 5
+        if version != 5:
             raise Conflict("database_schema_requires_migrate")
 
     @property

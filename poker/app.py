@@ -143,7 +143,7 @@ def create_app(config, transport=None, initialize=False):
     @app.get("/health")
     async def health():
         await app.state.store.run(lambda db: db.execute("SELECT 1").fetchone())
-        return {"status": "ok", "schema": 4, "maintenance": app.state.store.maintenance}
+        return {"status": "ok", "schema": 5, "maintenance": app.state.store.maintenance}
 
     @app.get("/auth/login")
     async def login():
