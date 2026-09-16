@@ -45,7 +45,7 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));let chrome,ws;
  assert.equal(await run("document.body.innerText.includes('ICEZ POKER')||document.body.innerText.includes('等待下一手')"),false);
  assert.equal(await run("document.querySelector('.action-panel').inert"),true);
  assert.deepEqual(await run("[...document.querySelectorAll('.preselection button')].map(b=>b.textContent)"),['棄牌／過牌','跟任何注']);
- // Short desktop viewports must scroll instead of compressing the board into seats.
+ // Desktop controls stay visible without scrolling; the table scales uniformly.
  const savedHand=await run('JSON.stringify(snapshot.hand)');
  for(const [width,height] of [[1100,500],[1200,540],[1366,768],[1920,1080],[2560,1440]]){
   await call('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:false});
@@ -61,14 +61,20 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));let chrome,ws;
     assert(await run("(()=>{const s=document.querySelector('.settlement').getBoundingClientRect(),b=document.querySelector('.board-phase').getBoundingClientRect();return s.top>=b.top&&s.bottom<=b.bottom})()"),`settlement detached from board at ${width}x${height}, large=${large}`);
     await publish(`snapshot.hand=${savedHand};snapshot.hand.actor=0;snapshot.hand.legal={fold:true,check:true,raise:true,min_raise_to:'100',max_raise_to:'1000'}`);
     assert.equal(await run("document.querySelector('.action-panel').inert"),false);
-    await run("document.querySelector('.action-buttons').scrollIntoView({block:'end'})");
-    assert(await run("(()=>{const r=document.querySelector('.action-buttons').getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight})()"),`actions unreachable at ${width}x${height}`);
-    await run('scrollTo(0,0)');
+    assert(await run("[...document.querySelectorAll('.table-stage button')].filter(b=>b.getBoundingClientRect().width>0).every(b=>{const r=b.getBoundingClientRect();return r.width>=43.9&&r.height>=43.9})"),`small scene hit target ${width}x${height}`);
+
+    assert(await run("(()=>{const r=document.querySelector('.action-buttons').getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight})()"),`actions outside initial viewport at ${width}x${height}`);
+    assert(await run("(()=>{const r=document.querySelector('.hero-seat').getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight})()"),`hero outside viewport at ${width}x${height}`);
+    await publish('snapshot.hand.button=0;snapshot.hand.players[0].bet="50"');
+    assert(await run("(()=>{const a=document.querySelector('.hero-seat .dealer').getBoundingClientRect(),b=document.querySelector('.hero-seat .seat-bet').getBoundingClientRect();return a.right<=b.left||b.right<=a.left||a.bottom<=b.top||b.bottom<=a.top})()"),'dealer and bet overlap');
    }
   }
   }
  }
  await run("document.querySelector('.game').classList.remove('large-cards')");
+ await call('Emulation.setDeviceMetricsOverride',{width:1200,height:540,deviceScaleFactor:1,mobile:false});
+ await publish(`snapshot.hand=${savedHand};snapshot.hand.actor=0;snapshot.hand.button=0;snapshot.hand.players[0].bet='50';snapshot.hand.legal={fold:true,call:'50',raise:true,min_raise_to:'100',max_raise_to:'1000'}`);
+ fs.writeFileSync(path.join(root,'tmp/table-docked-controls.png'),Buffer.from((await call('Page.captureScreenshot',{format:'png'})).data,'base64'));
  await call('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,deviceScaleFactor:1,mobile:false});
  await publish(`snapshot.hand=${savedHand}`);
  fs.writeFileSync(path.join(root,'tmp/table-desktop-fixed.png'),Buffer.from((await call('Page.captureScreenshot',{format:'png'})).data,'base64'));
@@ -94,6 +100,12 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));let chrome,ws;
    }
   }
  }
+ await call('Emulation.setDeviceMetricsOverride',{width:320,height:700,deviceScaleFactor:1,mobile:true});
+ await publish("snapshot.hand.payouts=null;snapshot.hand.button=0;snapshot.hand.players[0].bet='999999999999999999999999999999';snapshot.hand.actor=0;snapshot.hand.legal={fold:true,call:'50'}");
+ assert(await run("document.documentElement.scrollWidth<=innerWidth"),'long mobile bet overflows');
+ assert(await run("(()=>{const a=document.querySelector('.hero-seat .dealer').getBoundingClientRect(),b=document.querySelector('.hero-seat .seat-bet').getBoundingClientRect();return a.right<=b.left||b.right<=a.left||a.bottom<=b.top||b.bottom<=a.top})()"),'long mobile bet overlaps BTN');
+ assert(await run("(()=>{const r=document.querySelector('.action-buttons').getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight})()"),JSON.stringify(await run("['.table-action-slot','.action-panel','.turn-line','.bet-sizing','.action-buttons'].map(q=>{const r=document.querySelector(q).getBoundingClientRect();return {q,top:r.top,bottom:r.bottom,height:r.height}})")));
+ await publish('snapshot.hand.players[0].bet="0";snapshot.hand.button=1');
  await run("document.querySelector('.game').classList.remove('large-cards')");
  await publish("snapshot.hand.actor=1;snapshot.hand.payouts=null;snapshot.hand.pot='100';snapshot.hand.legal={};snapshot.hand.call_amount='50'");
  await click('棄牌／過牌');await click('棄牌／過牌');assert.equal(await run("document.querySelector('.preselection button').getAttribute('aria-pressed')"),'false');

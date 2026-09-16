@@ -1,3 +1,4 @@
+import { PokerChips } from './PokerChips';
 import { useLayoutEffect, useState, type CSSProperties, type RefObject } from 'react';
 import type { PublicEvent } from './tableAudio';
 import { chips } from './tablePresentation';
@@ -10,6 +11,7 @@ export function ChipFlights({ events, scene }: { events: PublicEvent[]; scene: R
     if (!root) return;
     const rect = root.getBoundingClientRect(), pot = root.querySelector('.pot')?.getBoundingClientRect();
     if (!pot) return;
+    const scale = rect.width / root.offsetWidth || 1;
     const center = { x: pot.x + pot.width / 2 - rect.x, y: pot.y + pot.height / 2 - rect.y };
     setFlights(events.flatMap(event => Object.entries(event.amounts ?? (event.user ? { [event.user]: event.amount ?? '0' } : {})).flatMap(([user, amount]) => {
       const seat = root.querySelector('[data-player="' + CSS.escape(user) + '"] .seat-plaque')?.getBoundingClientRect();
@@ -19,11 +21,11 @@ export function ChipFlights({ events, scene }: { events: PublicEvent[]; scene: R
       const from = event.kind === 'collect' ? bet : event.kind === 'action' ? player : center;
       const to = event.kind === 'collect' ? center : event.kind === 'action' ? bet : player;
       return [{ id: event.id + ':' + user, amount, kind: event.kind, style: {
-        '--from-x': from.x + 'px', '--from-y': from.y + 'px', '--to-x': to.x + 'px', '--to-y': to.y + 'px',
+        '--from-x': from.x / scale + 'px', '--from-y': from.y / scale + 'px', '--to-x': to.x / scale + 'px', '--to-y': to.y / scale + 'px',
       } as CSSProperties }];
     })));
   }, [events, scene]);
-  return <div className="chip-layer" aria-hidden="true">{flights.map(f => <span key={f.id} className={'chip-flight ' + f.kind} style={f.style}>◉ {f.kind === 'refund' ? '退回 ' : ''}{chips(f.amount)}</span>)}</div>;
+  return <div className="chip-layer" aria-hidden="true">{flights.map(f => <span key={f.id} className={'chip-flight ' + f.kind} style={f.style}><PokerChips /> {f.kind === 'refund' ? '退回 ' : ''}{chips(f.amount)}</span>)}</div>;
 }
 export type Settlement = { pots: { id: string; amount: string; winners: string[]; awards: Record<string, string> }[]; refunds: Record<string, string>; void: boolean };
 export function SettlementDetails({ settlement, name }: { settlement: Settlement; name: (id: string) => string }) {

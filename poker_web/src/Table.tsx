@@ -1,3 +1,5 @@
+import { TableStage } from './TableStage';
+import { PokerChips } from './PokerChips';
 import { TablePreferences } from './TablePreferences';
 import { bbPreset, positiveInteger, ratio, readPreferences, savePreferences, stackDisplay, type Preferences } from './personalization';
 import { evaluatePreselection, type Preselection } from './preselection';
@@ -289,7 +291,7 @@ export function Table({ user, onClose, initialHistory = false }: { user: string;
     {state?.frozen ? <p role="alert">牌桌資金待恢復核對，暫停所有操作。</p> : null}
     {state?.closed ? <p className="table-closed">牌桌已關閉；當手完成後退回剩餘籌碼。</p> : null}
     {state?.joined ? <>
-      <div className="table-scene" ref={scene}><ChipFlights events={presentation.view.flights} scene={scene} /><div className="felt" aria-hidden="true" />
+      <TableStage><div className="table-scene" ref={scene}><ChipFlights events={presentation.view.flights} scene={scene} /><div className="felt" aria-hidden="true" />
         <div className="board"><strong className={`pot ${chips(hand?.pot ?? '0').length > 18 ? 'long-pot' : ''}`}><span>總底池</span><b>{chips(hand?.pot ?? '0')}</b></strong><Cards cards={hand?.board ?? []} slots={5} /><div className="board-phase">{state.countdown ? <IconButton icon="clock" label={`下一手倒數 ${Math.max(0, Math.ceil(state.countdown - now))} 秒`} /> : active ? <IconButton icon="info" label={labels[hand.street] ?? hand.street} onClick={() => setInfo('hand')} /> : null}{hand?.payouts ? <p role="status" className="settlement">{settlement ? `${settlement.void ? '作廢' : `派彩 ${chips(awardTotal.toString())}`} · 退款 ${chips(refundTotal.toString())}` : '本手已結算'}</p> : null}</div></div>
         {Array.from({ length: 6 }, (_, seat) => {
           const occupants = seated.filter(m => m.seat === seat);
@@ -306,17 +308,17 @@ export function Table({ user, onClose, initialHistory = false }: { user: string;
             {presentation.view.actions[m.id] ? <span className={`action-label ${presentation.view.actions[m.id].all_in ? 'all-in-label' : ''}`} title={actionLabel(presentation.view.actions[m.id])} role="status">{actionLabel(presentation.view.actions[m.id])}</span> : <span className="action-label empty-label" aria-hidden="true">·</span>}
             <div className="seat-status">{(!m.connected && !m.id.startsWith('npc:')) || m.leaving || m.sitout || m.mode !== 'active' || occupants.length > 1 ? <IconButton icon={m.leaving ? 'leave' : !m.connected && !m.id.startsWith('npc:') ? 'warning' : 'clock'} label={[!m.connected && !m.id.startsWith('npc:') ? '離線' : '', m.leaving ? '本手結束後離桌' : m.sitout ? '手後坐出' : labels[m.mode] ?? m.mode, occupants.length > 1 ? '真人等待接替' : ''].filter(Boolean).join(' · ')} /> : null}</div>
             {dealer ? <span className="dealer" aria-label="Dealer Button 莊位">BTN</span> : null}
-            {active && player && BigInt(player.bet) > 0n ? <span className="seat-bet"><span aria-hidden="true">◉</span> {chips(player.bet)}</span> : null}
+            {active && player && BigInt(player.bet) > 0n ? <span className="seat-bet"><PokerChips /><b>{chips(player.bet)}</b></span> : null}
           </article>;
         })}
-      </div>
-      <div className="table-action-slot">
+      </div></TableStage>
+      <div className="table-action-slot" data-visible={ownTurn || canPreselect}>
       <section className={`action-panel ${ownTurn ? '' : 'action-panel-hidden'}`} aria-label="牌桌操作" aria-hidden={!ownTurn} inert={!ownTurn}>
         <div className="turn-line"><strong>輪到你行動</strong><span className="timebank" title="行動時間用盡時自動補時，每次 5 秒，每手最多 4 次">◷ 補時池 {state.time_bank ?? 0}s{active && hand.extensions > 0 ? ` · 已用 ${hand.extensions}/4` : ''}</span></div>
         <div className="bet-sizing"><div className="pot-presets" aria-label="個人下注快捷按鈕">{presets.map(({ value, target, label }, index) => <button key={index} disabled={!canRaise || target === null} title={target === null ? '大盲資料未知，無法換算' : `${value} · 向下取整並限制合法範圍，加注至 ${chips(target)}；只填草稿`} onClick={() => { if (target !== null) setRaise(target); void sound.play('click'); }}>{label}</button>)}</div>
         <div className="bet-slider"><button aria-label="減少下注" disabled={!canRaise || raiseValue <= minimum} onClick={() => { setRaise(clamp(raiseValue - 100n, minimum, maximum).toString()); void sound.play('click'); }}>−</button><input aria-label="下注金額滑桿" type="range" min="0" max="1000" disabled={!canRaise || minimum === maximum} value={maximum > minimum ? Number((raiseValue - minimum) * 1000n / (maximum - minimum)) : 0} onChange={e => setRaise(sliderAmount(Number(e.target.value), minimum, maximum).toString())} /><button aria-label="增加下注" disabled={!canRaise || raiseValue >= maximum} onClick={() => { setRaise(clamp(raiseValue + 100n, minimum, maximum).toString()); void sound.play('click'); }}>＋</button><input aria-label="加注至" inputMode="numeric" autoComplete="off" disabled={!canRaise} value={raise} aria-invalid={canRaise && !raiseValid} onChange={e => setRaise(e.target.value)} /></div>
         <small className="raise-range">{canRaise ? `最低 ${chips(minimum.toString())} · 最高 ${chips(maximum.toString())}` : '等待可下注時調整金額'} · 不足一籌碼向下取整</small></div>
-        <div className="action-buttons"><button disabled={disabled || !ownTurn} onClick={() => act('fold')}>棄牌</button><button disabled={disabled || !ownTurn} onClick={() => act(hand?.legal.check ? 'check' : 'call')}>{hand?.legal.check ? '過牌' : <>跟注<span>{chips(hand?.legal.call ?? '0')}</span></>}</button><button disabled={!canRaise || !raiseValid} onClick={() => act('raise', raise)}>{raiseValue === maximum && canRaise ? '全下' : betLabel}<span>{chips(raiseValue.toString())}</span></button></div>
+        <div className="action-buttons"><button className="action-fold" disabled={disabled || !ownTurn} onClick={() => act('fold')}>棄牌</button><button className="action-call" disabled={disabled || !ownTurn} onClick={() => act(hand?.legal.check ? 'check' : 'call')}>{hand?.legal.check ? '過牌' : <>跟注<span>{chips(hand?.legal.call ?? '0')}</span></>}</button><button className={raiseValue === maximum && canRaise ? 'action-raise action-all-in' : 'action-raise'} disabled={!canRaise || !raiseValid} onClick={() => act('raise', raise)}>{raiseValue === maximum && canRaise ? '全下' : betLabel}<span>{chips(raiseValue.toString())}</span></button></div>
       </section>
       <section className={`preselection ${canPreselect ? '' : 'preselection-idle'}`} aria-label="下一次行動預選" aria-hidden={!canPreselect} inert={!canPreselect}><button disabled={!canPreselect} aria-pressed={selection?.action === 'check_fold'} onClick={() => choosePreselection('check_fold')}>棄牌／過牌</button><button disabled={!canPreselect} aria-pressed={selection?.action === 'call_any'} onClick={() => choosePreselection('call_any')}>跟任何注</button></section>
       </div>

@@ -408,3 +408,62 @@ main.table-mode { max-width: 1800px; padding: 12px 24px; }
 
 /* Settlement belongs to the board, independent of viewport and action-row height. */
 .game .board-phase .settlement { position: static; align-self: center; width: auto; max-width: 100%; max-height: 44px; overflow: auto; margin: 0; padding: 4px 8px; overflow-wrap: anywhere; }
+
+/* Controls stay in view while the entire desktop table scales as one surface. */
+.table-stage { display: contents; }
+.game .table-action-slot { border-radius: 16px; background: var(--panel); border: 1px solid var(--line); box-shadow: 0 8px 28px #0005; }
+.game .table-action-slot[data-visible=false] { visibility: hidden; pointer-events: none; }
+.game .table-action-slot > .action-panel, .game .table-action-slot > .preselection { box-sizing: border-box; padding: 12px; }
+.game .action-buttons > button { color: #fff8eb; border: 1px solid #ffffff40; text-shadow: 0 1px 2px #0005; }
+.game .action-buttons .action-fold { background: linear-gradient(#984753,#6f2c39); }
+.game .action-buttons .action-call { background: linear-gradient(#247a62,#15523f); }
+.game .action-buttons .action-raise { background: linear-gradient(#e4b957,#bc8526); color: #251905; text-shadow: none; }
+.game .action-buttons .action-all-in { background: linear-gradient(#d34a40,#a1212e); color: #fff; }
+.game .action-buttons > button:hover:not(:disabled) { filter: brightness(1.14); }
+.game .action-buttons > button:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+.game .action-buttons > button:disabled { opacity: .4; filter: saturate(.3); }
+.game .pot-presets button { background: #254657; color: #e8f4fa; border-color: #5f8395; }
+.game .pot-presets button:hover:not(:disabled) { background: #396a82; }
+.game .bet-slider input[type=range] { accent-color: #e4b957; }
+.game .seat-bet { display: inline-flex; gap: 5px; align-items: center; }
+.game .seat-bet b { font-weight: 600; }
+.game .poker-chips { display: block; flex: none; width: 36px; height: 32px; filter: drop-shadow(0 2px 2px #0005); }
+.game .chip-flight { display: inline-flex; align-items: center; gap: 4px; border: 0; background: transparent; padding: 0; color: var(--ink); text-shadow: 0 1px 3px #000; }
+.game .s .seat-bet { top: -42px; bottom: auto; right: auto; left: calc(100% + 16px); }
+.game .s .dealer { top: 24px; right: -42px; }
+.game .n .dealer { top: 18px; right: -42px; }
+@media (min-width: 1100px) {
+  main.table-mode { height: 100dvh; min-height: 0; max-width: 1920px; }
+  .table-mode > .game, .table-mode > .game.large-cards { grid-template-columns: minmax(0,1fr) 360px; grid-template-rows: 44px minmax(0,1fr); gap: 16px; min-height: 0; }
+  .game .table-stage { display: block; position: relative; grid-column: 1; grid-row: 2; min-width: 0; min-height: 0; }
+  .game .table-stage .table-scene { position: absolute; left: 50%; top: 0; width: 1100px; height: 620px; transform: translateX(-50%) scale(var(--table-scale,1)); transform-origin: top center; }
+  .game .table-action-slot, .game.large-cards .table-action-slot { grid-column: 2; grid-row: 2; width: 100%; max-width: none; height: 230px; align-self: end; margin: 0; }
+  .game.large-cards .table-action-slot { height: 260px; }
+  .game .action-buttons { gap: 6px; }
+  .game .action-buttons > button { font-size: 17px; }
+}
+@media (max-width: 1099px) {
+  main.table-mode { padding-bottom: 296px; }
+  .game .table-action-slot { position: fixed; left: 8px; right: 8px; bottom: max(8px,env(safe-area-inset-bottom)); width: auto; max-width: 640px; height: 280px; margin: 0 0 0 auto; z-index: 9; }
+}
+@media (max-width: 600px) {
+  .game .poker-chips { width: 27px; height: 25px; }
+  .game .s .seat-bet { left: calc(100% + 4px); top: -36px; }
+  .game .s .dealer { top: 18px; right: -32px; }
+  .game .n .dealer { top: 18px; right: -32px; }
+}
+
+/* Preserve physical hit targets after fitting the desktop scene. */
+.game .pot-presets button { min-height: 44px; }
+.game .bet-slider button, .game .bet-slider input[type=range] { min-height: 44px; height: 44px; }
+@media (min-width: 1100px) {
+  .game .table-stage .own-stack { min-height: calc(44px / var(--table-scale,1)); }
+  .game .table-stage .portrait { min-width: calc(44px / var(--table-scale,1)); min-height: calc(44px / var(--table-scale,1)); }
+  .game .table-stage .icon-button { width: max(44px,calc(44px / var(--table-scale,1))); height: max(44px,calc(44px / var(--table-scale,1))); min-width: calc(44px / var(--table-scale,1)); min-height: calc(44px / var(--table-scale,1)); flex-basis: max(44px,calc(44px / var(--table-scale,1))); }
+  .game .table-stage .board-phase { height: max(44px,calc(44px / var(--table-scale,1))); }
+  .game .empty-seat-button { min-height: max(64px,calc(44px / var(--table-scale,1))); }
+}
+@media (max-width: 600px) {
+  .game .s .seat-bet { top: auto; bottom: calc(100% + 12px); width: 72px; flex-wrap: wrap; justify-content: center; white-space: normal; gap: 2px; }
+  .game .s .seat-bet b { max-width: 100%; overflow-wrap: anywhere; }
+}
