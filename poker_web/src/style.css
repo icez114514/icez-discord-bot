@@ -81,20 +81,6 @@ dialog form > button { width: 100%; }
 .theme-preview { display: grid; place-items: center; height: 85px; border-radius: 40%; border: 9px solid #6d5642; background: #324c3d; color: #c3b28c; font: 28px Georgia, serif; box-shadow: 0 4px 0 #171714; }
 .theme-preview.midnight_oak { border-color: #796b54; background: #344c58; }
 .theme-preview.burgundy_leather { border-color: #4b3a31; background: #5b4343; }
-.game h1 { font-size: 28px; }
-.game .panel-top p { font-size: 12px; margin: 0; }
-.table-tools { display: flex; flex-wrap: wrap; }
-.connection { font-size: 12px; margin-top: 16px; }
-.table-scene { position: relative; height: 600px; isolation: isolate; perspective: 950px; margin: 4px auto; max-width: 1000px; }
-.felt { position: absolute; left: 50%; top: 105px; transform: translateX(-50%) rotateX(30deg); width: 83%; height: 345px; border-radius: 44%; background: radial-gradient(ellipse at 50% 40%,var(--felt),var(--felt-dark)); border: 16px solid var(--wood); box-shadow: 0 2px 0 var(--trim),0 10px 0 #48392c,0 14px 0 #211e1a,0 32px 40px #10160f88,inset 0 0 0 2px var(--trim); z-index: -1; }
-.felt::before { content: ''; position: absolute; inset: 20px; border: 3px double var(--trim); opacity: .35; border-radius: 43%; }
-.felt::after { content: '♠  牌 間  ♠'; position: absolute; left: 50%; bottom: 20px; transform: translateX(-50%); color: var(--trim); opacity: .4; font-family: "PMingLiU", serif; letter-spacing: 7px; white-space: nowrap; }
-:root[data-theme=midnight_oak] .felt::before { border-width: 1px; border-style: solid; }
-:root[data-theme=burgundy_leather] .felt::before { border-width: 2px; border-style: dashed; }
-.board { position: absolute; top: 208px; left: 50%; transform: translateX(-50%); text-align: center; }
-.pot-label { font-size: 11px; }
-.pot { display: block; font: 34px Georgia, serif; margin-bottom: 12px; }
-.board p { font-size: 11px; margin-top: 16px; color: var(--ink); }
 .cards { display: flex; justify-content: center; gap: 8px; }
 .card { position: relative; display: inline-block; flex: none; width: 59px; height: 81px; background: #FFFEFB; color: #14191E; border: 1px solid white; border-radius: 5px; font-family: Georgia, "Times New Roman", serif; box-shadow: 0 4px 0 #a6a69c,0 8px 10px #14201966; opacity: 1; filter: none; }
 .card.red { color: #C51E32; }
@@ -103,45 +89,6 @@ dialog form > button { width: 100%; }
 .card > span { position: absolute; bottom: 6px; right: 5px; font-size: 27px; line-height: 1; }
 .card.blank { background: transparent; border: 1px solid var(--trim); box-shadow: none; display: grid; place-items: center; color: var(--trim); }
 .card.back { background: repeating-linear-gradient(45deg,var(--felt-dark),var(--felt-dark) 4px,var(--felt) 4px,var(--felt) 5px); color: var(--trim); border: 1px solid var(--trim); display: grid; place-items: center; }
-.seat { position: absolute; width: 150px; padding: 10px; border-radius: 8px; background: var(--panel); border: 1px solid var(--line); text-align: center; box-shadow: 0 5px 12px #0004; }
-.seat-name { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 11px; }
-.avatar { border: 1px solid var(--trim); border-radius: 50%; width: 24px; height: 24px; display: grid; place-items: center; font-size: 11px; flex: none; }
-.dealer { display: inline-grid; place-items: center; border-radius: 50%; background: var(--ink); color: var(--bg); width: 19px; height: 19px; font-size: 10px; flex: none; }
-.seat-stack { display: block; font-size: 16px; font-weight: 500; }
-.seat small { display: block; font-size: 10px; }
-.seat .cards { margin: 8px 0; gap: 4px; }
-.seat .card { width: 30px; height: 41px; box-shadow: 0 2px 0 #a6a69c,0 4px 5px #14201966; }
-.seat .card b { font-size: 14px; top: 3px; left: 3px; }
-.seat .card b small { font-size: 10px; }
-.seat .card > span { display: none; }
-.seat.acting { outline: 3px solid var(--accent); outline-offset: 4px; }
-.seat.empty { background: transparent; border-style: dashed; padding: 15px 5px; color: var(--muted); font-size: 11px; box-shadow: none; }
-.seat.n { top: 10px; left: 50%; transform: translateX(-50%); }
-.seat.nw { top: 143px; left: 0; }
-.seat.ne { top: 143px; right: 0; }
-.seat.sw { top: 347px; left: 9%; }
-.seat.se { top: 347px; right: 9%; }
-.seat.s { top: 412px; left: 50%; transform: translateX(-50%); }
-.hero-seat { background: transparent; border: 0; box-shadow: none; }
-.hero-seat .cards { margin: 5px 0 8px; }
-.hero-seat .card { width: 48px; height: 66px; transform: rotate(-8deg); box-shadow: 0 4px 0 #a6a69c,0 8px 10px #14201966; }
-.hero-seat .card + .card { transform: rotate(8deg); }
-.hero-seat .card b { font-size: 23px; top: 5px; left: 5px; }
-.hero-seat .card b small { font-size: 13px; }
-.hero-seat .card > span { display: block; font-size: 24px; }
-.hero-seat .seat-name { margin-bottom: 2px; }
-.hero-seat .seat-stack { display: inline; margin-right: 5px; }
-.hero-seat > small { display: inline; }
-.hero-seat .cards + small { display: block; }
-.action-panel { max-width: 720px; margin: 20px auto 0; padding: 20px 0; border-top: 1px solid var(--line); }
-.turn-line { display: flex; align-items: center; justify-content: space-between; gap: 16px; font-size: 14px; margin-bottom: 15px; }
-.turn-line > span { font-variant-numeric: tabular-nums; white-space: nowrap; }
-.action-buttons { display: flex; flex-wrap: wrap; gap: 9px; align-items: end; }
-.action-buttons > button { flex: 1; }
-.action-buttons label { width: 130px; }
-.action-buttons input { height: 45px; }
-.raise-range { flex-basis: 100%; }
-.bank { font-size: 11px; margin: 14px 0; }
 .table-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; margin: 16px 0; }
 .table-controls label { width: 140px; }
 .table-controls button { font-size: 12px; }
@@ -165,44 +112,6 @@ summary { cursor: pointer; padding: 10px 0; color: var(--accent); }
   .room-list { grid-template-columns: 1fr; gap: 16px; }
   .account-footer { gap: 4px; }
   footer { flex-direction: column; gap: 5px; }
-  .game h1 { font-size: 24px; }
-  .game > .panel-top { gap: 7px; }
-  .table-tools { margin-left: auto; }
-  .table-tools button { padding: 8px; font-size: 12px; }
-  .table-scene { height: 580px; }
-  .felt { width: 96%; height: 345px; top: 135px; border-width: 10px; transform: translateX(-50%) rotateX(25deg); }
-  .felt::before { inset: 14px; }
-  .felt::after { font-size: 11px; letter-spacing: 5px; bottom: 16px; }
-  .seat { width: 94px; padding: 7px 4px; }
-  .seat-name { gap: 3px; font-size: 10px; flex-wrap: wrap; }
-  .avatar { width: 20px; height: 20px; font-size: 9px; }
-  .seat-stack { font-size: 14px; }
-  .seat.n { top: 0; }
-  .seat.nw, .seat.ne { top: 151px; }
-  .seat.nw { left: 0; }
-  .seat.ne { right: 0; }
-  .seat.sw, .seat.se { top: 430px; }
-  .seat.sw { left: 0; }
-  .seat.se { right: 0; }
-  .seat.s { top: 435px; width: 108px; }
-  .board { top: 279px; }
-  .pot { font-size: 27px; margin-bottom: 9px; }
-  .board .card { width: 39px; height: 55px; }
-  .board .cards { gap: 5px; }
-  .board .card b { font-size: 19px; left: 4px; top: 4px; }
-  .board .card b small { font-size: 11px; }
-  .board .card > span { font-size: 21px; right: 3px; bottom: 4px; }
-  .board p { font-size: 10px; margin-top: 10px; }
-  .seat .cards { margin: 5px 0; }
-  .hero-seat .card { width: 43px; height: 60px; }
-  .hero-seat .card b { font-size: 21px; }
-  .action-panel { margin-top: 32px; }
-  .action-buttons { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); }
-  .action-buttons label { width: auto; grid-row: 2; }
-  .action-buttons button { padding: 11px 5px; font-size: 13px; }
-  .raise-range { grid-column: 1 / -1; }
-  .table-controls { gap: 8px; }
-  .table-controls label { width: 120px; }
   dialog { padding: 20px; }
   .theme-options { grid-template-columns: 1fr; }
   .theme-option { grid-template-columns: 100px 1fr; align-items: center; gap: 3px 16px; }
@@ -213,7 +122,7 @@ summary { cursor: pointer; padding: 10px 0; color: var(--accent); }
   button { transition: background-color .15s, border-color .15s; }
 }
 
-@media (max-width: 360px) { .seat { width: 86px; } .seat-name { font-size: 9px; } }
+
 
 .account-tools { display: flex; gap: 12px; flex-wrap: wrap; margin: 10px 0; }
 dialog:has(.statistics), dialog:has(.management) { width: min(1000px, calc(100vw - 24px)); }
