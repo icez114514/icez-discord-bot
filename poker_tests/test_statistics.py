@@ -123,3 +123,20 @@ class FormulaTests(unittest.TestCase):
         self.assertEqual(metric_view(1, 3, 100)["percent"], "33.3%")
         self.assertTrue(metric_view(1, 19, 20)["low_sample"])
         self.assertFalse(metric_view(1, 20, 20)["low_sample"])
+
+    def test_shared_board_split_counts_wsd_but_not_net_win(self):
+        draw = ["2c", "3c", "2d", "3d", "5c", "Th", "Jh", "Qh", "6c", "Kh", "7c", "Ah"]
+
+        def shuffle(deck):
+            deck[:] = [c for c in rules.CARDS if c not in draw] + list(reversed(draw))
+
+        with patch("secrets.SystemRandom.shuffle", side_effect=shuffle):
+            hand = rules.create([("a", 100), ("b", 100)], 0, "split")
+        rules.act(hand, "a", "call")
+        stats = calculate(hand)
+        self.assertEqual(hand["payouts"], {"a": 100, "b": 100})
+        for user in ("a", "b"):
+            self.assertEqual(stats[user]["wsd"], [1, 1])
+            self.assertEqual(stats[user]["net_win"], [0, 1])
+        self.assertTrue(metric_view(1, 99, 100)["low_sample"])
+        self.assertFalse(metric_view(1, 100, 100)["low_sample"])

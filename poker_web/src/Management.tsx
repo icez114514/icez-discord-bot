@@ -56,7 +56,9 @@ export function Management({ user }: { user: string }) {
       // Preserve the exact intent until a definite response, including lost ACKs.
       if (response.status >= 500) throw new Error('結果尚未確認，請用同一命令重試。');
       const result = await response.json();
-      pending.current = null; sessionStorage.removeItem(storageKey); setRetry(false);
+      pending.current = null;
+      if (sessionStorage.getItem(storageKey) === JSON.stringify(command)) sessionStorage.removeItem(storageKey);
+      setRetry(false);
       if (!response.ok) throw new Error(`操作未完成：${result.error ?? '請檢查輸入與權限'}`);
       setNotice(`${actions[command.action]}已受理（${command.command_id}）。請更新管理狀態確認手後結果。`);
       setReason(''); await refresh();

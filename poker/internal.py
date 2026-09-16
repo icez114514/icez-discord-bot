@@ -67,8 +67,8 @@ def create_internal(config, public):
             raise Unauthorized("guild_membership_required")
         def operation(db):
             row = db.execute("SELECT disabled FROM accounts WHERE user_id=?", (actor,)).fetchone()
-            if not row or row[0]:
-                raise Unauthorized("active_account_required")
+            if row and row[0]:
+                raise Unauthorized("account_disabled")
             return query(db, actor, period, opponents)
         return await public.state.store.run(operation)
 

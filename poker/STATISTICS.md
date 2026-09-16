@@ -34,6 +34,8 @@ account ID order. NPC accounts never appear on the leaderboard.
 The Bot calls `GET /statistics` on the authenticated loopback listener with the
 reader credential, interaction `X-Actor-ID` and configured `X-Guild-ID`. The service
 checks guild membership and disabled state and calls the exact same query function.
+Verified guild members may read public rankings before creating a poker account;
+this query does not create accounts or grant chips.
 The Bot takes no target-user argument and replies ephemerally. Crystal commands
 and their PostgreSQL balances are unchanged. No real Discord messages were sent
 while implementing this ticket.
@@ -111,3 +113,27 @@ statistics dialog is open and verify desktop/mobile filters and management close
 
 Physical phone performance, real Discord OAuth/command delivery, production HTTPS
 and deployment remain #26.
+
+## Validation record (2026-09-16)
+
+- Full Poker run: 66 passed. Five additional focused acceptance tests subsequently
+  passed (shared-board split, tied ranks/rejected replay, legacy host close guard,
+  chronological Time Bank awards, guild-member public rankings), bringing the
+  collected Poker suite to 71 cases. No production code changed beyond the reviewed
+  public-ranking access fix and guarded browser retry-storage cleanup afterward.
+- Full Bot run: 162 collected, 103 passed, 59 opt-in database tests skipped.
+- mypy (23 service modules), Ruff F checks, TypeScript/Vite build and Bot dependency
+  compatibility checks passed.
+- Full Chrome acceptance passed: three real settlements, two independent identities,
+  filters with matching API/UI counts, live table socket preserved during statistics,
+  authorized hand-boundary close, all three themes, 320/390px layouts, private
+  invitation invalidation, control conflicts, reconnect and actual 120-second expiry.
+- Focused `node poker_tests/browser_acceptance.mjs --management-only` passed after
+  retry-storage hardening: an uncertain adjustment survives dialog remount, retries
+  the original ID, credits exactly once and has one visible audit entry. Ordinary
+  players have no management entry point.
+- Standards review at `93980a0`: no findings. Spec review found that verified guild
+  members without poker accounts were denied public rankings; fixed with an explicit
+  regression for non-account members, cross-account denial and disabled accounts.
+- Desktop/mobile statistics screenshots were visually inspected. OAuth and Discord
+  delivery remain simulated; no production deployment or live Discord messaging.

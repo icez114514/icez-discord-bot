@@ -155,3 +155,83 @@ class PersistenceTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(
                     await store.run(lambda db: query(db, "111", now=101)), report
                 )
+
+    async def test_rebuild_replays_ten_hand_award_and_later_bank_debit(self):
+        with tempfile.TemporaryDirectory() as directory:
+            async with Store(Path(directory) / "poker.db", initialize=True) as store:
+                token = await store.login("111")
+                await store.command(
+                    "buy", "buy_in", user_id="111", table_id="t", amount="10000"
+                )
+                await store.command(
+                    "npc",
+                    "npc_supply",
+                    user_id="npc:1",
+                    amount="10000",
+                    actor="system",
+                    reason="test",
+                )
+                for index in range(11):
+                    hid = f"h{index}"
+                    human = int((await store.account("111"))["table"])
+                    npc = int((await store.account("npc:1"))["table"])
+                    hand = rules.create([("111", human), ("npc:1", npc)], 0, hid)
+                    await store.command(
+                        "start" + hid,
+                        "start_hand",
+                        hand_id=hid,
+                        table_id="t",
+                        players=["111", "npc:1"],
+                        snapshot=hand,
+                    )
+                    if index in (0, 10):
+                        await store.command(
+                            "clock" + hid,
+                            "action",
+                            hand_id=hid,
+                            user_id="111",
+                            opportunity_id="one",
+                            now=index * 100,
+                        )
+                        await store.command(
+                            "bank" + hid,
+                            "time_bank",
+                            hand_id=hid,
+                            user_id="111",
+                            opportunity_id="one",
+                            now=index * 100 + 20,
+                        )
+                    rules.act(hand, "111", "fold", automatic=True)
+                    hand["settled_at"] = index * 100 + 21
+                    for player in hand["players"]:
+                        await store.command(
+                            "bet" + hid + player["id"],
+                            "bet",
+                            hand_id=hid,
+                            user_id=player["id"],
+                            amount=str(player["paid"]),
+                        )
+                    await store.command(
+                        "settle" + hid,
+                        "settle",
+                        hand_id=hid,
+                        snapshot=hand,
+                        payouts={u: str(n) for u, n in hand["payouts"].items()},
+                    )
+                before = await store.account("111")
+                self.assertEqual(
+                    (before["time_bank"], before["hand_progress"]), (55, 1)
+                )
+                management = Management(
+                    store, SimpleNamespace(table_admins=("111",), funds_admins=())
+                )
+                await management.command(
+                    dict(
+                        command_id="rebuild",
+                        action="rebuild",
+                        target="h0",
+                        reason="Verify award replay",
+                    ),
+                    token=token,
+                )
+                self.assertEqual(await store.account("111"), before)

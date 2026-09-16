@@ -282,3 +282,61 @@ class StatisticsWebTests(unittest.TestCase):
         self.assertEqual(
             int(account["available"]) + int(account["table"]), int(account["settled"])
         )
+
+    def test_asset_ties_share_rank_and_rejected_adjustment_stays_rejected(self):
+        response, _ = self.manage(B, "adjust", C, amount="-1")
+        self.assertEqual(response.status_code, 200)
+        board = self.report()["leaderboard"]
+        self.assertEqual(
+            [(r["user_id"], r["rank"]) for r in board], [(A, 1), (B, 1), (C, 3)]
+        )
+        rejected, command = self.manage(B, "adjust", A, amount="-60000")
+        self.assertEqual(rejected.status_code, 409)
+        self.assertEqual(
+            self.manage(B, "adjust", A, amount="20000")[0].status_code, 200
+        )
+        replay = self.client.post(
+            "/api/management/commands", headers=self.headers(B), json=command
+        )
+        self.assertEqual(replay.status_code, 409)
+        self.assertEqual(self.account()["settled"], "70000")
+
+    def test_host_cannot_use_legacy_close_command(self):
+        self.join(A)
+        response, _ = self.command(A, "close")
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(
+            response.json()["result"]["error"], "use_authorized_management"
+        )
+        self.assertFalse(self.view()["closed"])
+
+    def test_guild_member_without_account_can_read_public_rankings(self):
+        outsider = "444444444444444444"
+        internal = create_internal(self.config, self.app)
+        with TestClient(internal, client=("127.0.0.1", 12345)) as bot:
+            headers = {
+                "Authorization": "Bearer " + self.config.reader_token,
+                "X-Actor-ID": outsider,
+                "X-Guild-ID": self.config.guild_id,
+            }
+            response = bot.get("/statistics", headers=headers)
+            self.assertEqual(response.status_code, 200, response.text)
+            self.assertEqual(
+                response.json()["leaderboard"], self.report()["leaderboard"]
+            )
+            self.assertEqual(response.json()["personal"]["hands"], 0)
+            self.assertEqual(response.json()["personal"]["user_id"], outsider)
+            self.assertEqual(
+                bot.get(
+                    "/statistics", headers=headers, params={"user_id": A}
+                ).status_code,
+                404,
+            )
+            self.assertEqual(self.manage(C, "disable", A)[0].status_code, 200)
+            self.assertEqual(
+                bot.get(
+                    "/statistics", headers={**headers, "X-Actor-ID": A}
+                ).status_code,
+                404,
+            )
+        self.assertEqual(len(self.report(B)["leaderboard"]), 3)
