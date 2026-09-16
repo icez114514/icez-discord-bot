@@ -312,3 +312,49 @@ main.table-mode { max-width: 1800px; padding: 12px 24px; }
   .game .action-label { font-size: 11px; height: 25px; line-height: 23px; margin-top: 3px; padding: 0 3px; }
   .game .seat-status { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 }
+
+/* Compact table controls preserve geometry across turn and status changes. */
+.icon-button, .game .icon-button, .table-mode > .account-tools .icon-button {
+  display: inline-grid; place-items: center; flex: 0 0 44px; width: 44px; height: 44px;
+  min-width: 44px; min-height: 44px; padding: 10px; margin: 0; border-radius: 10px;
+  background: var(--panel); color: var(--ink); border: 1px solid var(--line); touch-action: manipulation;
+}
+.icon-button svg { width: 22px; height: 22px; pointer-events: none; }
+.icon-button:focus-visible, .game .own-avatar:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.icon-tooltip { position: fixed; z-index: 10000; max-width: min(240px,calc(100vw - 16px)); box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; pointer-events: none; box-shadow: 0 4px 16px #0005; }
+.game .game-toolbar { gap: 6px; height: 44px; }
+.game .table-tools, .game .table-links { display: flex; align-items: center; gap: 6px; }
+.game .table-tools { margin-left: auto; }
+.game .connection-icon { color: var(--accent); }
+.game .pot { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 5px; box-sizing: border-box; width: min(100%,300px); height: 96px; margin: 0 auto 12px; padding: 8px 14px; text-align: center; }
+.game .pot > span { flex: none; font-size: 13px; line-height: 18px; }
+.game .pot > b { display: block; width: 100%; max-height: 56px; overflow: auto; font-size: clamp(18px,2.2vw,28px); line-height: 1; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.game .board-phase { height: 44px; display: flex; justify-content: center; margin-top: 4px; }
+.game .action-panel-hidden { visibility: hidden; pointer-events: none; }
+.game .action-panel { min-height: 190px; }
+.game .preselection { align-items: start; align-content: start; }
+.game .preselection button { flex: 1; }
+.game .seat-status { height: 44px; min-height: 44px; overflow: visible; margin: 2px 0 0; }
+.game .seat-status .icon-button { background: transparent; border-color: transparent; }
+.game .own-avatar { display: block; width: 100%; height: 100%; min-height: 44px; min-width: 44px; padding: 0; border: 0; background: none; border-radius: 50%; }
+.game .countdown-ring { pointer-events: none; }
+@media (max-width: 600px) {
+  .game .game-toolbar, .game .table-tools { gap: 3px; }
+  .game .pot { height: 86px; width: min(100%,220px); padding: 6px 12px; }
+  .game .pot > b { font-size: 20px; max-height: 44px; }
+  .game .portrait { width: 44px; height: 44px; }
+  .game .action-panel { min-height: 214px; }
+  .game .seat-status { white-space: normal; }
+}
+@media (min-width: 1100px) {
+  .game .action-panel { min-height: 174px; }
+}
+
+/* Keep status hints anchored to the seat, outside the action control area. */
+.game .seat-status { position: absolute; top: -34px; right: -12px; width: 44px; margin: 0; }
+.game .pot > b { flex: none; height: 50px; max-height: none; display: flex; align-items: center; justify-content: center; line-height: 1.2; overflow: hidden; }
+.game .pot.long-pot > b { font-size: 16px; display: block; align-content: center; }
+@media (max-width: 600px) {
+  .game .pot > b { height: 44px; }
+  .game .pot.long-pot > b { font-size: 14px; }
+}
