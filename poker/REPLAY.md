@@ -89,3 +89,19 @@ No deployment or real Discord OAuth verification is part of this change.
   `75710b2c0f65677767fd9d8ee18d01a1f467cbd3` produces the same eight diagnostics;
   the new replay module adds none. Including vendored sources reports additional
   pre-existing vendor typing problems.
+## Standards review
+
+Independent review against `75710b2c0f65677767fd9d8ee18d01a1f467cbd3` found no
+hard documented violations or actionable design smells. Domain terminology is
+consistent and the extracted card component avoids duplicating live rendering.
+
+## Spec review
+
+The independent review found one completeness issue: a missing final collection
+could leave nonzero street bets while history was still marked complete. Replay
+now requires every final street bet to be zero. The HTTP regression first failed
+without the fix, then passed with the fix; missing-action, old-version and
+missing-collection cases each start from pristine evidence. Targeted independent
+re-review found no unresolved requirement gaps or scope expansion.
+
+Final review counts: Standards 0 unresolved; Spec 0 unresolved (1 finding fixed).
