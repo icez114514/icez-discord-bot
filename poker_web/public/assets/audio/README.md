@@ -16,16 +16,23 @@ low-pass filtered at 6.5kHz, and faded from 0.30 to 0.42s. `check.ogg` is a dry
 0.12s tap derived from chips-handle-2 (220Hz high-pass / 3kHz low-pass).
 Playback uses quieter foley, subdued countdowns and no success beep per command.
 
-`voice-*.ogg` are synthetic action announcements generated locally with
-Irodori-TTS-v4.1-Small using the user-selected `00_挨拶.wav` greeting reference
-(此花瑠璃). They are not recordings from PokerStars or GGPoker and are not covered
-by the Kenney CC0 licenses. The private reference clip is not included.
-Six Japanese poker terms: call, bet, fold, check, raise and all-in.
-Three-bet, four-bet and higher re-raises all use the Bet clip; their visual
-labels still show the actual raise level. The voice is separately adjustable/mutable and never used in replay.
+Finalized voice packs (2026-09-16) are in `voices/oneesan` (御姊),
+`voices/shoujo` (少女), and `voices/nekomimi` (貓娘). Each has six
+Japanese action announcements: call, bet, fold, check, raise, all-in.
+Three-bet, four-bet and higher re-raises use the selected pack's Bet clip.
+`voices/manifest.json` pins the approved files by SHA-256 and records
+seeds, durations, reference hashes, captions and trim information.
+The original root-level `voice-*.ogg` files are legacy assets; playback
+now resolves voice cues exclusively through the selected pack directory.
 
-Rebuild using tools/generate_action_voice.py with the local Irodori environment,
-cached models, NVIDIA CUDA and ffmpeg. Seeds 260916..260920 and 260923, bf16 model, 12s max
-reference, duration scale 0.85; loudness target -18 LUFS, true peak -2dB,
-mono 48kHz Vorbis quality 5. Runtime serves only these static clips; no TTS
-model, reference audio or TTS dependency runs on the phone.
+These are synthetic announcements generated locally with Irodori-TTS-v4.1-Small,
+not recordings from poker platforms and not covered by the Kenney CC0 licenses.
+The private user-provided reference recordings are not included.
+Pack 1 uses 此花瑠璃, pack 2 uses 早緒きむり, pack 3 uses 猫乃しろね.
+Only pack 1 has a calm-performance Caption; packs 2 and 3 have none.
+
+See `docs/specs/poker-voice-packs.md` for the approved selections and behavior.
+Do not use the legacy tools/generate_action_voice.py to overwrite these
+finalized files: their parameters and selected takes differ. Runtime serves
+only static Vorbis clips; no model, reference audio or TTS dependency runs
+on the phone. Preferences remain local to this browser and account.

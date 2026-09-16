@@ -1,7 +1,13 @@
 export type Voice = 'voice_call' | 'voice_bet' | 'voice_fold' | 'voice_check' | 'voice_raise' | 'voice_allin';
 export type Sound = Voice | 'deal' | 'chips' | 'fold' | 'settle' | 'click' | 'turn' | 'tick' | 'bank' | 'check' | 'collect' | 'refund' | 'topup' | 'result' | 'error' | 'payout';
 export type Group = 'reminders' | 'chips' | 'settlement' | 'interface' | 'voice';
-export type Preferences = { muted: boolean; master: number; groups: Record<Group, number>; reduced: boolean };
+export const voicePacks = [
+  { id: 'oneesan', label: '御姊' },
+  { id: 'shoujo', label: '少女' },
+  { id: 'nekomimi', label: '貓娘' },
+] as const;
+export type VoicePack = typeof voicePacks[number]['id'];
+export type Preferences = { muted: boolean; master: number; groups: Record<Group, number>; reduced: boolean; voicePack: VoicePack };
 const catalog: Record<Sound, { file: string; group: Group; rate?: number }> = {
   voice_call: { file: 'voice-call', group: 'voice' }, voice_bet: { file: 'voice-bet', group: 'voice' },
   voice_fold: { file: 'voice-fold', group: 'voice' }, voice_check: { file: 'voice-check', group: 'voice' },
@@ -15,10 +21,11 @@ const catalog: Record<Sound, { file: string; group: Group; rate?: number }> = {
   topup: { file: 'bank', group: 'interface' }, result: { file: 'click', group: 'interface' },
   error: { file: 'fold', group: 'interface', rate: 0.7 },
 };
-const defaults = (): Preferences => ({ muted: false, master: 1, groups: { reminders: 1, chips: 1, settlement: 1, interface: 0.35, voice: 1 }, reduced: false });
+const defaults = (): Preferences => ({ muted: false, master: 1, groups: { reminders: 1, chips: 1, settlement: 1, interface: 0.35, voice: 1 }, reduced: false, voicePack: 'oneesan' });
 const volume = (n: unknown, fallback = 1) => typeof n === 'number' && Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : fallback;
 function normalize(raw: Partial<Preferences> | null): Preferences {
   const p = defaults();
+  p.voicePack = voicePacks.find(pack => pack.id === raw?.voicePack)?.id ?? p.voicePack;
   p.muted = raw?.muted === true; p.reduced = raw?.reduced === true; p.master = volume(raw?.master);
   for (const group of Object.keys(p.groups) as Group[]) p.groups[group] = volume(raw?.groups?.[group], p.groups[group]);
   return p;
@@ -30,6 +37,9 @@ const buffers = new Map<string, Promise<AudioBuffer>>();
 const sources = new Map<AudioBufferSourceNode, number>();
 let voiceSource: AudioBufferSourceNode | undefined;
 let voiceRequest = 0;
+function cueFile(cue: typeof catalog[Sound]) {
+  return cue.group === 'voice' ? `voices/${prefs.voicePack}/${cue.file}` : cue.file;
+}
 function buffer(file: string, audio: AudioContext) {
   let pending = buffers.get(file);
   if (!pending) {
@@ -68,13 +78,15 @@ export const sound = {
     catch { storageFailed = true; }
     for (const listener of listeners) listener();
   },
-  unlock() {
+  async unlock() {
     if (prefs.muted) { diagnostic = 'muted'; return; }
     try {
       context ??= new AudioContext();
       const audio = context;
-      void audio.resume().then(() => { diagnostic = audio.state === 'running' ? 'ready' : 'locked'; }).catch(() => { diagnostic = 'locked'; });
-      for (const file of new Set(Object.values(catalog).map(c => c.file))) void buffer(file, audio).catch(() => {});
+      const resumed = audio.resume();
+      for (const file of new Set(Object.values(catalog).map(cueFile))) void buffer(file, audio).catch(() => {});
+      await resumed;
+      diagnostic = audio.state === 'running' ? 'ready' : 'locked';
     } catch { diagnostic = 'unavailable'; }
   },
   stop() {
@@ -83,17 +95,23 @@ export const sound = {
     sources.clear(); voiceSource = undefined;
   },
   mute(value: boolean) { sound.configure({ muted: value }); if (!value) sound.unlock(); },
-  async play(name: Sound) {
+  async selectVoice(voicePack: VoicePack) {
+    sound.configure({ voicePack });
+    const revision = epoch;
+    await sound.unlock();
+    if (revision === epoch) await sound.play('voice_allin', true);
+  },
+  async play(name: Sound, preview = false) {
     const reason = blocked(name);
     if (reason) { diagnostic = reason; return; }
     const audio = context!;
     const started = performance.now(), revision = epoch, cue = catalog[name];
     const voiceRevision = cue.group === 'voice' ? ++voiceRequest : null;
     try {
-      const decoded = await buffer(cue.file, audio);
+      const decoded = await buffer(cueFile(cue), audio);
       const reason = blocked(name);
       if (reason) { diagnostic = reason; return; }
-      if (revision !== epoch || (voiceRevision !== null && voiceRevision !== voiceRequest) || performance.now() - started > 600) { diagnostic = 'expired'; return; }
+      if (revision !== epoch || (voiceRevision !== null && voiceRevision !== voiceRequest) || performance.now() - started > (preview ? 10000 : 600)) { diagnostic = 'expired'; return; }
       if (cue.group === 'voice' && voiceSource) { voiceSource.stop(); sources.delete(voiceSource); }
       const priority = cue.group === 'voice' ? 3 : cue.group === 'reminders' ? 2 : cue.group === 'settlement' ? 1 : 0;
       // Keep two slots available for turn/countdown even during multi-player chip movement.

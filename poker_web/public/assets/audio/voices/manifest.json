@@ -1,0 +1,422 @@
+{
+  "version": 1,
+  "finalized": "2026-09-16",
+  "model": "Aratako/Irodori-TTS-v4.1-Small",
+  "packs": [
+    {
+      "id": "oneesan",
+      "label": "御姊",
+      "source_pack": "01-calm",
+      "reference_sha256": "57e900d62e85ed878d0de30b34eadbc7f2b33d9609aed41c10cdb0ed94f2815a",
+      "caption": "ポーカーの対局中、自分のアクションを短く宣言している。冷静で落ち着いた口調に、静かな自信が感じられる。抑揚は控えめで、声量を安定させ、一語ずつ明瞭に、語尾をすっきりと言い切る。",
+      "clips": [
+        {
+          "action": "call",
+          "file": "oneesan/voice-call.ogg",
+          "text": "コール。",
+          "seed": 260916,
+          "seconds": 0.345,
+          "sha256": "98bc324988ec211ed5ebc1e784c712283d785442d88eadf9a412a09554fa8276",
+          "trim": {
+            "pack": "01-calm",
+            "action": "call",
+            "before_seconds": 0.7267708333333334,
+            "start_seconds": 0.0,
+            "end_seconds": 0.32,
+            "after_seconds": 0.345,
+            "quiet_gap_seconds": 0.18,
+            "quiet_threshold_dbfs": -41.51370806073281,
+            "fade_out_seconds": 0.025,
+            "encoded_last_10ms_dbfs": -91.96058245576042
+          },
+          "generation_settings": null
+        },
+        {
+          "action": "bet",
+          "file": "oneesan/voice-bet.ogg",
+          "text": "ベット。",
+          "seed": 260917,
+          "seconds": 0.255,
+          "sha256": "3c0c74a79a3c7783954fab5955343bde6744059a030e1ab6ef78f3bdd188baad",
+          "trim": {
+            "pack": "01-calm",
+            "action": "bet",
+            "before_seconds": 0.9431875,
+            "start_seconds": 0.0,
+            "end_seconds": 0.23,
+            "after_seconds": 0.255,
+            "quiet_gap_seconds": 0.18,
+            "quiet_threshold_dbfs": -42.0,
+            "fade_out_seconds": 0.025,
+            "encoded_last_10ms_dbfs": -103.7771150840936
+          },
+          "generation_settings": null
+        },
+        {
+          "action": "fold",
+          "file": "oneesan/voice-fold.ogg",
+          "text": "フォールド。",
+          "seed": 260918,
+          "seconds": 0.495,
+          "sha256": "e74945d29a9c2c57795783bb6501530c3887f5f217495265626ff727263c8090",
+          "trim": {
+            "pack": "01-calm",
+            "action": "fold",
+            "before_seconds": 0.8600208333333333,
+            "start_seconds": 0.0,
+            "end_seconds": 0.47,
+            "after_seconds": 0.495,
+            "quiet_gap_seconds": 0.18,
+            "quiet_threshold_dbfs": -41.30575975747967,
+            "fade_out_seconds": 0.025,
+            "encoded_last_10ms_dbfs": -101.38238845545077
+          },
+          "generation_settings": null
+        },
+        {
+          "action": "check",
+          "file": "oneesan/voice-check.ogg",
+          "text": "チェック。",
+          "seed": 260919,
+          "seconds": 0.405,
+          "sha256": "022f710a311a5e233e9a4817651ab3378d6407c2ac06fa7792157fd6f243ff28",
+          "trim": {
+            "pack": "01-calm",
+            "action": "check",
+            "before_seconds": 0.9973125,
+            "start_seconds": 0.0,
+            "end_seconds": 0.38,
+            "after_seconds": 0.405,
+            "quiet_gap_seconds": 0.18,
+            "quiet_threshold_dbfs": -42.0,
+            "fade_out_seconds": 0.025,
+            "encoded_last_10ms_dbfs": -99.20368039708086
+          },
+          "generation_settings": null
+        },
+        {
+          "action": "raise",
+          "file": "oneesan/voice-raise.ogg",
+          "text": "レイズ。",
+          "seed": 260920,
+          "seconds": 0.415,
+          "sha256": "c713f4d8855540188b0b3bc84fac810100b6eb398a60434540134e5245a39dfa",
+          "trim": {
+            "pack": "01-calm",
+            "action": "raise",
+            "before_seconds": 0.6879375,
+            "start_seconds": 0.0,
+            "end_seconds": 0.39,
+            "after_seconds": 0.415,
+            "quiet_gap_seconds": 0.18,
+            "quiet_threshold_dbfs": -42.0,
+            "fade_out_seconds": 0.025,
+            "encoded_last_10ms_dbfs": -101.74048407241058
+          },
+          "generation_settings": null
+        },
+        {
+          "action": "allin",
+          "file": "oneesan/voice-allin.ogg",
+          "text": "オールイン。",
+          "seed": 260921,
+          "seconds": 0.585,
+          "sha256": "983562fda759e868b4cd5b0f58390612826da131802b204df67204b66e298e35",
+          "trim": {
+            "pack": "01-calm",
+            "action": "allin",
+            "before_seconds": 1.2079791666666666,
+            "start_seconds": 0.0,
+            "end_seconds": 0.56,
+            "after_seconds": 0.585,
+            "quiet_gap_seconds": 0.18,
+            "quiet_threshold_dbfs": -40.720810082518895,
+            "fade_out_seconds": 0.025,
+            "encoded_last_10ms_dbfs": -110.39715057152779
+          },
+          "generation_settings": null
+        }
+      ]
+    },
+    {
+      "id": "shoujo",
+      "label": "少女",
+      "source_pack": "02-no-caption",
+      "reference_sha256": "a93c0f63758b95ad61b848a167e425db855dd0c2cd0715a7aa99412e79b16384",
+      "caption": null,
+      "clips": [
+        {
+          "action": "call",
+          "file": "shoujo/voice-call.ogg",
+          "text": "コール。",
+          "seed": 265216,
+          "seconds": 0.9,
+          "sha256": "59f7bf542b9f9e2ef76447dd5cb5a54090c7083cffcec5033e12839f699fe008",
+          "trim": {
+            "pack": "02-no-caption",
+            "action": "call",
+            "before_seconds": 0.9,
+            "start_seconds": 0,
+            "end_seconds": 0.9,
+            "after_seconds": 0.9,
+            "fade_out_seconds": 0,
+            "trimmed": false,
+            "method": "User-selected full model output, copied without trimming"
+          },
+          "generation_settings": {
+            "seconds": 0.9,
+            "max_seconds": 0.95,
+            "trim_tail": false
+          }
+        },
+        {
+          "action": "bet",
+          "file": "shoujo/voice-bet.ogg",
+          "text": "ベット。",
+          "seed": 261417,
+          "seconds": 0.8,
+          "sha256": "bb22ffb567f205f1804b270564c467fa0c9939bc41aff4b33a0cb0e14fea65ea",
+          "trim": {
+            "pack": "02-no-caption",
+            "action": "bet",
+            "before_seconds": 2.08,
+            "start_seconds": 0.3,
+            "end_seconds": 1.1,
+            "after_seconds": 0.8,
+            "fade_out_seconds": 0.02,
+            "method": "User-selected take; preserve both speech segments and internal pause"
+          },
+          "generation_settings": null
+        },
+        {
+          "action": "fold",
+          "file": "shoujo/voice-fold.ogg",
+          "text": "フォールド。",
+          "seed": 260918,
+          "seconds": 0.735,
+          "sha256": "048701b37b2a6606d2710736e9238a575526d49f457a91172dcd3835649e449d",
+          "trim": {
+            "pack": "02-no-caption",
+            "action": "fold",
+            "before_seconds": 2.12,
+            "start_seconds": 0.38,
+            "end_seconds": 1.09,
+            "after_seconds": 0.735,
+            "quiet_gap_seconds": 0.18,
+            "quiet_threshold_dbfs": -42.0,
+            "fade_out_seconds": 0.025,
+            "encoded_last_10ms_dbfs": -106.36411983639698
+          },
+          "generation_settings": null
+        },
+        {
+          "action": "check",
+          "file": "shoujo/voice-check.ogg",
+          "text": "チェック。",
+          "seed": 260919,
+          "seconds": 0.585,
+          "sha256": "cdc3c9258c87ee59e0ad4986b804264796d801de8230a08cecac038f539491a3",
+          "trim": {
+            "pack": "02-no-caption",
+            "action": "check",
+            "before_seconds": 1.5560416666666668,
+            "start_seconds": 0.01,
+            "end_seconds": 0.57,
+            "after_seconds": 0.585,
+            "quiet_gap_seconds": 0.18,
+            "quiet_threshold_dbfs": -39.94126743305207,
+            "fade_out_seconds": 0.025,
+            "encoded_last_10ms_dbfs": -114.4373773439831
+          },
+          "generation_settings": null
+        },
+        {
+          "action": "raise",
+          "file": "shoujo/voice-raise.ogg",
+          "text": "レイズ。",
+          "seed": 260920,
+          "seconds": 0.705,
+          "sha256": "cbdf6cf20385589872d013c5408581600fafd479919aae7f3063af2dd2c22dad",
+          "trim": {
+            "pack": "02-no-caption",
+            "action": "raise",
+            "before_seconds": 2.24,
+            "start_seconds": 0.38,
+            "end_seconds": 1.06,
+            "after_seconds": 0.705,
+            "quiet_gap_seconds": 0.18,
+            "quiet_threshold_dbfs": -42.0,
+            "fade_out_seconds": 0.025,
+            "encoded_last_10ms_dbfs": -180.0
+          },
+          "generation_settings": null
+        },
+        {
+          "action": "allin",
+          "file": "shoujo/voice-allin.ogg",
+          "text": "オールイン。",
+          "seed": 265021,
+          "seconds": 0.9,
+          "sha256": "c94eea12656627771431b9918be90e40e2684b179fbd5e19f33d775da91eab9e",
+          "trim": {
+            "pack": "02-no-caption",
+            "action": "allin",
+            "before_seconds": 0.9,
+            "start_seconds": 0,
+            "end_seconds": 0.9,
+            "after_seconds": 0.9,
+            "fade_out_seconds": 0,
+            "trimmed": false,
+            "method": "User-selected full model output, copied without trimming"
+          },
+          "generation_settings": {
+            "seconds": 0.9,
+            "max_seconds": 0.95,
+            "trim_tail": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "nekomimi",
+      "label": "貓娘",
+      "source_pack": "03-no-caption",
+      "reference_sha256": "00221d9364b5e9df8424acdf0a4f81e78ca9a8b43d7dd0cdec9f252fd6834e30",
+      "caption": null,
+      "clips": [
+        {
+          "action": "call",
+          "file": "nekomimi/voice-call.ogg",
+          "text": "コール。",
+          "seed": 260916,
+          "seconds": 0.725,
+          "sha256": "c12bf1be505a8a2a625eb5bd617e1f6c975acb96f9a08133be8f6b1101242ba7",
+          "trim": {
+            "pack": "03-no-caption",
+            "action": "call",
+            "before_seconds": 1.8198333333333334,
+            "start_seconds": 0.04,
+            "end_seconds": 0.74,
+            "after_seconds": 0.725,
+            "quiet_gap_seconds": 0.18,
+            "quiet_threshold_dbfs": -42.0,
+            "fade_out_seconds": 0.025,
+            "encoded_last_10ms_dbfs": -108.23396459956476
+          },
+          "generation_settings": null
+        },
+        {
+          "action": "bet",
+          "file": "nekomimi/voice-bet.ogg",
+          "text": "ベット。",
+          "seed": 264017,
+          "seconds": 0.9,
+          "sha256": "5da536bfa19a0d453ec7e7b8df1231c4658e2da4ee5fa3b6246d091cde44cb83",
+          "trim": {
+            "pack": "03-no-caption",
+            "action": "bet",
+            "before_seconds": 0.9,
+            "start_seconds": 0,
+            "end_seconds": 0.9,
+            "after_seconds": 0.9,
+            "fade_out_seconds": 0,
+            "trimmed": false,
+            "method": "User-selected full model output, copied without trimming"
+          },
+          "generation_settings": {
+            "seconds": 0.9,
+            "max_seconds": 0.95,
+            "trim_tail": false
+          }
+        },
+        {
+          "action": "fold",
+          "file": "nekomimi/voice-fold.ogg",
+          "text": "フォールド。",
+          "seed": 260918,
+          "seconds": 0.695,
+          "sha256": "7dece76ce10d77e33dcdc4caebde03ec8373c8116c3aff94b5f3eed759838a35",
+          "trim": {
+            "pack": "03-no-caption",
+            "action": "fold",
+            "before_seconds": 2.5658541666666665,
+            "start_seconds": 0.04,
+            "end_seconds": 0.71,
+            "after_seconds": 0.695,
+            "quiet_gap_seconds": 0.18,
+            "quiet_threshold_dbfs": -41.161319894241956,
+            "fade_out_seconds": 0.025,
+            "encoded_last_10ms_dbfs": -114.16780003372853
+          },
+          "generation_settings": null
+        },
+        {
+          "action": "check",
+          "file": "nekomimi/voice-check.ogg",
+          "text": "チェック。",
+          "seed": 264219,
+          "seconds": 0.9,
+          "sha256": "9382aefb884429614f5f270db616c56ee6ca4f23c2199f0b788a55b69296b054",
+          "trim": {
+            "pack": "03-no-caption",
+            "action": "check",
+            "before_seconds": 0.9,
+            "start_seconds": 0,
+            "end_seconds": 0.9,
+            "after_seconds": 0.9,
+            "fade_out_seconds": 0,
+            "trimmed": false,
+            "method": "User-selected full model output, copied without trimming"
+          },
+          "generation_settings": {
+            "seconds": 0.9,
+            "max_seconds": 0.95,
+            "trim_tail": false
+          }
+        },
+        {
+          "action": "raise",
+          "file": "nekomimi/voice-raise.ogg",
+          "text": "レイズ。",
+          "seed": 261020,
+          "seconds": 0.665,
+          "sha256": "a9aab3f23b98fcc1c646d24d53643ef65982f995767f454d70f622cec29273e4",
+          "trim": {
+            "pack": "03-no-caption",
+            "action": "raise",
+            "before_seconds": 2.3908125,
+            "start_seconds": 0.0,
+            "end_seconds": 0.64,
+            "after_seconds": 0.665,
+            "quiet_gap_seconds": 0.18,
+            "quiet_threshold_dbfs": -40.1811501611486,
+            "fade_out_seconds": 0.025,
+            "encoded_last_10ms_dbfs": -117.06711804471436
+          },
+          "generation_settings": null
+        },
+        {
+          "action": "allin",
+          "file": "nekomimi/voice-allin.ogg",
+          "text": "オールイン。",
+          "seed": 260921,
+          "seconds": 0.935,
+          "sha256": "94fd97bd197927dfa00e42ab1f11a3df645455568c57e46c5f6bb3900c02c7e7",
+          "trim": {
+            "pack": "03-no-caption",
+            "action": "allin",
+            "before_seconds": 2.9863333333333335,
+            "start_seconds": 0.0,
+            "end_seconds": 0.91,
+            "after_seconds": 0.935,
+            "quiet_gap_seconds": 0.18,
+            "quiet_threshold_dbfs": -42.0,
+            "fade_out_seconds": 0.025,
+            "encoded_last_10ms_dbfs": -120.82115291072517
+          },
+          "generation_settings": null
+        }
+      ]
+    }
+  ]
+}

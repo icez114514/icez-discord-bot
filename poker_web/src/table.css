@@ -164,6 +164,8 @@ main.table-mode { max-width: 1800px; padding: 12px 24px; }
 .sound-settings label { display: block; font-size: 13px; }
 .sound-settings input[type=range] { display: block; width: 100%; min-height: 32px; padding: 0; accent-color: var(--accent); }
 .sound-settings input[type=checkbox] { width: auto; margin-right: 8px; }
+.voice-pack-options { display: flex; flex-wrap: wrap; gap: 8px; }
+.voice-pack-options button[aria-pressed="true"] { outline: 2px solid var(--accent); outline-offset: 2px; }
 .sound-group { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 12px; margin: 8px 0; }
 .sound-settings p, .settlement-details p, .settlement-details li { font-size: 12px; }
 .settlement-details summary { cursor: pointer; padding: 10px 0; color: var(--accent); }

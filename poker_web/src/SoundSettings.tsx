@@ -1,5 +1,5 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
-import { sound, type Group, type Sound } from './sound';
+import { sound, voicePacks, type Group, type Sound } from './sound';
 
 const groups: { id: Group; label: string; preview: Sound }[] = [
   { id: 'voice', label: '動作語音', preview: 'voice_allin' },
@@ -21,6 +21,9 @@ export function SoundSettings() {
   return <fieldset className="sound-settings"><legend>音效與動態效果</legend>
     <label><input type="checkbox" checked={prefs.muted} onChange={e => sound.mute(e.target.checked)} />總靜音</label>
     <label>總音量 {Math.round(prefs.master * 100)}%<input aria-label="總音量" type="range" min="0" max="1" step="0.05" value={prefs.master} onChange={e => sound.configure({ master: Number(e.target.value) })} /></label>
+    <fieldset><legend>語音組</legend><p>選擇即試聽 All-in；套用至你聽到的牌局動作語音。</p>
+      <div className="voice-pack-options">{voicePacks.map(pack => <button type="button" key={pack.id} aria-pressed={prefs.voicePack === pack.id} onClick={() => { void sound.selectVoice(pack.id).then(() => setStatus(sound.diagnosis())); }}>{pack.label}</button>)}</div>
+    </fieldset>
     {groups.map(group => <div className="sound-group" key={group.id}><label>{group.label} {Math.round(prefs.groups[group.id] * 100)}%<input aria-label={group.label + '音量'} type="range" min="0" max="1" step="0.05" value={prefs.groups[group.id]} onChange={e => sound.configure({ groups: { ...prefs.groups, [group.id]: Number(e.target.value) } })} /></label><button type="button" aria-label={'試聽' + group.label} onClick={() => { sound.unlock(); void sound.play(group.preview).then(() => setStatus(sound.diagnosis())); }}>試聽</button></div>)}
     <label><input type="checkbox" checked={prefs.reduced} onChange={e => sound.configure({ reduced: e.target.checked })} />減少動態效果（也遵循系統設定）</label>
     <p role="status">{reasons[status] ?? status}{sound.storageFailed() ? ' · 無法儲存，偏好僅在本次會話保留。' : ''}</p>
