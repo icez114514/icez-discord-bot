@@ -53,6 +53,7 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));let chrome,ws;
     await run(`document.querySelector('.game').classList.toggle('large-cards',${large})`);
     await publish("snapshot.hand.actor=1;snapshot.hand.payouts=null;snapshot.hand.legal={};snapshot.hand.pot='0'");
     const before=await geometry();
+    assert(await run("Math.abs(document.querySelector('.preselection').getBoundingClientRect().top-document.querySelector('.action-panel').getBoundingClientRect().top)<1"),JSON.stringify({width,theme,large,rects:await run("['.preselection','.action-panel','.table-action-slot'].map(q=>{const e=document.querySelector(q),r=e.getBoundingClientRect(),s=getComputedStyle(e);return {q,top:r.top,height:r.height,align:s.alignSelf,margin:s.margin,position:s.position};})")}));
     await publish("snapshot.hand.actor=0;snapshot.hand.legal={fold:true,call:'50',raise:true,min_raise_to:'100',max_raise_to:'1000'};snapshot.hand.pot='999999999999999999999999999999'");
     assert.deepEqual(await geometry(),before,`geometry ${width}/${theme}/${large}`);
     assert.equal(await run("document.querySelector('.action-panel').inert"),false);

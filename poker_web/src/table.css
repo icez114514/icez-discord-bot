@@ -358,3 +358,30 @@ main.table-mode { max-width: 1800px; padding: 12px 24px; }
   .game .pot > b { height: 44px; }
   .game .pot.long-pot > b { font-size: 14px; }
 }
+
+/* One toolbar and one stable action slot: waiting controls stay within reach. */
+.game .table-action-slot { position: relative; width: min(640px,54%); height: 214px; margin: -65px 0 0 auto; z-index: 3; }
+.game .table-action-slot > .action-panel { position: absolute; inset: 0; width: 100%; max-width: none; margin: 0; min-height: 0; }
+.game .table-action-slot > .preselection { position: absolute; inset: 0; width: 100%; max-width: none; height: 100%; margin: 0; padding-top: 12px; display: flex; align-items: start; gap: 8px; }
+.game .preselection button { position: relative; min-height: 52px; padding-left: 26px; }
+.game .preselection button::before { content: ''; position: absolute; left: 9px; top: 50%; transform: translateY(-50%); width: 10px; height: 10px; border: 1px solid currentColor; border-radius: 50%; }
+.game .preselection button[aria-pressed=true]::before { background: currentColor; box-shadow: inset 0 0 0 2px var(--panel); }
+.game .table-tools .account-tools { display: flex; margin: 0; gap: 0; }
+.game .game-toolbar { justify-content: space-between; }
+.game .table-tools { margin-left: auto; }
+.voice-selection { border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
+.voice-pack-options button { flex: 1; min-width: 64px; }
+.voice-pack-options button[aria-pressed=true] { background: var(--accent); color: var(--on); }
+.voice-pack-options button[aria-pressed=false] { background: var(--bg); color: var(--ink); }
+.account-secondary { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+@media (max-width: 1099px) { .game .table-action-slot { width: 60%; } }
+@media (max-width: 600px) {
+  .game .table-action-slot { width: 100%; height: 214px; margin: 8px 0 0; }
+  .game .table-tools, .game .game-toolbar { gap: 3px; }
+}
+@media (min-width: 1100px) {
+  .game .table-action-slot { grid-column: 3; grid-row: 4; align-self: center; justify-self: end; width: calc(100% - 20px); max-width: 480px; height: 174px; margin: 0; }
+  .game.large-cards .table-action-slot { height: 230px; }
+}
+
+.game .table-action-slot > .action-panel { align-self: stretch; justify-self: stretch; height: 100%; }

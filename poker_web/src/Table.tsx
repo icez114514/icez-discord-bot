@@ -11,6 +11,7 @@ import { sound } from './sound';
 import { actionLabel, useTablePresentation } from './tablePresentation';
 import { ChipFlights, SettlementDetails, type Settlement } from './TableEffects';
 import { IconButton } from './IconButton';
+import { AccountTools } from './AccountTools';
 import { PlayerAvatar, usePlayerProfiles } from './PlayerProfiles';
 import './table.css';
 
@@ -272,9 +273,9 @@ export function Table({ user, onClose, initialHistory = false }: { user: string;
   return <section className={`game ${prefs.reduced ? 'reduced-motion' : ''} ${preferences.fourColor ? 'four-color' : ''} ${preferences.large ? 'large-cards' : ''}`} aria-label="德州撲克牌桌">
     <div className="game-toolbar">
       <IconButton icon="back" label="返回大廳（保留座位）" onClick={onClose} />
-      <IconButton icon="info" label={`${state?.name ?? '牌桌'} · ${positiveInteger(state?.rules?.small_blind) && positiveInteger(blind) ? `${chips(state.rules.small_blind)} / ${chips(blind)}` : '盲注資料未知'} · 無限注德州撲克${state?.private ? ' · 私人桌' : ''}`} onClick={() => setInfo('hand')} />
-      <IconButton icon={phase === 'synced' && state?.control && !state?.frozen && !state?.closed && !pending.current ? 'connected' : 'warning'} label={connectionText + (pending.current && !connectionText.includes('結果待確認') ? pendingText : '')} className="connection-icon" />
-      <div className="table-tools"><IconButton icon="history" label="上一手／回放" onClick={() => toggleHistory(true)} /><IconButton icon={muted ? 'muted' : 'volume'} label={muted ? '開啟音效' : '關閉音效'} aria-pressed={!muted} onClick={() => sound.mute(!muted)} /><IconButton icon="settings" label="牌桌選項" onClick={() => setOptions(true)} /></div>
+      <IconButton icon={phase === 'synced' && state?.control && !state?.frozen && !state?.closed && !pending.current ? 'info' : 'warning'} label={`${state?.name ?? '牌桌'} · ${positiveInteger(state?.rules?.small_blind) && positiveInteger(blind) ? `${chips(state.rules.small_blind)} / ${chips(blind)}` : '盲注資料未知'} · 無限注德州撲克${state?.private ? ' · 私人桌' : ''} · ${connectionText}${pending.current && !connectionText.includes('結果待確認') ? pendingText : ''}`} onClick={() => setInfo('hand')} />
+
+      <div className="table-tools"><IconButton icon="history" label="上一手／回放" onClick={() => toggleHistory(true)} /><IconButton icon={muted ? 'muted' : 'volume'} label={muted ? '開啟音效' : '關閉音效'} aria-pressed={!muted} onClick={() => sound.mute(!muted)} /><IconButton icon="settings" label="牌桌選項" onClick={() => setOptions(true)} /><AccountTools user={user} compact /></div>
     </div>
     <span className="connection-announcement" role="status" aria-live="polite" aria-atomic="true">{announcement}</span>
     {error ? <p role="alert" className="message error">{error}</p> : null}
@@ -302,6 +303,7 @@ export function Table({ user, onClose, initialHistory = false }: { user: string;
         })}
       </div>
       {hand?.payouts ? <p role="status" className="settlement">{settlement ? `${settlement.void ? '作廢' : `派彩 ${chips(awardTotal.toString())}`} · 退款 ${chips(refundTotal.toString())}` : '本手已結算'}</p> : null}
+      <div className="table-action-slot">
       <section className={`action-panel ${ownTurn ? '' : 'action-panel-hidden'}`} aria-label="牌桌操作" aria-hidden={!ownTurn} inert={!ownTurn}>
         <div className="turn-line"><strong>輪到你行動</strong><span className="timebank" title="行動時間用盡時自動補時，每次 5 秒，每手最多 4 次">◷ 補時池 {state.time_bank ?? 0}s{active && hand.extensions > 0 ? ` · 已用 ${hand.extensions}/4` : ''}</span></div>
         <div className="bet-sizing"><div className="pot-presets" aria-label="個人下注快捷按鈕">{presets.map(({ value, target, label }, index) => <button key={index} disabled={!canRaise || target === null} title={target === null ? '大盲資料未知，無法換算' : `${value} · 向下取整並限制合法範圍，加注至 ${chips(target)}；只填草稿`} onClick={() => { if (target !== null) setRaise(target); void sound.play('click'); }}>{label}</button>)}</div>
@@ -310,8 +312,8 @@ export function Table({ user, onClose, initialHistory = false }: { user: string;
         <div className="action-buttons"><button disabled={disabled || !ownTurn} onClick={() => act('fold')}>棄牌</button><button disabled={disabled || !ownTurn} onClick={() => act(hand?.legal.check ? 'check' : 'call')}>{hand?.legal.check ? '過牌' : <>跟注<span>{chips(hand?.legal.call ?? '0')}</span></>}</button><button disabled={!canRaise || !raiseValid} onClick={() => act('raise', raise)}>{raiseValue === maximum && canRaise ? '全下' : betLabel}<span>{chips(raiseValue.toString())}</span></button></div>
       </section>
       <section className={`preselection ${canPreselect ? '' : 'preselection-idle'}`} aria-label="下一次行動預選" aria-hidden={!canPreselect} inert={!canPreselect}><button disabled={!canPreselect} aria-pressed={selection?.action === 'check_fold'} onClick={() => choosePreselection('check_fold')}>棄牌／過牌</button><button disabled={!canPreselect} aria-pressed={selection?.action === 'call_any'} onClick={() => choosePreselection('call_any')}>跟任何注</button></section>
-      <nav className="table-links" aria-label="牌局資訊"><IconButton icon="info" label={hand?.settlement ? '結算明細' : '本手牌局'} onClick={() => setInfo('hand')} /><IconButton icon="log" label="牌局紀錄" onClick={() => setInfo('log')} /></nav>
-      {info ? <Modal title={info === 'hand' ? '本手牌局' : '牌局紀錄'} onClose={() => setInfo(null)}>{info === 'hand' ? <div className="hand-info"><p>{hand ? `手牌 ${hand.id} · ${labels[hand.street] ?? hand.street}` : '尚未開始'} · 底池 {chips(hand?.pot ?? '0')}</p><span>你的底牌</span><Cards cards={ownPlayer?.cards ?? []} /><span>公共牌</span><Cards cards={hand?.board ?? []} slots={5} />{hand?.settlement ? <SettlementDetails settlement={hand.settlement} name={playerName} /> : null}</div> : <><p>本次連線觀察到的公開異動，最多保留 80 筆；重連期間可能不完整。</p>{log.length ? <ol className="game-log">{log.map((entry, index) => <li key={index}>{entry}</li>)}</ol> : <p>尚無新的牌局異動。</p>}</>}</Modal> : null}
+      </div>
+      {info ? <Modal title={info === 'hand' ? '本手牌局' : '牌局紀錄'} onClose={() => setInfo(null)}>{info === 'hand' ? <div className="hand-info"><button onClick={() => setInfo('log')}>牌局紀錄</button><p>{hand ? `手牌 ${hand.id} · ${labels[hand.street] ?? hand.street}` : '尚未開始'} · 底池 {chips(hand?.pot ?? '0')}</p><span>你的底牌</span><Cards cards={ownPlayer?.cards ?? []} /><span>公共牌</span><Cards cards={hand?.board ?? []} slots={5} />{hand?.settlement ? <SettlementDetails settlement={hand.settlement} name={playerName} /> : null}</div> : <><button onClick={() => setInfo('hand')}>本手牌局</button><p>本次連線觀察到的公開異動，最多保留 80 筆；重連期間可能不完整。</p>{log.length ? <ol className="game-log">{log.map((entry, index) => <li key={index}>{entry}</li>)}</ol> : <p>尚無新的牌局異動。</p>}</>}</Modal> : null}
       {options ? <Modal title="牌桌選項" onClose={() => setOptions(false)}><ThemePicker /><TablePreferences value={preferences} onChange={changePreferences} saved={preferencesSaved} /><p className="bank">補時池 {state.time_bank} / 60 秒 · 自動補時每次 +5 秒，最多 4 次</p>
         <div className="table-controls"><label>補碼金額<input inputMode="numeric" value={amount} onChange={e => setAmount(e.target.value)} /></label><button disabled={disabled || !!mine?.topup || mine?.leaving} onClick={() => command('topup', { amount })}>申請手後補碼</button><button disabled={disabled || mine?.leaving || mine?.sitout} onClick={() => command(mine?.mode === 'sitout' ? 'sit_in' : 'sitout')}>{mine?.mode === 'sitout' ? '重新坐入' : mine?.sitout ? '已排隊坐出' : '手後坐出'}</button></div>
         {mine?.expires ? <p>座位保留 {Math.max(0, Math.ceil(mine.expires - now))} 秒</p> : null}

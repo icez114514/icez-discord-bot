@@ -37,6 +37,7 @@ const buffers = new Map<string, Promise<AudioBuffer>>();
 const sources = new Map<AudioBufferSourceNode, number>();
 let voiceSource: AudioBufferSourceNode | undefined;
 let voiceRequest = 0;
+let resuming: Promise<void> | undefined;
 function cueFile(cue: typeof catalog[Sound]) {
   return cue.group === 'voice' ? `voices/${prefs.voicePack}/${cue.file}` : cue.file;
 }
@@ -83,7 +84,7 @@ export const sound = {
     try {
       context ??= new AudioContext();
       const audio = context;
-      const resumed = audio.resume();
+      const resumed = resuming = audio.resume();
       for (const file of new Set(Object.values(catalog).map(cueFile))) void buffer(file, audio).catch(() => {});
       await resumed;
       diagnostic = audio.state === 'running' ? 'ready' : 'locked';
@@ -95,17 +96,26 @@ export const sound = {
     sources.clear(); voiceSource = undefined;
   },
   mute(value: boolean) { sound.configure({ muted: value }); if (!value) sound.unlock(); },
-  async selectVoice(voicePack: VoicePack) {
-    sound.configure({ voicePack });
+  async preview(name: Sound) {
+    sound.stop();
     const revision = epoch;
     await sound.unlock();
-    if (revision === epoch) await sound.play('voice_allin', true);
+    if (revision === epoch) await sound.play(name, true);
+  },
+  async selectVoice(voicePack: VoicePack) {
+    sound.configure({ voicePack });
+    await sound.preview('voice_allin');
   },
   async play(name: Sound, preview = false) {
+    const requestEpoch = epoch, started = performance.now();
+    if (context?.state !== 'running' && resuming) {
+      try { await resuming; } catch { diagnostic = 'locked'; return; }
+      if (requestEpoch !== epoch) return;
+    }
     const reason = blocked(name);
     if (reason) { diagnostic = reason; return; }
     const audio = context!;
-    const started = performance.now(), revision = epoch, cue = catalog[name];
+    const revision = epoch, cue = catalog[name];
     const voiceRevision = cue.group === 'voice' ? ++voiceRequest : null;
     try {
       const decoded = await buffer(cueFile(cue), audio);
