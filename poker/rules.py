@@ -81,6 +81,7 @@ def create(players, button, hand_id):
         "actor": None,
         "turn": 0,
         "history": [],
+        "replay_version": 1,
         "payouts": None,
         "refunds": {},
         "showdown": False,
@@ -301,6 +302,8 @@ def finish(hand):
     if sum(payouts.values()) != sum(p["paid"] for p in players):
         raise Conflict("payout_not_conserved")
     hand.update(payouts=payouts, refunds=refunds, pots=pots, actor=None)
+    if hand["showdown"]:
+        hand_event(hand, "showdown")
     for i, pot in enumerate(pots):
         for user, amount in pot["awards"].items():
             if int(amount):
@@ -314,6 +317,7 @@ def finish(hand):
     for user, amount in refunds.items():
         if amount:
             hand_event(hand, "refund", user=user, amount=str(amount), reason="uncalled")
+    hand_event(hand, "complete")
 
 
 def project(hand, user):
