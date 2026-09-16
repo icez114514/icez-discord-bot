@@ -19,6 +19,7 @@ class Config:
     reader_token: str = field(default="", repr=False)
     funds_token: str = field(default="", repr=False)
     funds_admins: tuple[str, ...] = ()
+    table_admins: tuple[str, ...] = ()
     public_port: int = 8765
     internal_port: int = 8766
     static_dir: Path = Path(__file__).resolve().parent.parent / "poker_web" / "dist"
@@ -59,7 +60,7 @@ class Config:
                 errors.append(name + " must be configured (minimum 16 characters)")
         if self.reader_token == self.funds_token:
             errors.append("internal read and funds credentials must differ")
-        if any(not re.fullmatch(r"[0-9]{1,20}", actor) for actor in self.funds_admins):
+        if any(not re.fullmatch(r"[0-9]{1,20}", actor) for actor in (*self.funds_admins, *self.table_admins)):
             errors.append("funds_admins must contain Discord IDs")
         if not self.data_dir.is_absolute():
             errors.append("POKER_DATA_DIR must be absolute")
@@ -96,6 +97,7 @@ class Config:
             funds_admins=tuple(
                 filter(None, os.environ.get("POKER_FUNDS_ADMINS", "").split(","))
             ),
+            table_admins=tuple(filter(None, os.environ.get("POKER_TABLE_ADMINS", "").split(","))),
             public_port=int(os.environ.get("POKER_PUBLIC_PORT", "8765")),
             internal_port=int(os.environ.get("POKER_INTERNAL_PORT", "8766")),
         )

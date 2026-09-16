@@ -10,7 +10,7 @@ def authenticate(db, token):
     from .store import Unauthorized, digest
 
     row = db.execute(
-        "SELECT user_id FROM sessions WHERE token_hash=? AND revoked=0",
+        "SELECT s.user_id FROM sessions s JOIN accounts a USING(user_id) WHERE token_hash=? AND revoked=0 AND a.disabled=0",
         (digest(token),),
     ).fetchone()
     if row is None:

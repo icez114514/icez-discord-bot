@@ -44,6 +44,36 @@ async function browser(index, width = 1440, height = 1100) {
   await call('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: width < 600 });
   const page = { call, run, until, click, input, api, screenshot, errors, projections, socket }; pages.push(page); return page;
 }
+async function managementAcceptance(a, b) {
+  const balance = BigInt((await b.api('/api/account')).settled);
+  await a.click('管理與查帳');
+  await a.until("!!document.querySelector('.management form select')");
+  await a.run("(() => { const s=document.querySelector('.management form select'); s.value='adjust'; s.dispatchEvent(new Event('change',{bubbles:true})); })()");
+  await a.input('.management form input[maxlength="80"]', '222222222222222222');
+  await a.input('.management form input[pattern]', '123');
+  await a.input('.management form input[maxlength="500"]', 'Browser retry acceptance');
+  await a.call('Fetch.enable', { patterns: [{ urlPattern: '*/api/management/commands', requestStage: 'Request' }] });
+  await a.click('確認執行');
+  await a.until("document.querySelector('.management [role=alert]')?.textContent.includes('結果尚未確認')");
+  const original = await a.run("sessionStorage.getItem('poker-management-pending:111111111111111111')");
+  assert(original);
+  await a.click('關閉');
+  await a.click('管理與查帳');
+  await a.until("document.querySelector('.management [role=status]')?.textContent.includes('待確認命令')");
+  assert.equal(await a.run("sessionStorage.getItem('poker-management-pending:111111111111111111')"), original);
+  await a.call('Fetch.disable');
+  await a.click('重試原命令');
+  await a.until("document.querySelector('.management [role=status]')?.textContent.includes('已受理')");
+  assert.equal(BigInt((await b.api('/api/account')).settled), balance + 123n);
+  assert.equal(await a.run("sessionStorage.getItem('poker-management-pending:111111111111111111')"), null);
+  await a.click('管理稽核');
+  await a.until("document.querySelector('.audit-record')?.textContent.includes('Browser retry acceptance')");
+  assert.equal((await a.api('/api/management/audit')).audit.length, 1);
+  await a.screenshot('desktop-management');
+  assert.equal(await b.run("[...document.querySelectorAll('button')].some(e=>e.textContent==='管理與查帳')"), false);
+  await a.click('關閉');
+  console.log(JSON.stringify({ managementRetry: true, survivesDialogRemount: true, auditedOnce: true, ordinaryPlayerHasNoManagement: true }));
+}
 try {
   await ready(async () => { try { return (await fetch(base + '/health')).ok; } catch { return false; } }, 'server');
   const a = await browser(0); const b = await browser(1, 390, 844);
@@ -52,6 +82,8 @@ try {
     await page.until("!!document.querySelector('.lobby')");
     await observeSockets(page);
   }
+  await managementAcceptance(a, b);
+  if (!process.argv.includes('--management-only')) {
   await a.click('開新桌'); await a.input('dialog input:not([type=checkbox])', '週末牌桌'); await a.click('確認帶入');
   await a.until("document.querySelector('.connection')?.textContent.includes('此視窗可操作')");
   await b.until("!!document.querySelector('.room')"); await b.click('帶入並入座');
@@ -96,6 +128,25 @@ try {
     await delay(120);
   }
   assert.equal(finished.size, 3, 'three real settled hands');
+  for (const [page, label] of [[a, 'desktop'], [b, 'mobile']]) {
+    const handBefore = (await page.api()).hand.id;
+    const socketsBefore = await page.run('window.pokerSockets.length');
+    await page.click('排行與我的統計');
+    await page.until("!!document.querySelector('.metric')");
+    const report = await page.api('/api/statistics');
+    assert(report.personal.hands >= 3);
+    assert.equal(await page.run("document.querySelector('.statistics section p').textContent"), `有效手數：${report.personal.hands} · 樣本不足`);
+    assert.equal((await page.api()).hand.id, handBefore);
+    assert.equal(await page.run('window.pokerSockets.length'), socketsBefore, 'statistics must retain live table socket');
+    for (const [period, opponents] of [['7','human'], ['30','mixed'], ['all','all']]) {
+      await page.run(`(() => { const filters=document.querySelectorAll('.report-filters select'); filters[0].value='${period}'; filters[0].dispatchEvent(new Event('change',{bubbles:true})); filters[1].value='${opponents}'; filters[1].dispatchEvent(new Event('change',{bubbles:true})); })()`);
+      await page.until("!!document.querySelector('.metric')");
+      if (opponents === 'mixed') assert.equal(await page.run("document.querySelector('.statistics section p').textContent"), '有效手數：0 · 樣本不足');
+    }
+    assert.equal(await page.run('document.documentElement.scrollWidth <= innerWidth'), true);
+    await page.screenshot(label + '-statistics');
+    await page.click('關閉');
+  }
   await b.screenshot('mobile-classic_walnut');
   await b.run("document.querySelector('.game button').click()");
   for (const [id, name] of [['midnight_oak','墨藍橡木'], ['burgundy_leather','酒紅皮革']]) {
@@ -155,7 +206,13 @@ try {
     await b.screenshot('mobile-six-seats-' + width);
   }
   // Close the public table through its real queued command, then create a private table.
-  await a.click('手後關桌');
+  await a.click('管理與查帳');
+  await a.until("!!document.querySelector('.management form')");
+  await a.input('.management form input', (await a.api()).id);
+  await a.input('.management form input[maxlength="500"]', 'Acceptance close');
+  await a.click('確認執行');
+  await a.until("document.querySelector('.management [role=status]')?.textContent.includes('已受理')");
+  await a.click('關閉');
   await ready(async () => {
     for (const page of [a,b]) await page.run("[...document.querySelectorAll('button')].find(b=>b.textContent==='棄牌'&&!b.disabled)?.click()");
     return !(await a.api()).joined;
@@ -227,6 +284,7 @@ try {
     }
   }
   console.log(JSON.stringify({ settledHands: finished.size, independentBrowsers: 2, themes: 3, mobileWidths: [390,320], privateInvitations: 'rotated and old rejected', topupFailure: true, allInConfirmed: true, reconnectPreserved: true, sixSeats: true, actualDisconnectExpiry: true, competingControllerBlocked: true, horizontalOverflow: false, privateCardsProtected: true, pageErrors: [], output }));
+  }
 } catch(error) { console.error(error.stack ?? String(error)); console.error(serverOutput); for (let i=0;i<pages.length;i++) { await pages[i].screenshot('failure-'+i).catch(()=>{}); console.error(await pages[i].run('document.body.innerText.slice(-2200)').catch(()=>'')); } process.exitCode = 1; }
 finally {
   for (const page of pages) { await page.call('Browser.close').catch(()=>{}); page.socket.close(); }

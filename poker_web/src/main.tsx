@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import './style.css';
 import { Table } from './Table';
 import { Lobby } from './Lobby';
+import { AccountTools } from './AccountTools';
 import { ThemeProvider, ThemePicker } from './Theme';
 
 type Account = {
@@ -70,6 +71,7 @@ function App() {
     {error ? <div className="message error" role="alert">{error} <button className="text" onClick={() => void refresh()}>重新整理</button></div> : null}
     {notice ? <p className="message" role="status">{notice}</p> : null}
     {loading ? <section className="panel" aria-busy="true">正在讀取帳戶…</section> : account ? <>
+      <AccountTools user={account.user_id} />
       {!tableOpen ? <><section className="panel balance"><div className="panel-top"><span>已結算總資產</span><span className="unit">德撲籌碼</span></div><strong className="total">{format(account.settled)}</strong><div className="balances"><div><span>可用籌碼</span><strong>{format(account.available)}</strong></div><div><span>桌上籌碼</span><strong>{format(account.table)}</strong></div><div><span>在途底池</span><strong>{format(account.in_flight)}</strong></div></div><p className="caption">下注中的籌碼會在牌局結算後反映至總資產。</p></section>
       <section className="panel subsidy"><div><p className="eyebrow">DAILY SUPPORT</p><h2>每日補助</h2><p>{account.subsidy.eligible ? `可領取 ${format(account.subsidy.amount)} 籌碼，補足至 5,000。` : reasons[account.subsidy.reason ?? ''] ?? '目前無法領取，請重新整理。'}</p><small>台灣時間每日 04:00 更新 · 未領不累積</small></div><button disabled={busy || !account.subsidy.eligible} onClick={() => void claim()}>{busy ? '處理中…' : account.subsidy.eligible ? '領取補助' : '目前不可領取'}</button></section>
       </> : null}

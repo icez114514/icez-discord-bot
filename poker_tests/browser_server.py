@@ -28,6 +28,8 @@ def main():
         bot_token=secrets.token_hex(16),
         reader_token=secrets.token_hex(16),
         funds_token=secrets.token_hex(16),
+        table_admins=("111111111111111111",),
+        funds_admins=("111111111111111111",),
     )
 
     def discord(request):

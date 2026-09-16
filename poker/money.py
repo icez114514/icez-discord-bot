@@ -303,6 +303,10 @@ def execute(db, cid, kind, data, now):
             "INSERT INTO settlements(hand_id,command_id,kind) VALUES(?,?,?)",
             (data["hand_id"], cid, kind),
         )
+        if kind == "settle":
+            from .statistics import persist
+
+            persist(db, data["hand_id"], data.get("snapshot", json.loads(hand["snapshot"])), now)
     elif kind in ("action", "time_bank"):
         if (
             user.startswith("npc:")
