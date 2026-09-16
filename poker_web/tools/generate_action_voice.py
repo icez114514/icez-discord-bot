@@ -32,13 +32,12 @@ def main():
     output = Path(__file__).resolve().parents[1] / "public/assets/audio"
     cues = [
         ("call", "コール。"), ("bet", "ベット。"), ("fold", "フォールド。"),
-        ("check", "チェック。"), ("raise", "レイズ。"), ("threebet", "スリーベット。"),
-        ("fourbet", "フォーベット。"), ("allin", "オールイン。"),
+        ("check", "チェック。"), ("raise", "レイズ。"), ("allin", "オールイン。"),
     ]
     with tempfile.TemporaryDirectory() as directory:
         for index, (name, text) in enumerate(cues):
             result = runtime.synthesize(SamplingRequest(
-                text=text, ref_wav=str(reference), seed=260916 + index,
+                text=text, ref_wav=str(reference), seed=260923 if name == "allin" else 260916 + index,
                 max_ref_seconds=12, duration_scale=0.85,
             ), log_fn=None)
             wav = Path(directory) / (name + ".wav")

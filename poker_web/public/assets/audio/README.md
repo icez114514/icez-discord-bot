@@ -20,11 +20,12 @@ Playback uses quieter foley, subdued countdowns and no success beep per command.
 Irodori-TTS-v4.1-Small using the user-selected `00_挨拶.wav` greeting reference
 (此花瑠璃). They are not recordings from PokerStars or GGPoker and are not covered
 by the Kenney CC0 licenses. The private reference clip is not included.
-Eight Japanese poker terms: call, bet, fold, check, raise, three-bet, four-bet,
-all-in. The voice is separately adjustable/mutable and never used in replay.
+Six Japanese poker terms: call, bet, fold, check, raise and all-in.
+Three-bet, four-bet and higher re-raises all use the Bet clip; their visual
+labels still show the actual raise level. The voice is separately adjustable/mutable and never used in replay.
 
 Rebuild using tools/generate_action_voice.py with the local Irodori environment,
-cached models, NVIDIA CUDA and ffmpeg. Seeds 260916..260923, bf16 model, 12s max
+cached models, NVIDIA CUDA and ffmpeg. Seeds 260916..260920 and 260923, bf16 model, 12s max
 reference, duration scale 0.85; loudness target -18 LUFS, true peak -2dB,
 mono 48kHz Vorbis quality 5. Runtime serves only these static clips; no TTS
 model, reference audio or TTS dependency runs on the phone.

@@ -40,7 +40,6 @@ export function eventSound(event: PublicEvent, user: string, control: boolean): 
 export function eventVoice(event: PublicEvent): Sound | null {
   if (event.kind !== 'action' || !['fold','check','call','bet','raise'].includes(event.action ?? '')) return null;
   if (event.all_in) return 'voice_allin';
-  if (event.action === 'raise' && (event.bet_level ?? 0) >= 4) return event.bet_level === 4 ? 'voice_fourbet' : 'voice_raise';
-  if (event.action === 'raise' && event.bet_level === 3) return 'voice_threebet';
+  if (event.action === 'raise' && (event.bet_level ?? 0) >= 3) return 'voice_bet';
   return ('voice_' + event.action) as Sound;
 }

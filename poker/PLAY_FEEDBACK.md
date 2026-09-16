@@ -17,10 +17,11 @@ Existing Kenney CC0 foley is filtered/faded to at most 420ms; check uses a 120ms
 chip tap. Asset provenance and mastering settings live in
 `poker_web/public/assets/audio/README.md`.
 
-Eight synthetic voice clips were generated locally with Irodori-TTS-v4.1-Small,
+Six synthetic voice clips are retained from those generated locally with Irodori-TTS-v4.1-Small,
 using the user's selected greeting reference (actual filename `00_挨拶.wav`).
-They announce Japanese poker terms for call, bet, fold, check, raise, three-bet,
-four-bet and all-in. The generator in `poker_web/tools/generate_action_voice.py`
+They announce Japanese poker terms for call, bet, fold, check, raise and all-in.
+Per the follow-up request, three-bet, four-bet and higher re-raises all announce
+Bet; visual action labels continue to show the actual raise level. The generator in `poker_web/tools/generate_action_voice.py`
 uses the existing TTS environment/cached models; production only serves OGG files.
 The reference audio and model are not packaged with the game.
 
@@ -45,7 +46,7 @@ Confirmed action badges sit below the avatar/name plate, persist until that
 player's next action or a new hand/context, and use a dedicated all-in color.
 The server adds public `bet_level` metadata: the preflop big blind is level 1;
 the first raise is level 2 and re-raise level 3; postflop starts at 0. This drives
-3-BET/4-BET labels and voice without guessing from monetary deltas. Amounts remain
+3-BET/4-BET labels without guessing from monetary deltas. Amounts remain
 exact integers; a clipped badge retains its complete text in its title.
 
 ## NPC timing

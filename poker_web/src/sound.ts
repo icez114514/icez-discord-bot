@@ -1,12 +1,11 @@
-export type Voice = 'voice_call' | 'voice_bet' | 'voice_fold' | 'voice_check' | 'voice_raise' | 'voice_threebet' | 'voice_fourbet' | 'voice_allin';
+export type Voice = 'voice_call' | 'voice_bet' | 'voice_fold' | 'voice_check' | 'voice_raise' | 'voice_allin';
 export type Sound = Voice | 'deal' | 'chips' | 'fold' | 'settle' | 'click' | 'turn' | 'tick' | 'bank' | 'check' | 'collect' | 'refund' | 'topup' | 'result' | 'error' | 'payout';
 export type Group = 'reminders' | 'chips' | 'settlement' | 'interface' | 'voice';
 export type Preferences = { muted: boolean; master: number; groups: Record<Group, number>; reduced: boolean };
 const catalog: Record<Sound, { file: string; group: Group; rate?: number }> = {
   voice_call: { file: 'voice-call', group: 'voice' }, voice_bet: { file: 'voice-bet', group: 'voice' },
   voice_fold: { file: 'voice-fold', group: 'voice' }, voice_check: { file: 'voice-check', group: 'voice' },
-  voice_raise: { file: 'voice-raise', group: 'voice' }, voice_threebet: { file: 'voice-threebet', group: 'voice' },
-  voice_fourbet: { file: 'voice-fourbet', group: 'voice' }, voice_allin: { file: 'voice-allin', group: 'voice' },
+  voice_raise: { file: 'voice-raise', group: 'voice' }, voice_allin: { file: 'voice-allin', group: 'voice' },
   deal: { file: 'deal', group: 'chips' }, chips: { file: 'chips', group: 'chips' },
   fold: { file: 'fold', group: 'chips' }, check: { file: 'check', group: 'chips' },
   collect: { file: 'chips', group: 'chips', rate: 0.8 },
