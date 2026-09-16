@@ -47,7 +47,7 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));let chrome,ws;
  assert.deepEqual(await run("[...document.querySelectorAll('.preselection button')].map(b=>b.textContent)"),['棄牌／過牌','跟任何注']);
  // Desktop controls stay visible without scrolling; the table scales uniformly.
  const savedHand=await run('JSON.stringify(snapshot.hand)');
- for(const [width,height] of [[601,650],[699,650],[800,650],[1000,650],[1099,650],[1100,650],[1100,500],[1200,540],[1366,768],[1920,1080],[2560,1440],[3440,1440],[3840,2160],[900,1400]]){
+ for(const [width,height] of [[844,540],[601,650],[699,650],[800,650],[1000,650],[1099,650],[1100,650],[1100,500],[1200,540],[1366,768],[1920,1080],[2560,1440],[3440,1440],[3840,2160],[900,1400]]){
   await call('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:false});
   for(const large of [false,true]){
    await run(`document.querySelector('.game').classList.toggle('large-cards',${large})`);
@@ -90,6 +90,23 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));let chrome,ws;
  await publish(`snapshot.hand=${savedHand}`);
  fs.writeFileSync(path.join(root,'tmp/table-desktop-fixed.png'),Buffer.from((await call('Page.captureScreenshot',{format:'png'})).data,'base64'));
  const savedMembers=await run('JSON.stringify(snapshot.members)');
+ for(const width of [800,1000,1200]){
+  await call('Emulation.setDeviceMetricsOverride',{width,height:600,deviceScaleFactor:1,mobile:false});
+  await publish(`snapshot.members=JSON.parse(${JSON.stringify(savedMembers)}).filter(m=>m.id==='me'||m.seat===5);snapshot.hand=${savedHand};snapshot.hand.players=snapshot.hand.players.filter(p=>p.id==='me'||p.id==='npc:5');snapshot.hand.actor=0;snapshot.hand.button=1;snapshot.hand.players[0].bet='100';snapshot.hand.players[1].bet='200';snapshot.hand.legal={fold:true,call:'100',raise:true,min_raise_to:'300',max_raise_to:'1000'}`);
+  assert(await run("(()=>{const a=document.querySelector('.seat.n').getBoundingClientRect(),b=document.querySelector('.pot').getBoundingClientRect();return a.bottom+8<=b.top})()"),'north empty seat touches pot');
+  assert(await run("(()=>{const a=document.querySelector('.board-phase .icon-button').getBoundingClientRect();return [...document.querySelectorAll('.seat-bet,.seat-plaque')].every(e=>{const b=e.getBoundingClientRect();return a.right<=b.left||b.right<=a.left||a.bottom<=b.top||b.bottom<=a.top})})()"),'info button overlaps a bet or player');
+  await until("[...document.querySelectorAll('.casino-art')].every(i=>i.complete&&i.naturalWidth>0)");
+  if(width===1000)fs.writeFileSync(path.join(root,'tmp/table-heads-up-casino.png'),Buffer.from((await call('Page.captureScreenshot',{format:'png'})).data,'base64'));
+ }
+ await run("document.querySelector('.game').classList.add('four-color')");
+ await publish("snapshot.hand.board=['Ac','Ad','Ah','As','Tc']");
+ await until("[...document.querySelectorAll('.board .casino-art')].every(i=>i.complete&&i.naturalWidth>0)");
+ assert(await run("['c','d'].every(s=>getComputedStyle(document.querySelector('.board [data-suit='+s+'] .casino-art')).mixBlendMode==='screen')"),'four-color artwork tint missing');
+ fs.writeFileSync(path.join(root,'tmp/table-casino-four-color.png'),Buffer.from((await call('Page.captureScreenshot',{format:'png'})).data,'base64'));
+ await run("document.querySelector('.game').classList.remove('four-color')");
+ await call('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,deviceScaleFactor:1,mobile:false});
+ await publish(`snapshot.members=${savedMembers};snapshot.hand=${savedHand}`);
+
  await publish('snapshot.hand=null;snapshot.members=snapshot.members.filter(m=>m.id==="me")');
  fs.writeFileSync(path.join(root,'tmp/table-desktop-idle-fixed.png'),Buffer.from((await call('Page.captureScreenshot',{format:'png'})).data,'base64'));
  await publish(`snapshot.hand=${savedHand};snapshot.members=${savedMembers}`);
@@ -102,8 +119,8 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));let chrome,ws;
     await run(`document.querySelector('.game').classList.toggle('large-cards',${large})`);
     await publish("snapshot.hand.actor=1;snapshot.hand.payouts=null;snapshot.hand.legal={};snapshot.hand.pot='0'");
     if(width>=601){
-     const rank=await run("parseFloat(getComputedStyle(document.querySelector('.board .card b')).fontSize)");
-     if(!large)normalRankSize=rank;else assert(rank>normalRankSize,'large cards must enlarge rank text');
+     const rank=await run("document.querySelector('.board .casino-art').getBoundingClientRect().width");
+     if(!large)normalRankSize=rank;else assert(rank>normalRankSize,'large cards must enlarge casino artwork');
      assert(await run("(()=>{const s=getComputedStyle(document.querySelector('.raise-range'));return parseFloat(s.height)>=parseFloat(s.fontSize)&&parseFloat(s.lineHeight)>=parseFloat(s.fontSize)})()"),'range text vertically clipped');
     }
     const before=await geometry();
@@ -173,5 +190,5 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));let chrome,ws;
  await publish("snapshot.owner='someone-else';snapshot.members=snapshot.members.filter(m=>m.seat!==5)");
  assert.equal(await run("document.querySelectorAll('.empty-seat-button').length"),0);
  assert.equal(await run("document.querySelector('.empty-seat-number').textContent"),'6');
- assert.deepEqual(errors,[]);console.log('PASS: 14 tablet/desktop viewport sizes with idle/active overlap guards; 18 viewport/theme/font combinations, stable geometry, pot alignment, preselection single-send/all-in guard, avatar leave, settings deduplication, keyboard and long-press hints.');
+ assert.deepEqual(errors,[]);console.log('PASS: 15 tablet/desktop viewport sizes with idle/active overlap guards; 18 viewport/theme/font combinations, stable geometry, pot alignment, preselection single-send/all-in guard, avatar leave, settings deduplication, keyboard and long-press hints.');
 })().catch(e=>{console.error(e);process.exitCode=1;}).finally(()=>{ws?.close();chrome?.kill();server.close();});

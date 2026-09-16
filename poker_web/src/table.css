@@ -589,3 +589,53 @@ main.table-mode { max-width: 1800px; padding: 12px 24px; }
   .game .board { top: 30%; }
   .game .n .position-badge { bottom: calc(100% + 5px); }
 }
+
+/* Reuse the casino deck, with clear spacing around seats and central controls. */
+.card.casino-card { padding: 0; overflow: hidden; background: #fff; border: 0; }
+.card.casino-card .casino-art { display: block; width: 100%; height: 100%; object-fit: fill; }
+.game .card.back.casino-card { background: #fff; }
+.game.large-cards .casino-card:not(.back) .casino-art { transform: scale(1.12); }
+.game.four-color .casino-card[data-suit=c] { background: #087344; }
+.game.four-color .casino-card[data-suit=d] { background: #1757bb; }
+.game.four-color .casino-card[data-suit=c] .casino-art, .game.four-color .casino-card[data-suit=d] .casino-art { filter: grayscale(1) contrast(3); mix-blend-mode: screen; }
+.game .seat.empty { width: 82px; }
+.game .empty-seat-button, .game .empty-seat-number { min-height: 44px; padding: 4px 8px; }
+.game .empty-seat-button strong, .game .empty-seat-number { font-size: 24px; }
+.game .board-phase { position: absolute; left: 50%; top: -48px; transform: translateX(-50%); width: 100%; margin: 0; justify-content: center; }
+.game .board-phase .settlement { max-width: 100%; }
+@media (min-width: 601px) {
+  .game .seat:not(.empty) { width: clamp(148px,15cqw,190px); }
+  .game .seat.s { width: clamp(180px,18cqw,212px); }
+  .game .seat-plaque { min-height: 56px; }
+  .game .portrait { width: 56px; height: 56px; }
+  .game .seat-info strong { font-size: 13px; }
+  .game .seat-stack { font-size: 20px; }
+  .game .position-badge { font-size: 11px; line-height: 17px; }
+  .game .action-label { height: 26px; line-height: 24px; font-size: 12px; margin-top: 4px; }
+  .game .seat.hero-seat .card { width: 48px; height: 67px; }
+  .game .seat .card { width: 34px; height: 48px; }
+  .game .board .card { width: clamp(42px,4.5cqw,64px); height: clamp(59px,6.3cqw,90px); }
+  .game .board .cards { gap: 8px; }
+  .game .pot { width: min(100%,220px); }
+  .game .action-buttons > button { height: 62px; font-size: 18px; }
+  .game .action-buttons > button > span { font-size: 16px; }
+  .game .table-action-slot { width: min(100%,1120px); }
+  .game .board-phase { left: -52px; top: 0; width: 44px; transform: none; }
+  .game .board-phase:has(.settlement) { left: 50%; top: -48px; width: 100%; transform: translateX(-50%); }
+}
+@media (max-width: 600px) {
+  .game .seat.empty { width: 64px; }
+  .game .seat-info strong { font-size: 11px; }
+  .game .seat-stack { font-size: 15px; }
+  .game .board-phase { left: 0; top: 0; width: 44px; transform: none; }
+  .game .board-phase:has(.settlement) { left: 50%; top: -44px; width: 100%; transform: translateX(-50%); }
+}
+
+.game .board-phase { left: 0; top: calc(100% + 6px); transform: none; }
+@container (max-height: 500px) {
+  .game .board .card { width: 42px; height: 58px; }
+}
+
+@media (min-width: 760px) and (max-width: 900px) {
+  .game .hero-seat .seat-cards { left: auto; right: calc(100% + 20px); bottom: 32px; transform: none; }
+}
