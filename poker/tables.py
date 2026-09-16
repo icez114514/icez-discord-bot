@@ -89,6 +89,7 @@ def public(db, table, user, connection=None):
         "id": table["id"],
         "version": table["version"],
         "joined": True,
+        "rules": {"small_blind": str(rules.SMALL_BLIND), "big_blind": str(rules.BIG_BLIND)},
         "event_seq": table.get("event_seq", 0),
         "server_time": time.time(),
         "events": table.get("events", []),

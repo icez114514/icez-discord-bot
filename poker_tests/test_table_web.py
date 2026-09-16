@@ -131,6 +131,16 @@ class TableWebTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200, response.text)
         return self.connect(user)
 
+
+    def test_table_rules_and_waiting_call_are_exact_public_amounts(self):
+        self.join(A)
+        self.join(B)
+        self.start_hand()
+        state = self.view(B)
+        self.assertEqual(state["rules"], {"small_blind": "50", "big_blind": "100"})
+        self.assertEqual(self.view(A)["hand"]["call_amount"], "50")
+        self.assertEqual(state["hand"]["call_amount"], "0")
+
     def advance(self, seconds):
         self.now += seconds
         self.client.portal.call(self.app.state.tables.tick, self.now)
