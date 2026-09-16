@@ -639,3 +639,77 @@ main.table-mode { max-width: 1800px; padding: 12px 24px; }
 @media (min-width: 760px) and (max-width: 900px) {
   .game .hero-seat .seat-cards { left: auto; right: calc(100% + 20px); bottom: 32px; transform: none; }
 }
+
+
+/* A centered portrait above its nameplate, with cards behind the shoulders. */
+.game .seat:not(.empty), .game .seat.s:not(.empty) { width: 124px; }
+.game .seat-plaque { flex-direction: column; min-height: 0; border: 0; background: none; box-shadow: none; border-radius: 0; }
+.game .portrait { width: 54px; height: 54px; margin: 0; z-index: 1; }
+.game .avatar { box-sizing: border-box; overflow: hidden; position: relative; }
+.game .avatar img { border-radius: 50%; object-position: center; }
+.game .seat-info { flex: none; width: 100%; min-height: 44px; box-sizing: border-box; padding: 3px 8px; margin-top: -3px; border: 1px solid var(--line); border-radius: 7px; background: var(--panel); box-shadow: 0 3px 8px #0004; z-index: 2; }
+.game .seat-info strong { font-size: 12px; line-height: 17px; padding: 0; }
+.game .seat-stack { font-size: 18px; line-height: 23px; }
+.game .seat .seat-cards { left: 50%; right: auto; top: -30px; bottom: auto; transform: translateX(-50%); z-index: 0; }
+.game .seat .card, .game .seat.hero-seat .card { width: 40px; height: 56px; }
+.game .seat .card + .card { margin-left: 2px; }
+.game .position-badge { left: -7px; bottom: 8px; transform: translateX(-100%); font-size: 10px; line-height: 16px; }
+.game .seat.n .position-badge { bottom: 8px; }
+.game .action-label { height: 24px; line-height: 22px; font-size: 11px; margin-top: 3px; }
+.game .seat-status { top: 4px; right: 0; }
+.game .seat.nw .position-badge, .game .seat.sw .position-badge { left: auto; right: -7px; transform: translateX(100%); }
+.game .seat .dealer { top: 68px; }
+.game .s .dealer { left: -34px; right: auto; }
+.game .s .seat-bet { top: 6px; bottom: auto; left: calc(100% + 8px); }
+.game .board .card { width: clamp(48px,5cqw,72px); height: clamp(67px,7cqw,101px); }
+@media (min-width: 601px) {
+  .game .seat.n { top: 30px; }
+  .game .nw .seat-bet, .game .sw .seat-bet { left: calc(100% + 40px); }
+  .game .ne .seat-bet, .game .se .seat-bet { right: calc(100% + 40px); }
+  .game .seat.nw, .game .seat.ne { top: 25%; }
+  .game .seat.sw, .game .seat.se { bottom: 8%; }
+  .game .board { top: 32%; }
+}
+@container (max-height: 500px) {
+  .game .portrait { width: 44px; height: 44px; }
+  .game .seat .seat-cards { top: -24px; }
+  .game .seat .card, .game .seat.hero-seat .card { width: 34px; height: 48px; }
+  .game .seat.n { top: 12px; }
+  .game .board { top: 26%; }
+  .game .seat.n:not(.empty) { width: 180px; }
+  .game .n .seat-plaque { flex-direction: row; gap: 6px; }
+  .game .n .seat-info { width: calc(100% - 50px); margin-top: 0; }
+  .game .n .seat-cards { top: 0; left: calc(100% + 8px); transform: none; }
+  .game .board .card { width: 46px; height: 64px; }
+}
+@container (max-height: 360px) {
+  .game .seat:not(.empty) { width: 148px; }
+  .game .seat.n:not(.empty), .game .seat.s:not(.empty) { width: 180px; }
+  .game .seat-plaque { flex-direction: row; gap: 6px; }
+  .game .seat-info { width: calc(100% - 50px); margin-top: 0; }
+  .game .seat.n { top: 0; }
+  .game .n .seat-cards { top: 0; left: calc(100% + 8px); transform: none; }
+  .game .seat.nw, .game .seat.ne { top: 12%; }
+  .game .seat.sw, .game .seat.se { bottom: 0; }
+  .game .board { top: 25%; }
+  .game .pot { height: 32px; margin-bottom: 4px; }
+  .game .pot > span { line-height: 12px; font-size: 10px; }
+  .game .pot > b { height: 18px; font-size: 18px; }
+  .game .hero-seat .seat-cards { top: 0; left: auto; right: calc(100% + 14px); transform: none; }
+}
+@media (max-width: 600px) {
+  .game .seat:not(.empty), .game .seat.s:not(.empty) { width: 90px; }
+  .game .portrait { width: 44px; height: 44px; }
+  .game .seat-info { padding: 2px 4px; }
+  .game .seat-info strong { font-size: 11px; }
+  .game .seat-stack { font-size: 16px; }
+  .game .seat.n { top: 26px; }
+  .game .seat.sw, .game .seat.se { top: 400px; }
+  .game .seat .seat-cards { top: -24px; }
+  .game .seat .card, .game .seat.hero-seat .card { width: 32px; height: 45px; }
+  .game .position-badge { left: -2px; font-size: 9px; padding: 0 2px; }
+  .game .seat.nw .position-badge, .game .seat.sw .position-badge { left: auto; right: -2px; transform: translateX(100%); }
+  .game .board .card { width: 43px; height: 60px; }
+  .game .s .seat-bet { top: -12px; bottom: auto; width: 64px; }
+}
+
