@@ -96,6 +96,25 @@ try {
     await delay(120);
   }
   assert.equal(finished.size, 3, 'three real settled hands');
+  for (const [page, label] of [[a, 'desktop'], [b, 'mobile']]) {
+    const handBefore = (await page.api()).hand.id;
+    const socketsBefore = await page.run('window.pokerSockets.length');
+    await page.click('排行與我的統計');
+    await page.until("!!document.querySelector('.metric')");
+    const report = await page.api('/api/statistics');
+    assert(report.personal.hands >= 3);
+    assert.equal(await page.run("document.querySelector('.statistics section p').textContent"), `有效手數：${report.personal.hands} · 樣本不足`);
+    assert.equal((await page.api()).hand.id, handBefore);
+    assert.equal(await page.run('window.pokerSockets.length'), socketsBefore, 'statistics must retain live table socket');
+    for (const [period, opponents] of [['7','human'], ['30','mixed'], ['all','all']]) {
+      await page.run(`(() => { const filters=document.querySelectorAll('.report-filters select'); filters[0].value='${period}'; filters[0].dispatchEvent(new Event('change',{bubbles:true})); filters[1].value='${opponents}'; filters[1].dispatchEvent(new Event('change',{bubbles:true})); })()`);
+      await page.until("!!document.querySelector('.metric')");
+      if (opponents === 'mixed') assert.equal(await page.run("document.querySelector('.statistics section p').textContent"), '有效手數：0 · 樣本不足');
+    }
+    assert.equal(await page.run('document.documentElement.scrollWidth <= innerWidth'), true);
+    await page.screenshot(label + '-statistics');
+    await page.click('關閉');
+  }
   await b.screenshot('mobile-classic_walnut');
   await b.run("document.querySelector('.game button').click()");
   for (const [id, name] of [['midnight_oak','墨藍橡木'], ['burgundy_leather','酒紅皮革']]) {
@@ -155,7 +174,13 @@ try {
     await b.screenshot('mobile-six-seats-' + width);
   }
   // Close the public table through its real queued command, then create a private table.
-  await a.click('手後關桌');
+  await a.click('管理與查帳');
+  await a.until("!!document.querySelector('.management form')");
+  await a.input('.management form input', (await a.api()).id);
+  await a.input('.management form input[maxlength="500"]', 'Acceptance close');
+  await a.click('確認執行');
+  await a.until("document.querySelector('.management [role=status]')?.textContent.includes('已受理')");
+  await a.click('關閉');
   await ready(async () => {
     for (const page of [a,b]) await page.run("[...document.querySelectorAll('button')].find(b=>b.textContent==='棄牌'&&!b.disabled)?.click()");
     return !(await a.api()).joined;

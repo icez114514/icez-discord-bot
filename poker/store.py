@@ -76,7 +76,23 @@ class Store(Sessions):
                 .read_text(encoding="utf-8")
             )
             version = 3
-        if version != 3:
+        if version == 3 and self.initialize:
+            from .statistics import persist
+
+            script = Path(__file__).with_name("statistics-schema.sql").read_text(encoding="utf-8")
+            self.db.executescript(script.replace("COMMIT;", ""))
+            try:
+                for row in self.db.execute("SELECT hand_id,snapshot FROM hands WHERE status='settled'").fetchall():
+                    snapshot = json.loads(row["snapshot"])
+                    if snapshot.get("settled_at") is not None:
+                        persist(self.db, row["hand_id"], snapshot, snapshot["settled_at"])
+                self.db.execute("PRAGMA user_version=4")
+                self.db.execute("COMMIT")
+            except BaseException:
+                self.db.execute("ROLLBACK")
+                raise
+            version = 4
+        if version != 4:
             raise Conflict("database_schema_requires_migrate")
 
     async def run(self, operation, transaction=True):
@@ -99,6 +115,9 @@ class Store(Sessions):
         token = secrets.token_urlsafe(32)
 
         def operation(db):
+            row = db.execute("SELECT disabled FROM accounts WHERE user_id=?", (user_id,)).fetchone()
+            if row and row[0]:
+                raise Unauthorized("account_disabled")
             created = db.execute(
                 "INSERT OR IGNORE INTO accounts(user_id,available,settled) VALUES(?,50000,50000)",
                 (user_id,),

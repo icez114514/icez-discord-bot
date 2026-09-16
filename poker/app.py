@@ -125,7 +125,7 @@ def create_app(config, transport=None, initialize=False):
     @app.get("/health")
     async def health():
         await app.state.store.run(lambda db: db.execute("SELECT 1").fetchone())
-        return {"status": "ok", "schema": 3}
+        return {"status": "ok", "schema": 4}
 
     @app.get("/auth/login")
     async def login():
@@ -275,4 +275,7 @@ def create_app(config, transport=None, initialize=False):
     from .preferences import install as install_preferences
 
     install_preferences(app, COOKIE)
+    from .statistics_api import install as install_statistics
+
+    install_statistics(app, config, COOKIE)
     return app

@@ -54,6 +54,24 @@ def create_internal(config, public):
     async def account(user_id: str):
         return await public.state.store.account(user_id)
 
+    @app.get("/statistics")
+    async def statistics(request: Request, period: str = "all", opponents: str = "all", user_id: str | None = None):
+        from .statistics import query
+
+        actor = request.headers.get("x-actor-id", "")
+        if (not actor.isdigit() or len(actor) > 20
+                or request.headers.get("x-guild-id") != config.guild_id
+                or (user_id is not None and user_id != actor)):
+            raise Unauthorized("personal_statistics_only")
+        if await public.state.discord.member(actor) != "member":
+            raise Unauthorized("guild_membership_required")
+        def operation(db):
+            row = db.execute("SELECT disabled FROM accounts WHERE user_id=?", (actor,)).fetchone()
+            if not row or row[0]:
+                raise Unauthorized("active_account_required")
+            return query(db, actor, period, opponents)
+        return await public.state.store.run(operation)
+
     @app.get("/scans")
     async def scans():
         return await public.state.scan.status()
@@ -61,13 +79,11 @@ def create_internal(config, public):
     @app.post("/adjustments")
     async def adjust(body: Adjustment, request: Request):
         actor = request.headers["x-actor-id"]
-        return await public.state.store.command(
-            "admin:" + actor + ":" + body.command_id,
-            "adjust",
-            user_id=body.user_id,
-            amount=body.amount,
-            reason=body.reason,
-            actor=actor,
-        )
+        from .management import Management
+
+        result = await Management(public.state.store, config).command(
+            {"command_id": body.command_id, "action": "adjust", "target": body.user_id,
+             "amount": body.amount, "reason": body.reason}, trusted_actor=actor)
+        return result["result"]
 
     return app

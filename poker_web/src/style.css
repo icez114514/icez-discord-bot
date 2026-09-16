@@ -214,3 +214,20 @@ summary { cursor: pointer; padding: 10px 0; color: var(--accent); }
 }
 
 @media (max-width: 360px) { .seat { width: 86px; } .seat-name { font-size: 9px; } }
+
+.account-tools { display: flex; gap: 12px; flex-wrap: wrap; margin: 10px 0; }
+dialog:has(.statistics), dialog:has(.management) { width: min(1000px, calc(100vw - 24px)); }
+.report-filters { display: flex; flex-wrap: wrap; gap: 14px; align-items: end; margin: 18px 0; }
+select { min-height: 44px; border: 1px solid var(--line); border-radius: 6px; padding: 10px; background: var(--bg); color: var(--ink); font: inherit; }
+.metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.metric { border: 1px solid var(--line); border-radius: 8px; padding: 16px; display: grid; gap: 6px; }
+.metric > span { color: var(--muted); }.metric > strong { font-size: 25px; font-variant-numeric: tabular-nums; }
+.report-scroll { overflow-x: auto; max-width: 100%; }
+.report-scroll table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
+.report-scroll th, .report-scroll td { border-bottom: 1px solid var(--line); padding: 12px 10px; white-space: nowrap; }
+.report-scroll td small { display: block; }
+.management fieldset { border: 0; padding: 0; display: grid; gap: 14px; }
+.management p, .statistics p { overflow-wrap: anywhere; }
+.audit-records pre { white-space: pre-wrap; overflow-wrap: anywhere; padding: 12px; border-bottom: 1px solid var(--line); font-size: 12px; }
+
+.audit-record { padding: 12px 0; border-bottom: 1px solid var(--line); }.audit-record dl > div { display: grid; grid-template-columns: 100px minmax(0,1fr); gap: 10px; }.audit-record dt { color: var(--muted); }.audit-record dd { margin: 0; overflow-wrap: anywhere; }

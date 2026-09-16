@@ -1,4 +1,8 @@
-# Poker service, accounts and gameplay (#22 / #23)
+# Poker service, accounts and gameplay (#22–#25)
+
+For current schema 4, statistics, administration and Discord commands, see
+[STATISTICS.md](STATISTICS.md). For multiplayer tables and themes, see
+[MULTIPLAYER.md](MULTIPLAYER.md).
 
 For the complete single-table game, fixed NPC, schema 2 upgrade and verification,
 see [GAMEPLAY.md](GAMEPLAY.md). Run `python -m poker migrate` with the service
@@ -41,6 +45,7 @@ This service deliberately does not read the existing Bot's `.env`.
 | `POKER_READER_TOKEN` | Random credential of at least 16 characters for Bot queries |
 | `POKER_FUNDS_TOKEN` | Different random credential for fund administration |
 | `POKER_FUNDS_ADMINS` | Comma-separated Discord user IDs authorized for fund adjustments |
+| `POKER_TABLE_ADMINS` | Independent allowlist for account/table management |
 | `POKER_PUBLIC_PORT` | Local public listener port, default 8765 |
 | `POKER_INTERNAL_PORT` | Separate local Bot listener port, default 8766 |
 
@@ -58,7 +63,7 @@ python -m poker serve
 
 `check` validates configuration and prints the actual SQLite version. It does not
 validate credentials, phone support, HTTPS or guild access. `migrate` explicitly
-initializes schema 1 then upgrades to schema 2 in explicit transactions; it preserves existing accounts and refuses
+initializes schema 1 then upgrades through schema 4 in explicit transactions; it preserves existing accounts and refuses
 unknown versions. Stop the service before migrating. All entry points take the
 same OS exclusive lock, so a second worker or migrator fails before using the DB.
 `Ctrl+C` stops both listeners and drains the writer. The OS releases the lock on
@@ -189,7 +194,7 @@ and attempt logs containing no tokens. Interrupted checking rows resume as retry
 
 `poker.bot_client.PokerClient` is an optional adapter for the existing Bot.
 It only calls loopback HTTP, with deadlines; it has no database write capability.
-No new Discord commands are published in this foundation ticket.
+The optional Bot integration now registers the three poker queries documented in [STATISTICS.md](STATISTICS.md).
 
 - `GET /accounts/{id}` and `GET /scans`: reader bearer credential.
 - `POST /adjustments`: separate funds bearer credential plus `X-Actor-ID` in the

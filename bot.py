@@ -8,6 +8,7 @@ import discord
 from discord import app_commands
 from dotenv import load_dotenv
 
+from poker_commands import PokerFeature
 from reward_commands import RewardFeature
 from reward_store import RewardStore
 from casino_commands import CasinoFeature
@@ -36,6 +37,9 @@ class TestBot(discord.Client):
         self.crystals.register(self.tree)
         self.casino = CasinoFeature(CasinoStore(store) if store is not None else None)
         self.casino.register(self.tree)
+        self.poker = PokerFeature.from_env()
+        if self.poker is not None:
+            self.poker.register(self.tree)
         self.loop_monitor = LoopMonitor()
 
     def dispatch(self, event, /, *args, **kwargs):

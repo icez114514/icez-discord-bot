@@ -439,12 +439,12 @@ class Transaction:
                 raise Conflict("topup_required")
             m["mode"] = "pending" if table["hand"] else "active"
             m["expires"], m["sitout"] = None, False
-        elif kind in ("add_npc", "remove_npc", "close"):
+        elif kind == "close":
+            raise Conflict("use_authorized_management")
+        elif kind in ("add_npc", "remove_npc"):
             if table["owner"] != user:
                 raise Conflict("host_required")
-            if kind == "close":
-                table["closed"] = True
-            elif kind == "remove_npc":
+            if kind == "remove_npc":
                 npc = member(table, data.get("npc_id"))
                 if not npc or not npc["id"].startswith("npc:"):
                     raise Conflict("npc_not_found")
