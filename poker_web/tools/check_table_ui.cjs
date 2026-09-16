@@ -55,7 +55,7 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));let chrome,ws;
    await publish(idle?'snapshot.hand=null':`snapshot.hand=${savedHand}`);
    assert(await run("[...document.querySelectorAll('.portrait')].every(p=>{const a=p.querySelector('.avatar').getBoundingClientRect(),r=p.getBoundingClientRect();return Math.abs(a.width-a.height)<1&&Math.abs(a.x+a.width/2-r.x-r.width/2)<1&&Math.abs(a.y+a.height/2-r.y-r.height/2)<1})"),`avatar frame misaligned ${width}x${height}`);
    assert(await run("(()=>{const i=document.querySelector('.avatar img'),a=i.closest('.avatar').getBoundingClientRect(),r=i.getBoundingClientRect();return Math.abs(a.x+a.width/2-r.x-r.width/2)<1&&Math.abs(a.y+a.height/2-r.y-r.height/2)<1})()"),'avatar image not centered');
-   assert(await run("[...document.querySelectorAll('.seat-plaque')].every(p=>{if(getComputedStyle(p).flexDirection!=='column')return true;const a=p.querySelector('.portrait').getBoundingClientRect(),b=p.querySelector('.seat-info').getBoundingClientRect();return Math.abs(a.x+a.width/2-b.x-b.width/2)<1&&b.top>=a.bottom-4})"),'vertical player plaque not centered');
+   assert(await run("[...document.querySelectorAll('.seat-cards')].every(c=>{const a=c.closest('.seat').querySelector('.portrait').getBoundingClientRect(),b=c.getBoundingClientRect();return a.right+4<=b.left&&Math.abs(a.y+a.height/2-b.y-b.height/2)<12})"),`portrait and cards not side by side ${width}x${height}`);
    const layout=await run(`(()=>{const rect=q=>{const r=document.querySelector(q).getBoundingClientRect();return {x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height}};return {board:rect('.board .cards'),hero:rect('.hero-seat'),scene:rect('.table-scene'),hole:document.querySelector('.hero-seat .seat-cards')?rect('.hero-seat .seat-cards'):null}})()`);
    assert(layout.board.bottom+12<=(layout.hole||layout.hero).y,`board overlaps hero at ${width}x${height}, idle=${idle}: ${JSON.stringify(layout)}`);
    assert(await run("(()=>{const a=document.querySelector('.table-scene').getBoundingClientRect(),b=document.querySelector('.table-stage').getBoundingClientRect();return a.width>=b.width*.99&&a.height>=b.height*.99})()"),'table does not fill stage');
@@ -113,6 +113,15 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));let chrome,ws;
  await call('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,deviceScaleFactor:1,mobile:false});
  await publish(`snapshot.members=${savedMembers};snapshot.hand=${savedHand}`);
 
+ for(const [width,height] of [[1440,1000],[844,540],[320,1000]]){
+  await call('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:width<600});
+  for(const status of ["connected=false","sitout=true","leaving=true"]){
+   await publish(`snapshot.members=${savedMembers};snapshot.members.forEach(m=>m.${status})`);
+   assert(await run("[...document.querySelectorAll('.seat-status .icon-button')].every(e=>{const a=e.getBoundingClientRect(),s=e.closest('.seat');return [...s.querySelectorAll('.seat-cards,.portrait')].every(p=>{const b=p.getBoundingClientRect();return a.right<=b.left||b.right<=a.left||a.bottom<=b.top||b.bottom<=a.top})})"),`status covers cards or avatar ${width} ${status}`);
+  }
+ }
+ await call('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,deviceScaleFactor:1,mobile:false});
+ await publish(`snapshot.members=${savedMembers}`);
  await publish('snapshot.hand=null;snapshot.members=snapshot.members.filter(m=>m.id==="me")');
  fs.writeFileSync(path.join(root,'tmp/table-desktop-idle-fixed.png'),Buffer.from((await call('Page.captureScreenshot',{format:'png'})).data,'base64'));
  await publish(`snapshot.hand=${savedHand};snapshot.members=${savedMembers}`);
@@ -130,6 +139,8 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));let chrome,ws;
      assert(await run("(()=>{const s=getComputedStyle(document.querySelector('.raise-range'));return parseFloat(s.height)>=parseFloat(s.fontSize)&&parseFloat(s.lineHeight)>=parseFloat(s.fontSize)})()"),'range text vertically clipped');
     }
     assert(await run("(()=>{const a=document.querySelector('.board .cards').getBoundingClientRect();return [...document.querySelectorAll('.seat-cards')].every(e=>{const b=e.getBoundingClientRect();return a.right<=b.left||b.right<=a.left||a.bottom<=b.top||b.bottom<=a.top})})()"),`board overlaps player cards ${width}/${theme}/${large}`);
+    assert(await run("(()=>{const ps=[...document.querySelectorAll('.seat-plaque')].map(e=>e.getBoundingClientRect());return ps.every((a,i)=>ps.slice(i+1).every(b=>a.right<=b.left||b.right<=a.left||a.bottom<=b.top||b.bottom<=a.top))})()"),`player plaques overlap ${width}/${theme}/${large}`);
+    assert(await run("[...document.querySelectorAll('.seat-cards')].every(c=>{const a=c.closest('.seat').querySelector('.portrait').getBoundingClientRect(),b=c.getBoundingClientRect();return a.right+4<=b.left})"),`cards cover avatar ${width}/${theme}/${large}`);
     const before=await geometry();
     assert(await run("Math.abs(document.querySelector('.preselection').getBoundingClientRect().top-document.querySelector('.action-panel').getBoundingClientRect().top)<1"),JSON.stringify({width,theme,large,rects:await run("['.preselection','.action-panel','.table-action-slot'].map(q=>{const e=document.querySelector(q),r=e.getBoundingClientRect(),s=getComputedStyle(e);return {q,top:r.top,height:r.height,align:s.alignSelf,margin:s.margin,position:s.position};})")}));
     await publish("snapshot.hand.actor=0;snapshot.hand.legal={fold:true,call:'50',raise:true,min_raise_to:'100',max_raise_to:'1000'};snapshot.hand.pot='999999999999999999999999999999'");
