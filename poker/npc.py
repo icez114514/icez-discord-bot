@@ -72,6 +72,9 @@ class NPC:
         self.lock = asyncio.Lock()
         self.waiting = 0
         self.status = "not_started"
+        self.requests = 0
+        self.timeouts = 0
+        self.failures = 0
 
     async def start(self):
         root = Path(__file__).resolve().parent
@@ -134,8 +137,10 @@ class NPC:
             await process.communicate()
 
     async def decide(self, hand):
+        self.requests += 1
         remaining = min(2.0, hand["deadline"] - time.time())
         if self.waiting >= 8 or remaining <= 0:
+            self.timeouts += 1
             return None, "npc_queue_deadline"
         self.waiting += 1
         try:
@@ -143,6 +148,7 @@ class NPC:
             async def request():
                 async with self.lock:
                     if self.process is None or self.process.returncode is not None:
+                        self.failures += 1
                         return None, "npc_unavailable"
                     self.process.stdin.write(
                         (json.dumps(observation(hand)) + "\n").encode()
@@ -150,6 +156,7 @@ class NPC:
                     await self.process.stdin.drain()
                     response = json.loads(await self.process.stdout.readline())
                     if "error" in response:
+                        self.failures += 1
                         return None, response["error"]
                     decision = response.get("decision")
                     if not isinstance(decision, dict):
@@ -157,7 +164,10 @@ class NPC:
                     return decision, None
 
             return await asyncio.wait_for(request(), remaining)
-        except (asyncio.TimeoutError, OSError, ValueError):
+        except (asyncio.TimeoutError, OSError, ValueError) as error:
+            self.failures += 1
+            if isinstance(error, asyncio.TimeoutError):
+                self.timeouts += 1
             await self.close()  # Never consume an old reply as a subsequent decision.
             log.error("fixed_npc_request_failed")
             return None, "npc_timeout_or_protocol"

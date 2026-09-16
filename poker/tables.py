@@ -119,9 +119,10 @@ def public(db, table, user, connection=None):
 
 
 class Transaction:
-    def __init__(self, db, table, cid, now):
+    def __init__(self, db, table, cid, now, maintenance=False):
         self.db, self.table, self.cid, self.now = db, table, cid, now
         self.index = 0
+        self.maintenance = maintenance
 
     def funds(self, kind, **data):
         self.index += 1
@@ -322,6 +323,7 @@ class Transaction:
         eligible = self.available()
         if (
             table["closed"]
+            or self.maintenance
             or len(eligible) < 2
             or all(m["id"].startswith("npc:") for m in eligible)
         ):
@@ -366,6 +368,8 @@ class Transaction:
         m = member(table, user)
         if table["frozen"]:
             raise Conflict("table_frozen_for_recovery")
+        if kind in ("join", "add_npc") and self.maintenance:
+            raise Conflict("service_maintenance")
         if kind == "join":
             if m or table["closed"]:
                 raise Conflict("cannot_join")
@@ -527,7 +531,7 @@ class Tables:
                     or m.get("heartbeat", 0) + 30 <= now
                 ):
                     raise Conflict("not_control_endpoint")
-                Transaction(db, table, cid, now).command(user, data)
+                Transaction(db, table, cid, now, self.store.maintenance).command(user, data)
                 table["version"] += 1
                 save(db, table)
                 result = {"accepted": True, "version": table["version"]}
@@ -550,7 +554,7 @@ class Tables:
                 "state": public(db, table, user, data.get("control")),
             }
 
-        return await self.store.run(operation)
+        return await self.store.run_command(operation)
 
     async def connection(self, token, connection, action, now=None):
         now = time.time() if now is None else now
@@ -580,7 +584,7 @@ class Tables:
             candidates = []
             for table in all_tables(db):
                 before = copy.deepcopy(table)
-                Transaction(db, table, "tick:" + secrets.token_hex(16), now).tick()
+                Transaction(db, table, "tick:" + secrets.token_hex(16), now, self.store.maintenance).tick()
                 if table != before:
                     table["version"] += 1
                     save(db, table)

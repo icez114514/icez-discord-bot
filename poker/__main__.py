@@ -1,17 +1,23 @@
-"""python -m poker check | migrate | serve. Ctrl+C stops both listeners."""
+"""Poker service and local backup/maintenance operations. See DEPLOYMENT.md."""
 
 import argparse
 import asyncio
 import logging
+import json
+import secrets
+from pathlib import Path
 import os
 import sqlite3
-from .config import Config
+from .config import Config, load_environment
 from .store import Store
 
 
 async def migrate(config):
-    async with Store(config.data_dir / "poker.db", initialize=True):
-        print("Poker schema version 2 ready")
+    from .operations import require_sqlite
+    require_sqlite(config)
+    backup = config.backup_dir / ("upgrade-" + secrets.token_hex(12) + ".db")
+    async with Store(config.data_dir / "poker.db", initialize=True, migration_backup=backup):
+        print("Poker schema version 4 ready; existing databases remain in maintenance")
 
 
 async def serve(config):
@@ -55,9 +61,16 @@ async def serve(config):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("check", "migrate", "serve"))
+    parser.add_argument("command", choices=("check", "migrate", "serve", "status", "backup", "drain", "resume", "export", "decrypt", "restore"))
+    parser.add_argument("--source", type=Path)
+    parser.add_argument("--destination", type=Path)
+    parser.add_argument("--sha256")
+    parser.add_argument("--env-file", type=Path)
+    parser.add_argument("--actor", default="")
     args = parser.parse_args()
     try:
+        if os.environ.get("POKER_ENV") != "test" or args.env_file:
+            load_environment(args.env_file)
         config = Config.from_env()
         config.validate()
         if os.name != "nt":
@@ -65,14 +78,17 @@ def main():
             if config.data_dir.exists() and config.data_dir.stat().st_mode & 0o077:
                 raise ValueError("POKER_DATA_DIR must be private (chmod 700)")
         if args.command == "check":
-            print(
-                "Configuration valid; SQLite "
-                + sqlite3.sqlite_version
-                + "; one worker; OAuth and Termux not verified by this check"
-            )
+            from .operations import preflight, require_sqlite
+            print(json.dumps(preflight(config), indent=2))
+            require_sqlite(config)
         elif args.command == "migrate":
             asyncio.run(migrate(config))
+        elif args.command != "serve":
+            from .operator_cli import operate
+            asyncio.run(operate(args, config))
         else:
+            from .operations import require_sqlite
+            require_sqlite(config)
             if not (config.static_dir / "index.html").is_file():
                 raise ValueError("Build poker_web before serving")
             logging.basicConfig(

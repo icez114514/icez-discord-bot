@@ -207,13 +207,57 @@ class TableWebTests(unittest.TestCase):
         self.advance(5)
         self.assertNotEqual(self.view()["hand"]["id"], hand["id"])
 
+    def test_maintenance_finishes_current_hand_and_prevents_new_admission(self):
+        from poker.operations import maintenance
+        self.join(A)
+        self.join(B)
+        self.start_hand()
+        maintenance(self.config, True)
+        rejected, _ = self.command(C, "join", amount="2000")
+        self.assertEqual(rejected.status_code, 409)
+        self.assertEqual(rejected.json()["result"]["error"], "service_maintenance")
+        created = self.client.post("/api/tables", headers=self.headers(C), json={
+            "command_id": uuid.uuid4().hex, "name": "Blocked", "amount": "2000"})
+        self.assertEqual(created.status_code, 409)
+        self.act(A, "fold")
+        self.advance(0)
+        self.advance(10)
+        self.assertIsNotNone(self.view()["hand"]["payouts"])
+        self.assertEqual(self.account(A)["in_flight"], "0")
+        maintenance(self.config, False)
+        self.start_hand()
+
+    def test_full_snapshot_restore_preserves_game_preferences_and_statistics(self):
+        from dataclasses import replace
+        from poker.backups import take_backup, restore
+        self.join(A)
+        self.join(B)
+        self.start_hand()
+        self.act(A, "fold")
+        self.client.put("/api/preferences", headers=self.headers(A),
+                        json={"theme": "burgundy_leather"})
+        routes = ("/api/account", "/api/preferences", "/api/statistics")
+        before = {route: self.client.get(route, headers=self.headers(A)).json() for route in routes}
+        result = self.client.portal.call(take_backup, self.app.state.store, self.directory / "snapshots")
+        restored = self.directory / "restored"
+        restore(self.directory / "snapshots" / result["file"], restored, result["sha256"])
+        self.sessions.close()
+        self.config = replace(self.config, data_dir=restored)
+        self.sessions = self.resources.enter_context(contextlib.ExitStack())
+        self.app = create_app(self.config, transport=self.transport)
+        self.client = self.sessions.enter_context(TestClient(self.app))
+        for route in routes:
+            self.assertEqual(self.client.get(route, headers=self.headers(A)).json(), before[route])
+        self.assertTrue(self.client.get("/health").json()["maintenance"])
+
     def restart(self, corrupt=None):
         self.sessions.close()
         if corrupt:
             import sqlite3
 
-            with sqlite3.connect(self.directory / "poker.db") as db:
-                db.execute(corrupt)
+            with contextlib.closing(sqlite3.connect(self.directory / "poker.db")) as db:
+                with db:
+                    db.execute(corrupt)
         self.sessions = self.resources.enter_context(contextlib.ExitStack())
         self.app = create_app(self.config, transport=self.transport)
         self.client = self.sessions.enter_context(TestClient(self.app))

@@ -1,4 +1,5 @@
 import asyncio
+import os
 import subprocess
 import sys
 import tempfile
@@ -37,7 +38,13 @@ asyncio.run(work())
                         asyncio.to_thread(process.stdout.readline), 10
                     )
                     self.assertTrue(line, "child exited before committing transactions")
-                process.kill()
+                if os.name == "nt":
+                    # A Windows venv launcher can have a separate Python child.
+                    subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                                   capture_output=True, check=True, timeout=10,
+                                   creationflags=subprocess.CREATE_NO_WINDOW)
+                else:
+                    process.kill()
                 await asyncio.to_thread(process.wait, 10)
             finally:
                 if process.poll() is None:

@@ -20,3 +20,7 @@ numpy==2.2.6
 eval7==0.1.10
 future==1.0.0
 pyparsing==3.3.2
+python-dotenv==1.2.3
+cryptography==50.0.1
+cffi==2.1.1
+pycparser==3.0

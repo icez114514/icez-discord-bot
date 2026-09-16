@@ -1,4 +1,8 @@
-# Poker service, accounts and gameplay (#22–#25)
+# Poker service, accounts and gameplay (#22–#26)
+
+Local deployment, shared .env, backups, encryption, upgrade and phone acceptance:
+[DEPLOYMENT.md](DEPLOYMENT.md). That document supersedes the foundation-only
+configuration and future-deployment notes below.
 
 For current schema 4, statistics, administration and Discord commands, see
 [STATISTICS.md](STATISTICS.md). For multiplayer tables and themes, see
