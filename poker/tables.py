@@ -8,6 +8,7 @@ import sqlite3
 import time
 
 from . import money, rules
+from .presentation import emit, publish_hand
 from .sessions import authenticate
 from .store import Conflict
 
@@ -88,6 +89,9 @@ def public(db, table, user, connection=None):
         "id": table["id"],
         "version": table["version"],
         "joined": True,
+        "event_seq": table.get("event_seq", 0),
+        "server_time": time.time(),
+        "events": table.get("events", []),
         "name": table.get("name", "50 / 100"),
         "private": table.get("private", False),
         "owner": table["owner"],
@@ -138,6 +142,14 @@ class Transaction:
         user = hand["players"][hand["actor"]]["id"]
         hand["extensions"] = 0
         hand["deadline"] = self.now + (2 if user.startswith("npc:") else 20)
+        emit(
+            self.table,
+            self.now,
+            "turn",
+            hand_id=hand["id"],
+            user=user,
+            turn=hand["turn"],
+        )
         if not user.startswith("npc:"):
             self.hand_funds("action", user_id=user, opportunity_id=str(hand["turn"]))
         else:
@@ -154,6 +166,7 @@ class Transaction:
 
     def finish_action(self, before):
         hand = self.table["hand"]
+        publish_hand(self.table, self.now)
         for p in hand["players"]:
             chips = p["paid"] - before.get(p["id"], 0)
             if chips:
@@ -218,6 +231,7 @@ class Transaction:
                         "buy_in", user_id=user, table_id=table["id"], amount=m["topup"]
                     )
                     m["notice"] = "topup_complete"
+                    emit(table, self.now, "topup", user=user, amount=m["topup"])
                     m["mode"], m["expires"] = "active", None
                 except (Conflict, sqlite3.IntegrityError):
                     self.db.execute("ROLLBACK TO queued_topup")
@@ -310,6 +324,14 @@ class Transaction:
                 )
                 hand["deadline"] = result["deadline"]
                 hand["extensions"] += 1
+                emit(
+                    table,
+                    self.now,
+                    "bank",
+                    hand_id=hand["id"],
+                    user=user,
+                    turn=hand["turn"],
+                )
                 self.persist_hand()
             else:
                 member(table, user)["sitout"] = True
@@ -531,7 +553,9 @@ class Tables:
                     or m.get("heartbeat", 0) + 30 <= now
                 ):
                     raise Conflict("not_control_endpoint")
-                Transaction(db, table, cid, now, self.store.maintenance).command(user, data)
+                Transaction(db, table, cid, now, self.store.maintenance).command(
+                    user, data
+                )
                 table["version"] += 1
                 save(db, table)
                 result = {"accepted": True, "version": table["version"]}
@@ -584,7 +608,13 @@ class Tables:
             candidates = []
             for table in all_tables(db):
                 before = copy.deepcopy(table)
-                Transaction(db, table, "tick:" + secrets.token_hex(16), now, self.store.maintenance).tick()
+                Transaction(
+                    db,
+                    table,
+                    "tick:" + secrets.token_hex(16),
+                    now,
+                    self.store.maintenance,
+                ).tick()
                 if table != before:
                     table["version"] += 1
                     save(db, table)
@@ -768,6 +798,13 @@ class Tables:
                     ):
                         valid = False
                     if not valid:
+                        refunds = {
+                            p["user_id"]: p["contribution"]
+                            for p in db.execute(
+                                "SELECT user_id,contribution FROM participants WHERE hand_id=?",
+                                (row["hand_id"],),
+                            )
+                        }
                         money.execute(
                             db,
                             "recovery:void:" + row["hand_id"],
@@ -777,6 +814,43 @@ class Tables:
                         )
                         if table["hand"] and table["hand"].get("id") == row["hand_id"]:
                             table["hand"] = None
+                        # Reconstruct only the refund display from the authoritative ledger;
+                        # the damaged private snapshot is never used for presentation.
+                        table["last"] = {
+                            "id": row["hand_id"],
+                            "button": 0,
+                            "board": [],
+                            "street": "preflop",
+                            "actor": None,
+                            "turn": 0,
+                            "showdown": False,
+                            "pots": [],
+                            "void": True,
+                            "payouts": refunds,
+                            "refunds": refunds,
+                            "players": [
+                                {
+                                    "id": u,
+                                    "stack": stack(db, u),
+                                    "bet": 0,
+                                    "paid": n,
+                                    "cards": [],
+                                    "folded": True,
+                                }
+                                for u, n in refunds.items()
+                            ],
+                        }
+                        for user, amount in refunds.items():
+                            if amount:
+                                emit(
+                                    table,
+                                    now,
+                                    "refund",
+                                    hand_id=row["hand_id"],
+                                    user=user,
+                                    amount=str(amount),
+                                    reason="void",
+                                )
                         event = "unrecoverable_hand_voided"
                     else:
                         event = "hand_restored_with_original_deadline"

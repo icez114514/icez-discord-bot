@@ -148,16 +148,44 @@ main.table-mode { max-width: 1800px; padding: 12px 24px; }
   .table-mode > .account-tools { position: static; max-width: none; margin: 0; }
   .table-mode > .account-tools button { font-size: 10px; min-height: 32px; padding: 5px; }
 }
-@media (prefers-reduced-motion: no-preference) {
-  .game .card:not(.blank):not(.back) { animation: card-arrive .2s ease-out; }
-  @keyframes card-arrive { from { opacity: .2; translate: 0 -10px; } to { opacity: 1; translate: 0 0; } }
+/* Transient effects only mount for fresh, confirmed public events. */
+.game .chip-layer { position: absolute; inset: 0; pointer-events: none; z-index: 6; overflow: hidden; }
+.game .chip-flight { position: absolute; left: 0; top: 0; border: 1px solid var(--accent); border-radius: 12px; background: var(--felt-dark); color: var(--ink); padding: 2px 7px; font-size: 11px; white-space: nowrap; animation: chip-travel 280ms ease-out both; }
+@keyframes chip-travel {
+  from { transform: translate(calc(var(--from-x) - 50%),calc(var(--from-y) - 50%)); opacity: .8; }
+  to { transform: translate(calc(var(--to-x) - 50%),calc(var(--to-y) - 50%)); opacity: 1; }
+}
+.game .winner-badge { position: absolute; inset: 0; z-index: 4; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 50%; color: #ffe4a0; background: #201507ed; border: 2px solid #e8bf70; font: bold 17px system-ui,sans-serif; box-shadow: 0 0 16px #e8bf7080; animation: winner-arrive 280ms ease-out; }
+.game .winner-badge small { font-size: 8px; white-space: nowrap; }
+@keyframes winner-arrive { from { transform: scale(.85); opacity: .3; } to { transform: scale(1); opacity: 1; } }
+.game .action-label { display: block; height: 16px; line-height: 16px; font-size: 10px; color: var(--accent); font-weight: bold; white-space: nowrap; }
+.game .empty-label { visibility: hidden; }
+.sound-settings { margin: 16px 0; padding: 12px; border: 1px solid var(--line); border-radius: 10px; }
+.sound-settings label { display: block; font-size: 13px; }
+.sound-settings input[type=range] { display: block; width: 100%; min-height: 32px; padding: 0; accent-color: var(--accent); }
+.sound-settings input[type=checkbox] { width: auto; margin-right: 8px; }
+.sound-group { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 12px; margin: 8px 0; }
+.sound-settings p, .settlement-details p, .settlement-details li { font-size: 12px; }
+.settlement-details summary { cursor: pointer; padding: 10px 0; color: var(--accent); }
+.settlement-details section { border-top: 1px solid var(--line); padding-top: 12px; }
+.game.reduced-motion .chip-flight { animation: none; transform: translate(calc(var(--to-x) - 50%),calc(var(--to-y) - 50%)); }
+.game.reduced-motion .winner-badge { animation: none; box-shadow: none; }
+@media (prefers-reduced-motion: reduce) {
+  .game .chip-flight { animation: none; transform: translate(calc(var(--to-x) - 50%),calc(var(--to-y) - 50%)); }
+  .game .winner-badge { animation: none; box-shadow: none; }
+}
+@media (max-width: 600px) {
+  .game .action-label { font-size: 8px; height: 14px; line-height: 14px; }
+  .game .chip-flight { font-size: 9px; }
+  .game .winner-badge { font-size: 12px; }
+  .game .winner-badge small { font-size: 7px; }
 }
 
 .game .table-tools { display: flex; flex-wrap: wrap; }
 .game .turn-line { display: flex; justify-content: space-between; align-items: center; }
 .game .turn-line > span { font-variant-numeric: tabular-nums; }
 .game .bank { font-size: 12px; }
-.game .table-links { display: flex; gap: 4px; position: absolute; top: 660px; left: 0; }
+.game .table-links { z-index: 2; display: flex; gap: 4px; position: absolute; top: 660px; left: 0; }
 .game .table-links button { background: transparent; color: var(--accent); padding: 8px 12px; }
 .game .hand-info { display: grid; gap: 16px; }
 .game .game-log { padding-left: 22px; font-size: 13px; }

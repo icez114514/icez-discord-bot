@@ -1,16 +1,18 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Modal } from './Modal';
 import { ThemePicker } from './Theme';
 import { clamp, potPreset, sliderAmount } from './betting';
 import { sound } from './sound';
-import { tableSoundEvents } from './tableAudio';
+import { actionLabel, useTablePresentation } from './tablePresentation';
+import { ChipFlights, SettlementDetails, type Settlement } from './TableEffects';
+import { SoundSettings } from './SoundSettings';
 import { PlayerAvatar, usePlayerProfiles } from './PlayerProfiles';
 import './table.css';
 
 type Player = { id: string; stack: string; bet: string; paid: string; cards: string[]; folded: boolean };
 type Member = { id: string; seat: number; mode: string; sitout: boolean; connected: boolean; expires: number | null; stack: string; leaving: boolean; topup: string | null; notice: string | null; npc_failures: number };
-type Hand = { id: string; button: number; players: Player[]; board: string[]; street: string; actor: number | null; turn: number; pot: string; deadline: number | null; extensions: number; payouts: Record<string, string> | null; legal: { check?: boolean; fold?: boolean; call?: string; raise?: boolean; min_raise_to?: string; max_raise_to?: string } };
-type State = { id: string; name?: string; private?: boolean; version: number; joined: boolean; closed: boolean; frozen?: boolean; control?: boolean; owner?: string; members?: Member[]; hand?: Hand | null; countdown?: number | null; time_bank?: number };
+type Hand = { settlement?: Settlement | null; id: string; button: number; players: Player[]; board: string[]; street: string; actor: number | null; turn: number; pot: string; deadline: number | null; extensions: number; payouts: Record<string, string> | null; legal: { check?: boolean; fold?: boolean; call?: string; raise?: boolean; min_raise_to?: string; max_raise_to?: string } };
+type State = import('./tableAudio').EventState & { id: string; name?: string; private?: boolean; version: number; joined: boolean; closed: boolean; frozen?: boolean; control?: boolean; owner?: string; members?: Member[]; hand?: Hand | null; countdown?: number | null; time_bank?: number };
 type Payload = { command_id: string; table_id: string; version: number; kind: string; control: string | null; hand_id?: string; turn?: number; action?: string; amount?: string; npc_id?: string };
 const chips = (value: string) => BigInt(value).toLocaleString('zh-TW');
 const suits: Record<string, string> = { c: '♣', d: '♦', h: '♥', s: '♠' };
@@ -52,13 +54,31 @@ export function Table({ user, onClose }: { user: string; onClose: () => void }) 
   const [options, setOptions] = useState(false);
   const [info, setInfo] = useState<'hand' | 'log' | null>(null);
   const [log, setLog] = useState<string[]>([]);
-  const [muted, setMuted] = useState(sound.isMuted);
-  const previous = useRef<State | null>(null);
+  const prefs = useSyncExternalStore(sound.subscribe, sound.preferences);
+  const muted = prefs.muted;
+  const presentation = useTablePresentation(user);
+  const latest = useRef<State | null>(null);
+  const scene = useRef<HTMLDivElement | null>(null);
   const tick = useRef('');
   const [now, setNow] = useState(Date.now() / 1000);
   const socketRef = useRef<WebSocket | null>(null);
   const control = useRef<string | null>(null);
   const pending = useRef<Payload | null>(null);
+  function accept(next: State, baseline = false) {
+    const prior = latest.current;
+    if (prior?.id === next.id && next.version < prior.version) return;
+    latest.current = next;
+    const events = presentation.receive(next, baseline);
+    const lines = events.flatMap(event => {
+      if (event.kind === 'action') return [(event.user === user ? '你' : '座上玩家') + ' · ' + actionLabel(event)];
+      if (event.kind === 'payout' || event.kind === 'refund') return [(event.user === user ? '你' : '座上玩家') + (event.kind === 'refund' ? ' 退款 ' : ' 派彩 ') + chips(event.amount ?? '0')];
+      if (event.kind === 'board') return [labels[(event as { street?: string }).street ?? ''] ?? '公共牌已發出'];
+      return [];
+    });
+    if (prior && prior.id !== next.id) setLog(lines);
+    else if (lines.length) setLog(old => [...old, ...lines].slice(-80));
+    setState(next);
+  }
   useEffect(() => {
     let stopped = false;
     let retry: ReturnType<typeof setTimeout> | undefined;
@@ -68,11 +88,12 @@ export function Table({ user, onClose }: { user: string; onClose: () => void }) 
       socket.onmessage = event => {
         const message = JSON.parse(event.data);
         if (message.connection) control.current = message.connection;
-        if (message.state) setState(previous => !previous || previous.id !== message.state.id || message.state.version >= previous.version ? message.state : previous);
+        if (message.state) accept(message.state, message.type === 'ready');
         setConnected(true);
       };
       socket.onclose = event => {
         control.current = null;
+        presentation.reset();
         setConnected(false);
         if (!stopped && event.code !== 4401) retry = setTimeout(attach, 1000);
         if (event.code === 4401) setError('登入已撤銷，請重新登入。');
@@ -99,8 +120,9 @@ export function Table({ user, onClose }: { user: string; onClose: () => void }) 
       const response = await fetch('/api/table/commands', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       const outcome = await response.json();
       if (response.status >= 500) throw new Error();
-      if (outcome.state) setState(previous => !previous || previous.id !== outcome.state.id || outcome.state.version >= previous.version ? outcome.state : previous);
+      if (outcome.state) accept(outcome.state, socketRef.current?.readyState !== WebSocket.OPEN);
       const failure = outcome.result?.error ?? outcome.error;
+      presentation.result(payload.command_id, !!failure || !response.ok);
       if (failure) setError(errors[failure] ?? failure);
       else if (!response.ok) setError('指令無法處理，請檢查輸入。');
       pending.current = null;
@@ -117,6 +139,9 @@ export function Table({ user, onClose }: { user: string; onClose: () => void }) 
   const profiles = usePlayerProfiles(state?.joined ? state.id : undefined, memberIds);
   const hand = state?.hand;
   const active = hand && !hand.payouts;
+  const settlement = hand?.settlement;
+  const refundTotal = Object.values(settlement?.refunds ?? {}).reduce((n, a) => n + BigInt(a), 0n);
+  const awardTotal = (settlement?.pots ?? []).reduce((n, pot) => n + BigInt(pot.amount), 0n);
   const mine = state?.members?.find(m => m.id === user);
   const disabled = busy || !connected || !state?.control || !!pending.current || state.frozen;
   const turnKey = hand ? `${hand.id}:${hand.turn}` : '';
@@ -131,28 +156,6 @@ export function Table({ user, onClose }: { user: string; onClose: () => void }) 
   const seconds = active && hand.deadline ? Math.max(0, Math.ceil(hand.deadline - now)) : 0;
   const ownPlayer = hand?.players.find(p => p.id === user);
   const betLabel = hand?.players.some(p => BigInt(p.bet) > 0n) ? '加注至' : '下注';
-  useEffect(() => {
-    const before = previous.current;
-    previous.current = connected ? state : null;
-    if (!connected || !before || !state?.hand) return;
-    const old = before.hand, next = state.hand;
-    const describe = (id: string) => id.startsWith('npc:') ? `NPC ${(state.members?.find(m => m.id === id)?.seat ?? 0) + 1}` : profiles[id]?.display_name ?? '玩家';
-    const events: string[] = [];
-    if (!old || old.id !== next.id) events.push('新的一手開始');
-    else {
-      if (old.street !== next.street) events.push(`${labels[next.street] ?? next.street}：${next.board.join(' ')}`);
-      for (const player of next.players) {
-        const prior = old.players.find(p => p.id === player.id);
-        if (prior && !prior.folded && player.folded) events.push(`${describe(player.id)} 棄牌`);
-        if (prior && BigInt(player.paid) > BigInt(prior.paid)) events.push(`${describe(player.id)} 投入 ${chips((BigInt(player.paid) - BigInt(prior.paid)).toString())}`);
-      }
-      if (!old.payouts && next.payouts) events.push(`本手結算：${Object.entries(next.payouts).filter(([, value]) => BigInt(value) > 0n).map(([id, value]) => `${describe(id)} 獲得 ${chips(value)}`).join(' · ')}`);
-      if (next.extensions > old.extensions && old.turn === next.turn) events.push('行動玩家使用 5 秒補時');
-    }
-    if (events.length) setLog(entries => [...entries, ...events].slice(-80));
-    if (document.hidden) return;
-    for (const cue of tableSoundEvents(old, next, !!state.control)) void sound.play(cue);
-  }, [state, connected, profiles]);
   useEffect(() => {
     const key = `${turnKey}:${hand?.extensions}:${seconds}`;
     if (tick.current === key) return;
@@ -183,15 +186,15 @@ export function Table({ user, onClose }: { user: string; onClose: () => void }) 
   const seated = state?.members ?? [];
   const mySeat = mine?.seat ?? 0;
   const position = (seat: number) => ['s', 'sw', 'nw', 'n', 'ne', 'se'][(seat - mySeat + 6) % 6];
-  return <section className="game" aria-label="德州撲克牌桌">
-    <div className="game-toolbar"><button className="back-button" onClick={onClose} aria-label="返回大廳" title="返回大廳（保留座位）">↶</button><div className="table-title"><h1>{state?.name ?? '牌桌'}</h1><small>50 / 100 · 無限注德州撲克{state?.private ? ' · 私人桌' : ''}</small></div><div className="table-tools"><button className="text" aria-pressed={!muted} onClick={() => { sound.mute(!muted); setMuted(!muted); }} aria-label={muted ? '開啟音效' : '關閉音效'}>{muted ? '音效：關' : '音效：開'}</button><button className="text" onClick={() => setOptions(true)}>牌桌選項</button></div></div>
+  return <section className={prefs.reduced ? 'game reduced-motion' : 'game'} aria-label="德州撲克牌桌">
+    <div className="game-toolbar"><button className="back-button" onClick={onClose} aria-label="返回大廳" title="返回大廳（保留座位）">↶</button><div className="table-title"><h1>{state?.name ?? '牌桌'}</h1><small>50 / 100 · 無限注德州撲克{state?.private ? ' · 私人桌' : ''}</small></div><div className="table-tools"><button className="text" aria-pressed={!muted} onClick={() => sound.mute(!muted)} aria-label={muted ? '開啟音效' : '關閉音效'}>{muted ? '音效：關' : '音效：開'}</button><button className="text" onClick={() => setOptions(true)}>牌桌選項</button></div></div>
     <p role="status" className="connection">{connected ? state?.joined ? state.control ? '● 已連線 · 此視窗可操作' : '已連線 · 另一個視窗持有操作權' : '已離桌，請回大廳選擇牌桌。' : '連線中斷，正在恢復同桌…'}</p>
     {error ? <p role="alert" className="message error">{error}</p> : null}
     {pending.current && !busy ? <button onClick={() => pending.current && void send(pending.current)}>重送同一指令</button> : null}
     {state?.frozen ? <p role="alert">牌桌資金待恢復核對，暫停所有操作。</p> : null}
     {state?.closed ? <p>牌桌已關閉；當手完成後退回剩餘籌碼。</p> : null}
     {state?.joined ? <>
-      <div className="table-scene"><div className="felt" aria-hidden="true" />
+      <div className="table-scene" ref={scene}><ChipFlights events={presentation.view.flights} scene={scene} /><div className="felt" aria-hidden="true" />
         <div className="board"><span className="table-wordmark" aria-hidden="true">♠ ICEZ POKER</span><strong className="pot"><span>總底池</span> {chips(hand?.pot ?? '0')}</strong><Cards cards={hand?.board ?? []} slots={5} /><p>{state.countdown ? `下一手倒數 ${Math.max(0, Math.ceil(state.countdown - now))} 秒` : active ? labels[hand.street] : '等待下一手'}</p></div>
         {Array.from({ length: 6 }, (_, seat) => {
           const occupants = seated.filter(m => m.seat === seat);
@@ -200,16 +203,17 @@ export function Table({ user, onClose }: { user: string; onClose: () => void }) 
           const player = hand?.players.find(p => p.id === m.id);
           const acting = active && hand.actor !== null && hand.players[hand.actor]?.id === m.id;
           const dealer = hand?.players[hand.button]?.id === m.id;
-          return <article className={`seat ${position(seat)} ${acting ? 'acting' : ''} ${player?.folded ? 'folded' : ''} ${m.id === user ? 'hero-seat' : ''}`} key={seat} aria-label={`${playerName(m.id)}，${chips(m.stack)} 籌碼`}>
+          return <article data-player={m.id} className={`seat ${position(seat)} ${acting ? 'acting' : ''} ${player?.folded ? 'folded' : ''} ${m.id === user ? 'hero-seat' : ''}`} key={seat} aria-label={`${playerName(m.id)}，${chips(m.stack)} 籌碼`}>
             {player ? <div className="seat-cards"><Cards cards={player.cards} hidden={player.cards.length === 0} /></div> : null}
-            <div className="seat-plaque"><div className="portrait"><PlayerAvatar url={profiles[m.id]?.avatar_url} npc={m.id.startsWith('npc:')} countdown={acting ? seconds : null} />{acting ? <svg className="countdown-ring" viewBox="0 0 100 100" aria-label={`剩餘 ${seconds} 秒`}><circle cx="50" cy="50" r="46" pathLength="100" /><circle cx="50" cy="50" r="46" pathLength="100" strokeDasharray={`${Math.min(100, seconds / (m.id.startsWith('npc:') ? 2 : hand?.extensions ? 5 : 20) * 100)} 100`} /></svg> : null}</div><div className="seat-info"><strong title={playerName(m.id)}>{playerName(m.id)}</strong><b className="seat-stack">{chips(m.stack)}</b></div></div>
-            <small className="seat-status">{player?.folded ? '已棄牌' : player?.stack === '0' && active ? '全下' : m.leaving ? '手後離桌' : m.sitout ? '手後坐出' : acting ? '正在行動' : labels[m.mode] ?? m.mode}{occupants.length > 1 ? ' · 真人等待接替' : ''}</small>
+            <div className="seat-plaque"><div className="portrait">{presentation.view.wins[m.id] ? <span className="winner-badge" role="status">WIN<small>派彩 {chips(presentation.view.wins[m.id].amount ?? '0')}</small></span> : null}<PlayerAvatar url={profiles[m.id]?.avatar_url} npc={m.id.startsWith('npc:')} countdown={acting ? seconds : null} />{acting ? <svg className="countdown-ring" viewBox="0 0 100 100" aria-label={`剩餘 ${seconds} 秒`}><circle cx="50" cy="50" r="46" pathLength="100" /><circle cx="50" cy="50" r="46" pathLength="100" strokeDasharray={`${Math.min(100, seconds / (m.id.startsWith('npc:') ? 2 : hand?.extensions ? 5 : 20) * 100)} 100`} /></svg> : null}</div><div className="seat-info"><strong title={playerName(m.id)}>{playerName(m.id)}</strong><b className="seat-stack">{chips(m.stack)}</b></div></div>
+            {presentation.view.actions[m.id] ? <span className="action-label" role="status">{actionLabel(presentation.view.actions[m.id])}</span> : <span className="action-label empty-label" aria-hidden="true">·</span>}
+            <small className="seat-status">{!m.connected && !m.id.startsWith('npc:') ? '離線 · ' : ''}{player?.folded ? '已棄牌' : player?.stack === '0' && active ? '全下' : m.leaving ? '手後離桌' : m.sitout ? '手後坐出' : acting ? '正在行動' : labels[m.mode] ?? m.mode}{occupants.length > 1 ? ' · 真人等待接替' : ''}</small>
             {dealer ? <span className="dealer" aria-label="莊位">D</span> : null}
-            {player && BigInt(player.bet) > 0n ? <span className="seat-bet"><span aria-hidden="true">◉</span> {chips(player.bet)}</span> : null}
+            {active && player && BigInt(player.bet) > 0n ? <span className="seat-bet"><span aria-hidden="true">◉</span> {chips(player.bet)}</span> : null}
           </article>;
         })}
       </div>
-      {hand?.payouts ? <p role="status" className="settlement">本手結算：{Object.entries(hand.payouts).filter(([, value]) => BigInt(value) > 0n).map(([id, value]) => `${playerName(id)} 獲得 ${chips(value)}`).join(' · ')}</p> : null}
+      {hand?.payouts ? <p role="status" className="settlement">{settlement ? `${settlement.void ? '作廢' : `派彩 ${chips(awardTotal.toString())}`} · 退款 ${chips(refundTotal.toString())}` : '本手已結算'}</p> : null}
       <section className="action-panel" aria-label="牌桌操作">
         <div className="turn-line"><strong>{ownTurn ? '輪到你行動' : active ? '等待其他玩家' : '等待下一手'}</strong><span className="timebank" title="行動時間用盡時自動補時，每次 5 秒，每手最多 4 次">◷ 補時池 {state.time_bank ?? 0}s{active && hand.extensions > 0 ? ` · 已用 ${hand.extensions}/4` : ''}</span></div>
         <div className="bet-sizing"><div className="pot-presets" aria-label="底池比例下注">{[[1, 3], [1, 2], [2, 3], [1, 1], [2, 1]].map(([n, d]) => <button key={`${n}/${d}`} disabled={!canRaise} title={`跟注後底池的 ${n}/${d}，限制於合法加注範圍`} onClick={() => { setRaise(potPreset(hand?.pot ?? '0', hand?.legal.call ?? '0', ownPlayer?.bet ?? '0', n, d, minimum, maximum)); void sound.play('click'); }}>{d === 1 ? `${n}x` : `${n}/${d}`}</button>)}</div>
@@ -217,9 +221,9 @@ export function Table({ user, onClose }: { user: string; onClose: () => void }) 
         <small className="raise-range">{canRaise ? `最低 ${chips(minimum.toString())} · 最高 ${chips(maximum.toString())}` : '等待可下注時調整金額'}</small></div>
         <div className="action-buttons"><button disabled={disabled || !ownTurn} onClick={() => act('fold')}>棄牌</button><button disabled={disabled || !ownTurn} onClick={() => act(hand?.legal.check ? 'check' : 'call')}>{hand?.legal.check ? '過牌' : <>跟注<span>{chips(hand?.legal.call ?? '0')}</span></>}</button><button disabled={!canRaise || !raiseValid} onClick={() => act('raise', raise)}>{raiseValue === maximum && canRaise ? '全下' : betLabel}<span>{chips(raiseValue.toString())}</span></button></div>
       </section>
-      <nav className="table-links" aria-label="牌局資訊"><button onClick={() => setInfo('hand')}>本手牌局</button><button onClick={() => setInfo('log')}>牌局紀錄</button></nav>
-      {info ? <Modal title={info === 'hand' ? '本手牌局' : '牌局紀錄'} onClose={() => setInfo(null)}>{info === 'hand' ? <div className="hand-info"><p>{hand ? `手牌 ${hand.id} · ${labels[hand.street] ?? hand.street}` : '尚未開始'} · 底池 {chips(hand?.pot ?? '0')}</p><span>你的底牌</span><Cards cards={ownPlayer?.cards ?? []} /><span>公共牌</span><Cards cards={hand?.board ?? []} slots={5} /></div> : <><p>本次連線觀察到的公開異動，最多保留 80 筆；重連期間可能不完整。</p>{log.length ? <ol className="game-log">{log.map((entry, index) => <li key={index}>{entry}</li>)}</ol> : <p>尚無新的牌局異動。</p>}</>}</Modal> : null}
-      {options ? <Modal title="牌桌選項" onClose={() => setOptions(false)}><ThemePicker /><p className="bank">補時池 {state.time_bank} / 60 秒 · 自動補時每次 +5 秒，最多 4 次</p>
+      <nav className="table-links" aria-label="牌局資訊"><button onClick={() => setInfo('hand')}>{hand?.settlement ? '結算明細' : '本手牌局'}</button><button onClick={() => setInfo('log')}>牌局紀錄</button></nav>
+      {info ? <Modal title={info === 'hand' ? '本手牌局' : '牌局紀錄'} onClose={() => setInfo(null)}>{info === 'hand' ? <div className="hand-info"><p>{hand ? `手牌 ${hand.id} · ${labels[hand.street] ?? hand.street}` : '尚未開始'} · 底池 {chips(hand?.pot ?? '0')}</p><span>你的底牌</span><Cards cards={ownPlayer?.cards ?? []} /><span>公共牌</span><Cards cards={hand?.board ?? []} slots={5} />{hand?.settlement ? <SettlementDetails settlement={hand.settlement} name={playerName} /> : null}</div> : <><p>本次連線觀察到的公開異動，最多保留 80 筆；重連期間可能不完整。</p>{log.length ? <ol className="game-log">{log.map((entry, index) => <li key={index}>{entry}</li>)}</ol> : <p>尚無新的牌局異動。</p>}</>}</Modal> : null}
+      {options ? <Modal title="牌桌選項" onClose={() => setOptions(false)}><ThemePicker /><SoundSettings /><p className="bank">補時池 {state.time_bank} / 60 秒 · 自動補時每次 +5 秒，最多 4 次</p>
         <div className="table-controls"><label>補碼金額<input inputMode="numeric" value={amount} onChange={e => setAmount(e.target.value)} /></label><button disabled={disabled || !!mine?.topup || mine?.leaving} onClick={() => command('topup', { amount })}>申請手後補碼</button><button disabled={disabled || mine?.leaving || mine?.sitout} onClick={() => command(mine?.mode === 'sitout' ? 'sit_in' : 'sitout')}>{mine?.mode === 'sitout' ? '重新坐入' : mine?.sitout ? '已排隊坐出' : '手後坐出'}</button><button disabled={disabled || mine?.leaving} onClick={() => command('leave')}>手後離桌</button></div>
         {mine?.expires ? <p>座位保留 {Math.max(0, Math.ceil(mine.expires - now))} 秒</p> : null}
       <section className="table-notices" aria-label="手間異動">{seated.filter(m => m.topup || m.notice || m.leaving || m.sitout || m.mode === 'pending').map(m => <p key={m.id}>{playerName(m.id)}：{m.topup ? `待補碼 ${chips(m.topup)}。` : ''}{m.leaving ? '已排隊手後離桌。' : m.sitout ? '已排隊手後坐出。' : m.mode === 'pending' ? '等待下一手加入。' : ''}{m.notice ? m.notice === 'topup_complete' ? '補碼完成。' : m.notice === 'topup_rejected' ? '補碼失敗：請確認可用餘額與上限。' : `NPC 暫時異常（連續 ${m.npc_failures} 次）。` : ''}</p>)}</section>

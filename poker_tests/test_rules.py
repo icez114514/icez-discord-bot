@@ -73,6 +73,12 @@ class RulesTests(unittest.TestCase):
             rules.act(hand, user, "all_in")
         self.assertEqual(hand["payouts"], {"a": 404, "b": 300, "c": 200, "d": 200})
         self.assertEqual(hand["refunds"]["d"], 200)
+        settlement = rules.project(hand, "a")["settlement"]
+        self.assertEqual(settlement["refunds"], {"d": "200"})
+        self.assertEqual(
+            [(p["amount"], p["awards"]) for p in settlement["pots"]],
+            [("404", {"a": "404"}), ("300", {"b": "300"}), ("200", {"c": "200"})],
+        )
         self.assertEqual(hand["board"], ["2c", "3d", "4h", "8s", "9c"])
 
     def test_split_pot_odd_chip_goes_to_winner_left_of_button(self):
@@ -112,6 +118,9 @@ class RulesTests(unittest.TestCase):
             rules.act(hand, "b", "check")
             rules.act(hand, "a", "check")
         self.assertEqual(hand["payouts"], {"a": 401, "b": 402, "c": 0})
+        pots = rules.project(hand, "a")["settlement"]["pots"]
+        self.assertEqual(pots[0]["awards"], {"b": "302", "a": "301"})
+        self.assertEqual(pots[1]["awards"], {"b": "100", "a": "100"})
 
     def test_short_blinds_run_out_when_no_decision_is_needed(self):
         hand = rules.create([("a", 25), ("b", 2000)], 0, "h")

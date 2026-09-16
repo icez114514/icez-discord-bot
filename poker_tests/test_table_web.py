@@ -151,6 +151,38 @@ class TableWebTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200, response.text)
         return response.json(), payload
 
+    def test_public_events_preserve_actions_collection_and_replay_identity(self):
+        self.join(A)
+        self.join(B)
+        hand = self.start_hand()
+        actor = hand["players"][hand["actor"]]["id"]
+        outcome, payload = self.act(actor, "call")
+        events = outcome["state"]["events"]
+        self.assertEqual(
+            [e["amount"] for e in events if e["kind"] == "action"], ["50", "100", "50"]
+        )
+        self.assertEqual(events[-2]["action"], "call")
+        self.assertEqual(events[-2]["raise_to"], "100")
+        again = self.client.post(
+            "/api/table/commands", headers=self.headers(actor), json=payload
+        ).json()
+        self.assertEqual(again["state"]["events"], events)
+        hand = self.view()["hand"]
+        self.act(hand["players"][hand["actor"]]["id"], "check")
+        state = self.view()
+        collection = next(e for e in state["events"] if e["kind"] == "collect")
+        self.assertEqual(collection["amounts"], {A: "100", B: "100"})
+        self.assertEqual(state["hand"]["pot"], "200")
+        self.assertEqual(
+            [e["seq"] for e in state["events"]], list(range(1, state["event_seq"] + 1))
+        )
+        self.assertEqual(len({e["id"] for e in state["events"]}), len(state["events"]))
+        import json
+
+        serialized = json.dumps(state["events"])
+        for private in ("deck", "snapshot", "control", "cards"):
+            self.assertNotIn(private, serialized)
+
     def test_invalid_websocket_command_returns_latest_state_without_disconnect(self):
         socket = self.join(A)
         socket.send_json(
@@ -209,6 +241,7 @@ class TableWebTests(unittest.TestCase):
 
     def test_maintenance_finishes_current_hand_and_prevents_new_admission(self):
         from poker.operations import maintenance
+
         self.join(A)
         self.join(B)
         self.start_hand()
@@ -216,8 +249,11 @@ class TableWebTests(unittest.TestCase):
         rejected, _ = self.command(C, "join", amount="2000")
         self.assertEqual(rejected.status_code, 409)
         self.assertEqual(rejected.json()["result"]["error"], "service_maintenance")
-        created = self.client.post("/api/tables", headers=self.headers(C), json={
-            "command_id": uuid.uuid4().hex, "name": "Blocked", "amount": "2000"})
+        created = self.client.post(
+            "/api/tables",
+            headers=self.headers(C),
+            json={"command_id": uuid.uuid4().hex, "name": "Blocked", "amount": "2000"},
+        )
         self.assertEqual(created.status_code, 409)
         self.act(A, "fold")
         self.advance(0)
@@ -230,24 +266,37 @@ class TableWebTests(unittest.TestCase):
     def test_full_snapshot_restore_preserves_game_preferences_and_statistics(self):
         from dataclasses import replace
         from poker.backups import take_backup, restore
+
         self.join(A)
         self.join(B)
         self.start_hand()
         self.act(A, "fold")
-        self.client.put("/api/preferences", headers=self.headers(A),
-                        json={"theme": "burgundy_leather"})
+        self.client.put(
+            "/api/preferences",
+            headers=self.headers(A),
+            json={"theme": "burgundy_leather"},
+        )
         routes = ("/api/account", "/api/preferences", "/api/statistics")
-        before = {route: self.client.get(route, headers=self.headers(A)).json() for route in routes}
-        result = self.client.portal.call(take_backup, self.app.state.store, self.directory / "snapshots")
+        before = {
+            route: self.client.get(route, headers=self.headers(A)).json()
+            for route in routes
+        }
+        result = self.client.portal.call(
+            take_backup, self.app.state.store, self.directory / "snapshots"
+        )
         restored = self.directory / "restored"
-        restore(self.directory / "snapshots" / result["file"], restored, result["sha256"])
+        restore(
+            self.directory / "snapshots" / result["file"], restored, result["sha256"]
+        )
         self.sessions.close()
         self.config = replace(self.config, data_dir=restored)
         self.sessions = self.resources.enter_context(contextlib.ExitStack())
         self.app = create_app(self.config, transport=self.transport)
         self.client = self.sessions.enter_context(TestClient(self.app))
         for route in routes:
-            self.assertEqual(self.client.get(route, headers=self.headers(A)).json(), before[route])
+            self.assertEqual(
+                self.client.get(route, headers=self.headers(A)).json(), before[route]
+            )
         self.assertTrue(self.client.get("/health").json()["maintenance"])
 
     def restart(self, corrupt=None):
@@ -290,6 +339,15 @@ class TableWebTests(unittest.TestCase):
         self.act(B, "fold")
         self.act(C, "call")
         self.restart("UPDATE hands SET snapshot='{}' WHERE status='active'")
+        state = self.view()
+        self.assertTrue(state["hand"]["settlement"]["void"])
+        self.assertEqual(state["hand"]["settlement"]["pots"], [])
+        self.assertEqual(
+            state["hand"]["settlement"]["refunds"], {A: "300", B: "50", C: "300"}
+        )
+        refund_events = [e for e in state["events"] if e.get("reason") == "void"]
+        self.assertEqual(len(refund_events), 3)
+        self.assertFalse(any(e["kind"] == "payout" for e in state["events"]))
         for user in (A, B, C):
             self.assertEqual(self.account(user)["table"], "2000")
             self.assertEqual(self.account(user)["in_flight"], "0")
@@ -579,12 +637,18 @@ class TableWebTests(unittest.TestCase):
         self.assertEqual(self.account(B)["in_flight"], "0")
         self.assertEqual(self.account(A)["hand_progress"], 0)
 
-
     def test_required_command_fields_are_shared_by_http_and_websocket(self):
         socket = self.join(A)
-        payload = {"command_id": "missing-amount", "table_id": "main",
-                   "version": self.view()["version"], "kind": "topup", "control": self.controls[A]}
-        response = self.client.post("/api/table/commands", headers=self.headers(A), json=payload)
+        payload = {
+            "command_id": "missing-amount",
+            "table_id": "main",
+            "version": self.view()["version"],
+            "kind": "topup",
+            "control": self.controls[A],
+        }
+        response = self.client.post(
+            "/api/table/commands", headers=self.headers(A), json=payload
+        )
         self.assertEqual(response.status_code, 422)
         socket.send_json({"type": "command", "command": payload})
         while True:
@@ -593,6 +657,7 @@ class TableWebTests(unittest.TestCase):
                 break
         self.assertEqual(message["result"]["error"], "invalid_command")
         self.assertEqual(self.account()["table"], "2000")
+
     def test_late_legal_npc_raise_falls_back_to_check(self):
         import asyncio
 
@@ -611,8 +676,12 @@ class TableWebTests(unittest.TestCase):
         hand = self.view()["hand"]
         self.assertTrue(hand["players"][hand["actor"]]["id"].startswith("npc:"))
         self.client.portal.call(
-            self.app.state.tables.npc_result, hand["id"], hand["turn"],
-            {"action": "raise", "amount": 200}, None, self.now + 3,
+            self.app.state.tables.npc_result,
+            hand["id"],
+            hand["turn"],
+            {"action": "raise", "amount": 200},
+            None,
+            self.now + 3,
         )
         state = self.view()
         npc = next(m for m in state["members"] if m["id"].startswith("npc:"))

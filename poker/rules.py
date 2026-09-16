@@ -5,6 +5,7 @@ from collections import Counter
 from itertools import combinations
 
 from .store import Conflict
+from .presentation import collect, hand_event
 
 CARDS = tuple(r + s for r in "23456789TJQKA" for s in "cdhs")
 STREETS = ("preflop", "flop", "turn", "river")
@@ -101,11 +102,21 @@ def create(players, button, hand_id):
     for _ in range(2):
         for i in clockwise(hand, button):
             hand["players"][i]["cards"].append(hand["deck"].pop())
+    hand_event(hand, "deal")
     sb = button if len(players) == 2 else (button + 1) % len(players)
     bb = (sb + 1) % len(players)
     for i, blind in ((sb, 50), (bb, 100)):
         paid = min(blind, hand["players"][i]["stack"])
         contribute(hand["players"][i], paid)
+        hand_event(
+            hand,
+            "action",
+            user=hand["players"][i]["id"],
+            action="small_blind" if i == sb else "big_blind",
+            amount=str(paid),
+            raise_to=str(paid),
+            all_in=hand["players"][i]["stack"] == 0,
+        )
         hand["history"].append(
             {
                 "seat": i,
@@ -156,6 +167,7 @@ def act(hand, user, action, target=None, automatic=False):
     actor = hand["actor"]
     p = hand["players"][actor]
     chips = 0
+    opening = hand["current_bet"] == 0
     if action == "all_in":
         if choices["max_raise_to"] > hand["current_bet"]:
             action, target = "raise", choices["max_raise_to"]
@@ -197,6 +209,16 @@ def act(hand, user, action, target=None, automatic=False):
             "automatic": automatic,
         }
     )
+    hand_event(
+        hand,
+        "action",
+        user=user,
+        action="bet" if action == "raise" and opening else action,
+        amount=str(chips),
+        raise_to=str(p["bet"]),
+        all_in=p["stack"] == 0,
+        automatic=automatic,
+    )
     advance(hand, actor)
 
 
@@ -219,10 +241,12 @@ def advance(hand, after):
     if hand["street"] == "river":
         finish(hand)
         return
+    collect(hand)
     hand["street"] = STREETS[STREETS.index(hand["street"]) + 1]
     hand["deck"].pop()  # Burn before every public street.
     for _ in range(3 if hand["street"] == "flop" else 1):
         hand["board"].append(hand["deck"].pop())
+    hand_event(hand, "board", board=list(hand["board"]))
     hand["current_bet"], hand["increment"] = 0, 100
     for p in hand["players"]:
         p["bet"], p["acted_at"], p["reopen"] = 0, None, 100
@@ -230,6 +254,7 @@ def advance(hand, after):
 
 
 def finish(hand):
+    collect(hand)
     players = hand["players"]
     live = [i for i, p in enumerate(players) if not p["folded"]]
     payouts = {p["id"]: 0 for p in players}
@@ -261,12 +286,34 @@ def finish(hand):
             winners = [i for i in eligible if scores[i] == best]
         ordered = [i for i in clockwise(hand, hand["button"]) if i in winners]
         share, odd = divmod(chips, len(winners))
+        awards = {}
         for offset, i in enumerate(ordered):
-            payouts[players[i]["id"]] += share + (offset < odd)
-        pots.append({"amount": chips, "winners": [players[i]["id"] for i in ordered]})
+            award = share + (offset < odd)
+            payouts[players[i]["id"]] += award
+            awards[players[i]["id"]] = str(award)
+        pots.append(
+            {
+                "amount": chips,
+                "winners": [players[i]["id"] for i in ordered],
+                "awards": awards,
+            }
+        )
     if sum(payouts.values()) != sum(p["paid"] for p in players):
         raise Conflict("payout_not_conserved")
     hand.update(payouts=payouts, refunds=refunds, pots=pots, actor=None)
+    for i, pot in enumerate(pots):
+        for user, amount in pot["awards"].items():
+            if int(amount):
+                hand_event(
+                    hand,
+                    "payout",
+                    user=user,
+                    amount=amount,
+                    pot_id=f"{hand['id']}:pot:{i}",
+                )
+    for user, amount in refunds.items():
+        if amount:
+            hand_event(hand, "refund", user=user, amount=str(amount), reason="uncalled")
 
 
 def project(hand, user):
@@ -299,6 +346,23 @@ def project(hand, user):
         else {},
         "payouts": {k: str(v) for k, v in hand["payouts"].items()}
         if hand["payouts"] is not None
+        else None,
+        "settlement": {
+            "pots": [
+                {
+                    "id": f"{hand['id']}:pot:{i}",
+                    "amount": str(p["amount"]),
+                    "winners": p["winners"],
+                    "awards": p["awards"],
+                }
+                for i, p in enumerate(hand.get("pots", []))
+                if "awards" in p
+            ],
+            "refunds": {u: str(n) for u, n in hand.get("refunds", {}).items() if n},
+            "void": hand.get("void", False),
+        }
+        if hand["payouts"] is not None
+        and all("awards" in p for p in hand.get("pots", []))
         else None,
         "deadline": hand.get("deadline"),
         "extensions": hand.get("extensions", 0),
