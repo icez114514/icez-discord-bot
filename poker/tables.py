@@ -142,7 +142,12 @@ class Transaction:
             return
         user = hand["players"][hand["actor"]]["id"]
         hand["extensions"] = 0
-        hand["deadline"] = self.now + (2 if user.startswith("npc:") else 20)
+        hand["deadline"] = self.now + (5 if user.startswith("npc:") else 20)
+        if user.startswith("npc:"):
+            from .npc_timing import think_seconds
+            hand["npc_not_before"] = self.now + think_seconds(hand)
+        else:
+            hand.pop("npc_not_before", None)
         emit(
             self.table,
             self.now,
@@ -602,7 +607,7 @@ class Tables:
 
         return await self.store.run(operation)
 
-    async def tick(self, now=None):
+    async def tick(self, now=None, exclude_npcs=()):
         now = time.time() if now is None else now
 
         def operation(db):
@@ -622,7 +627,8 @@ class Tables:
                 hand = table["hand"]
                 if hand and hand["actor"] is not None and not table["frozen"]:
                     if hand["players"][hand["actor"]]["id"].startswith("npc:"):
-                        candidates.append(hand)
+                        if (hand["id"], hand["turn"]) not in exclude_npcs:
+                            candidates.append(hand)
             return (
                 copy.deepcopy(min(candidates, key=lambda h: h["deadline"]))
                 if candidates

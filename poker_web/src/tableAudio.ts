@@ -2,7 +2,7 @@ import type { Sound } from './sound';
 
 export type PublicEvent = {
   id: string; seq: number; at: number; kind: string; hand_id?: string; user?: string;
-  action?: string; amount?: string; raise_to?: string; all_in?: boolean;
+  action?: string; bet_level?: number; amount?: string; raise_to?: string; all_in?: boolean;
   amounts?: Record<string, string>; pot_id?: string; reason?: string; turn?: number;
 };
 export type EventState = { id: string; event_seq?: number; events?: PublicEvent[]; server_time?: number };
@@ -34,4 +34,13 @@ export function eventSound(event: PublicEvent, user: string, control: boolean): 
     return event.amount && BigInt(event.amount) > 0n ? 'chips' : null;
   }
   return ({ deal: 'deal', board: 'deal', collect: 'collect', payout: 'settle', refund: 'refund' } as Record<string, Sound>)[event.kind] ?? null;
+}
+
+/** Only confirmed voluntary actions speak; blinds and replay baselines stay silent. */
+export function eventVoice(event: PublicEvent): Sound | null {
+  if (event.kind !== 'action' || !['fold','check','call','bet','raise'].includes(event.action ?? '')) return null;
+  if (event.all_in) return 'voice_allin';
+  if (event.action === 'raise' && (event.bet_level ?? 0) >= 4) return event.bet_level === 4 ? 'voice_fourbet' : 'voice_raise';
+  if (event.action === 'raise' && event.bet_level === 3) return 'voice_threebet';
+  return ('voice_' + event.action) as Sound;
 }

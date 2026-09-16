@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
-import { EventCursor, eventSound, type EventState, type PublicEvent } from './tableAudio';
+import { EventCursor, eventSound, eventVoice, type EventState, type PublicEvent } from './tableAudio';
 import { sound } from './sound';
 
 export const chips = (value: string) => BigInt(value).toLocaleString('zh-TW');
 const actions: Record<string, string> = { small_blind: '小盲', big_blind: '大盲', check: '過牌', fold: '棄牌', call: '跟注', bet: '下注', raise: '加注' };
 export function actionLabel(event: PublicEvent) {
-  const label = event.all_in ? '全下' : actions[event.action ?? ''] ?? '';
+  const label = event.all_in ? 'ALL-IN 全下' : event.action === 'raise' && (event.bet_level ?? 0) >= 3 ? `${event.bet_level}-BET 再加注` : actions[event.action ?? ''] ?? '';
   if (!event.amount || event.amount === '0') return label;
   return event.action === 'raise'
-    ? label + '至 ' + chips(event.raise_to ?? '0') + ' · 投入 ' + chips(event.amount)
+    ? label + '至 ' + chips(event.raise_to ?? '0')
     : label + ' ' + chips(event.amount);
 }
 type View = { context: string; flights: PublicEvent[]; actions: Record<string, PublicEvent>; wins: Record<string, PublicEvent> };
@@ -62,9 +62,9 @@ export function useTablePresentation(user: string) {
           flights: flight ? [...old.flights, event] : old.flights,
           actions: event.kind === 'action' && event.user ? { ...old.actions, [event.user]: event } : old.actions,
         }));
-        if (event.kind === 'action' && event.user) delay(1400, () => setView(old => {
-          const actions = { ...old.actions }; if (actions[event.user!]?.id === event.id) delete actions[event.user!]; return { ...old, actions };
-        }));
+        // Keep each confirmed action visible until that player's next action or new hand.
+        const voice = eventVoice(event);
+        if (voice) void sound.play(voice);
         if (flight) delay(280, () => {
           setView(old => ({ ...old, flights: old.flights.filter(e => e.id !== event.id) }));
           if (event.kind !== 'payout' || !event.user || celebrated.current.has(event.user)) return;
@@ -80,7 +80,7 @@ export function useTablePresentation(user: string) {
     if (receipts.current.has(id)) return;
     receipts.current.add(id);
     if (receipts.current.size > 128) receipts.current.delete(receipts.current.values().next().value!);
-    if (!document.hidden) void sound.play(failed ? 'error' : 'result');
+    if (!document.hidden && failed) void sound.play('error');
   }
   return { view, receive, reset, result };
 }

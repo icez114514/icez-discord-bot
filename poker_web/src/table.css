@@ -202,7 +202,7 @@ main.table-mode { max-width: 1800px; padding: 12px 24px; }
 .game .avatar-countdown { position: absolute; inset: 0; display: grid; place-items: center; background: #0006; color: #fff; font: bold 26px system-ui,sans-serif; text-shadow: 0 1px 4px #000; }
 @media (min-width: 1100px) {
   main.table-mode { height: 100dvh; max-width: 1920px; padding: 10px 20px; display: grid; grid-template: minmax(0,1fr) / minmax(0,1fr); }
-  .table-mode > .game { grid-area: 1 / 1; min-height: 0; display: grid; grid-template-columns: minmax(0,1fr) 196px minmax(0,1fr); grid-template-rows: 44px 24px minmax(0,1fr) 162px; }
+  .table-mode > .game { grid-area: 1 / 1; min-height: 0; display: grid; grid-template-columns: minmax(0,1fr) 196px minmax(0,1fr); grid-template-rows: 44px 24px minmax(0,1fr) 174px 100px; }
   .game .game-toolbar { grid-column: 1 / -1; grid-row: 1; }
   .game .connection { grid-column: 1 / -1; grid-row: 2; margin: 2px 0; }
   .game .table-scene { grid-column: 1 / -1; grid-row: 3 / 5; height: auto; width: 100%; max-width: none; margin: 0; }
@@ -262,7 +262,7 @@ main.table-mode { max-width: 1800px; padding: 12px 24px; }
 .personal-settings label { display: block; margin: 10px 0; }
 .personal-settings input[type=checkbox] { width: auto; min-height: 0; }
 .personal-settings p { font-size: 13px; }
-.game .preselection { position: relative; margin: 20px 0 0 auto; max-width: 640px; display: flex; flex-wrap: wrap; gap: 8px; }
+.game .preselection { box-sizing: border-box; height: 150px; overflow: auto; align-content: start; position: relative; margin: 20px 0 0 auto; max-width: 640px; display: flex; flex-wrap: wrap; gap: 8px; }
 .game .preselection p { flex-basis: 100%; margin: 0; }
 .game .preselection button { min-height: 44px; white-space: normal; }
 .game .preselection button[aria-pressed=true] { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -284,8 +284,29 @@ main.table-mode { max-width: 1800px; padding: 12px 24px; }
 .connection-announcement { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 @media (min-width: 1100px) {
-  .game .preselection { grid-column: 3; grid-row: 5; width: calc(100% - 20px); margin: 8px 0 0 auto; z-index: 4; }
-  .game.large-cards { grid-template-rows: 44px 44px minmax(380px,1fr) 210px; min-height: 820px; }
+  .game .preselection { height: 100px; grid-column: 3; grid-row: 5; width: calc(100% - 20px); margin: 8px 0 0 auto; z-index: 4; }
+  .game.large-cards { grid-template-rows: 44px 44px minmax(380px,1fr) 230px 150px; min-height: 860px; }
   .game.large-cards .raise-range { line-height: 1.4; }
-  .game > button { grid-column: 3; grid-row: 6; justify-self: end; z-index: 4; }
+  .game > .retry-command { position: absolute; right: 0; top: 65px; z-index: 7; }
+}
+
+/* Reserve feedback and preselection space across every turn and reconnect. */
+.game .preselection-idle { visibility: hidden; pointer-events: none; }
+.game.large-cards .preselection { height: 150px; }
+.game .connection { height: 18px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.game > .message, .game > [role=alert], .game > .table-closed { position: absolute; top: 66px; left: 12%; right: 12%; z-index: 7; margin: 0; padding: 8px; background: var(--panel); border-radius: 8px; }
+.game > .retry-command { position: absolute; right: 0; top: 65px; z-index: 8; }
+.game .raise-range { height: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.game .action-buttons > button { height: 74px; overflow: hidden; }
+.game .action-label { box-sizing: border-box; display: block; height: 30px; line-height: 28px; margin: 5px auto 0; max-width: 100%; padding: 0 8px; border-radius: 6px; border: 1px solid var(--trim); background: var(--panel); color: var(--ink); font-size: 14px; font-weight: 800; overflow: hidden; text-overflow: ellipsis; box-shadow: 0 2px 5px #0005; }
+.game .all-in-label { background: #9c273b; color: white; border-color: #efb9b0; }
+@media (min-width: 1100px) {
+  .game .action-buttons > button { height: 60px; }
+  .game.large-cards .connection { height: 40px; }
+  .game.large-cards .raise-range { height: 23px; }
+}
+@media (max-width: 600px) {
+  .game .action-buttons > button { height: 68px; }
+  .game .action-label { font-size: 11px; height: 25px; line-height: 23px; margin-top: 3px; padding: 0 3px; }
+  .game .seat-status { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 }

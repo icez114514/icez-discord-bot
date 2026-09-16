@@ -24,6 +24,9 @@ class TableWebTests(unittest.TestCase):
         self.directory = Path(
             self.resources.enter_context(tempfile.TemporaryDirectory())
         )
+        # Game-flow tests use the lower allowed delay; distribution/fairness has
+        # its own timing tests. Avoid nondeterministic chains of five NPC waits.
+        self.resources.enter_context(patch("poker.npc_timing.think_seconds", return_value=1.0))
         self.now = time.time()
         self.resources.enter_context(patch("time.time", side_effect=lambda: self.now))
         self.config = Config(
@@ -404,8 +407,8 @@ class TableWebTests(unittest.TestCase):
         self.assertEqual(self.account(A)["hand_progress"], 1)
         self.assertEqual(self.account(A)["time_bank"], 40)
 
-    def wait_hand(self, predicate):
-        deadline = time.monotonic() + 5
+    def wait_hand(self, predicate, timeout=5):
+        deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
             hand = self.view()["hand"]
             if predicate(hand):
@@ -581,7 +584,8 @@ class TableWebTests(unittest.TestCase):
         for _ in range(25):
             hand = self.wait_hand(
                 lambda h: h["payouts"] is not None
-                or h["players"][h["actor"]]["id"] == A
+                or h["players"][h["actor"]]["id"] == A,
+                timeout=12,  # Up to two rounds of five one-second NPC turns.
             )
             if hand["payouts"] is not None:
                 break
@@ -691,7 +695,7 @@ class TableWebTests(unittest.TestCase):
             hand["turn"],
             {"action": "raise", "amount": 200},
             None,
-            self.now + 3,
+            hand["deadline"] + 0.01,
         )
         state = self.view()
         npc = next(m for m in state["members"] if m["id"].startswith("npc:"))

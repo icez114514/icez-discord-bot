@@ -72,3 +72,39 @@ test('storage failures retain session preferences per account and hidden pages r
   await sound.play('turn'); assert.equal(played.length, count); assert.equal(sound.diagnosis(), 'hidden');
   document.hidden = false; localStorage.setItem = original;
 });
+
+test('action voice has an independent volume and only one speaker at a time', async () => {
+  sound.stop(); sound.setUser('voice'); sound.unlock(); played.length = 0;
+  await sound.play('voice_call');
+  const first = played.at(-1);
+  let stopped = false;
+  const stop = first.stop;
+  first.stop = () => { stopped = true; stop(); };
+  await sound.play('voice_allin');
+  assert(stopped);
+  assert.equal(played.length, 2);
+  sound.configure({ groups: { ...sound.preferences().groups, voice: 0 } });
+  await sound.play('voice_fold'); assert.equal(played.length, 2);
+  await sound.play('chips'); assert.equal(played.length, 3);
+});
+
+test('a delayed older voice never interrupts a newer action announcement', async () => {
+  const fetchBefore = globalThis.fetch;
+  let release;
+  const delayed = new Promise(resolve => { release = resolve; });
+  globalThis.fetch = async url => {
+    if (url.includes('voice-call.ogg')) await delayed;
+    return { ok: true, arrayBuffer: async () => new ArrayBuffer(1) };
+  };
+  const { sound: ordered } = await import('./sound.ts?voice-order');
+  try {
+    ordered.setUser('ordered'); ordered.unlock(); played.length = 0;
+    const old = ordered.play('voice_call');
+    await ordered.play('voice_allin');
+    assert.equal(played.length, 1);
+    const latest = played[0];
+    release(); await old;
+    assert.equal(played.length, 1);
+    assert.equal(played.at(-1), latest);
+  } finally { release(); ordered.stop(); globalThis.fetch = fetchBefore; }
+});

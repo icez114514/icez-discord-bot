@@ -5,6 +5,21 @@ from poker.store import Conflict
 
 
 class RulesTests(unittest.TestCase):
+    def test_action_events_identify_three_bet_and_reset_bet_level_each_street(self):
+        hand = rules.create([("a", 5000), ("b", 5000)], 0, "labels")
+        def latest():
+            return [e for e in hand["presentation"] if e["kind"] == "action"][-1]
+        rules.act(hand, "a", "raise", 300)
+        self.assertEqual(latest()["bet_level"], 2)
+        rules.act(hand, "b", "raise", 900)
+        self.assertEqual(latest()["bet_level"], 3)
+        rules.act(hand, "a", "call")
+        rules.act(hand, "b", "raise", 200)
+        self.assertEqual(latest()["action"], "bet")
+        self.assertEqual(latest()["bet_level"], 1)
+        rules.act(hand, "a", "raise", 600)
+        self.assertEqual(latest()["bet_level"], 2)
+
     def test_dealing_rejects_invalid_participant_rosters(self):
         for players in (
             [("a", 1000)],

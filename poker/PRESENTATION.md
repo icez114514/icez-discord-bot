@@ -39,20 +39,23 @@ older than three server seconds establish a silent baseline. No snapshot
 difference is used to guess intermediate actions. Presentation queues are
 bounded to about 2.2 seconds; animation does not update balances or deadlines.
 
-Chip travel lasts 280 ms; action labels last 1.4 seconds. WIN appears at payout
+Chip travel lasts 280 ms; action labels persist until the next action or hand/context. WIN appears at payout
 arrival for 1.2 seconds, once per hand/player. Additional pots still travel;
 refund-only receipts never produce WIN. Changing hand, table or seat roster
 clears transient effects. Device reduced-motion settings and the saved option
 both disable travel/pulse animation.
 
 Audio preferences use `poker-sound:v1:<account>` in local storage, with an
-in-memory per-account fallback. Master gain, four category gains, mute and
+in-memory per-account fallback. Master gain, five category gains (including action voice), mute and
 reduced motion are saved. Preview is local and obeys all gains/mute. Gesture
 unlock preloads the existing licensed audio files; check/collection/refund and
-interface cues reuse these assets at distinct rates. Six concurrent voices
+interface cues use short mastered foley; action voice has separate generated clips. Six concurrent voices
 reserve capacity for reminders; newer settlement cues can replace older
 settlement/general voices, while reminders retain priority. Loads taking over
 600 ms do not replay late. Settings display the last audio diagnostic.
+
+See [PLAY_FEEDBACK.md](PLAY_FEEDBACK.md) for the subsequent stable-layout,
+action-voice and 1-to-5-second NPC pacing update.
 
 ## Verification
 

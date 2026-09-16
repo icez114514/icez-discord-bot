@@ -99,6 +99,32 @@ try {
   await page.click('上一手摘要與歷史回放');
   await page.run("document.querySelector('dialog button[aria-label=關閉對話框]').click()");
   await page.wait("document.querySelector('.connection')?.textContent.includes('已同步')");
+  // Turn transitions must not add grid tracks or move the table/action dock.
+  const geometry = () => page.run(`['.table-scene','.action-panel'].map(selector=>{const r=document.querySelector(selector).getBoundingClientRect();return [r.x,r.y,r.width,r.height];})`);
+  for (const width of [1440,390,320]) {
+    await page.call('Emulation.setDeviceMetricsOverride',{width,height:1000,deviceScaleFactor:1,mobile:width<600});
+    await feed(page,state());
+    const waitingGeometry = await geometry();
+    await feed(page,state(true));
+    assert.deepEqual(await geometry(),waitingGeometry,'turn change resized table/action dock at '+width);
+  }
+  await page.call('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,deviceScaleFactor:1,mobile:false});
+  // Every confirmed action has a persistent, prominent badge below its avatar.
+  const actionState=state(); actionState.id='badges'; actionState.hand.id='badges-hand';
+  await feed(page,actionState);
+  const actionCases=[['call','跟注',1,false],['bet','下注',1,false],['raise','3-BET',3,false],['raise','4-BET',4,false],['raise','ALL-IN',5,true],['check','過牌',0,false],['fold','棄牌',0,false]];
+  for(const [action,label,bet_level,all_in] of actionCases) {
+    actionState.version=++version; actionState.event_seq++;
+    actionState.server_time=Date.now()/1000;
+    actionState.events.push({id:'badge-'+actionState.event_seq,seq:actionState.event_seq,at:actionState.server_time,kind:'action',hand_id:'badges-hand',user:B,action,bet_level,all_in,amount:['fold','check'].includes(action)?'0':'200',raise_to:'500'});
+    await feed(page,actionState);
+    await page.wait(`document.querySelector('[data-player="${B}"] .action-label')?.textContent.includes(${JSON.stringify(label)})`);
+  }
+  await page.run('new Promise(resolve=>setTimeout(resolve,1600))'); // Beyond the former 1400ms disappearance.
+  assert(await page.run(`document.querySelector('[data-player="${B}"] .action-label').textContent.includes('棄牌')`));
+  assert(await page.run(`parseFloat(getComputedStyle(document.querySelector('[data-player="${B}"] .action-label')).fontSize)>=14`));
+  await page.shot('persistent-action-desktop');
+  await feed(page,state());
   await page.click('跟注目前顯示金額 50');
   const normal=state();normal.hand.turn=4;await feed(page,normal);
   assert.equal(await page.run('window.commands.length'),0);
@@ -220,7 +246,7 @@ try {
   await page.wait("document.querySelector('.connection').textContent.includes('登入已撤銷')");
   assert(!await page.run("document.querySelector('.connection').textContent.includes('恢復')"));
   assert.deepEqual(page.errors,[]);
-  const result={amounts:true,presets:true,preselection:true,reconnect:true,exactRetry:true,replayIsolation:true,persistence:true,themes:3,widths:[1440,390,320],pageErrors:[],output};
+  const result={stableTurnGeometry:true,persistentActionBadges:true,amounts:true,presets:true,preselection:true,reconnect:true,exactRetry:true,replayIsolation:true,persistence:true,themes:3,widths:[1440,390,320],pageErrors:[],output};
   fs.writeFileSync(path.join(output,'results.json'),JSON.stringify(result,null,2));console.log(JSON.stringify(result));
 } catch(error) {
   console.error(error.stack??String(error));console.error(stderr);

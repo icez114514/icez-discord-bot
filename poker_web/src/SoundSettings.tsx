@@ -2,6 +2,7 @@ import { useEffect, useState, useSyncExternalStore } from 'react';
 import { sound, type Group, type Sound } from './sound';
 
 const groups: { id: Group; label: string; preview: Sound }[] = [
+  { id: 'voice', label: '動作語音', preview: 'voice_allin' },
   { id: 'reminders', label: '回合提醒', preview: 'turn' },
   { id: 'chips', label: '牌局籌碼', preview: 'chips' },
   { id: 'settlement', label: '結算勝利', preview: 'settle' },

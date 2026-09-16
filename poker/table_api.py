@@ -1,7 +1,8 @@
+import contextlib
+import time
 """Authenticated minimal table HTTP and per-account WebSocket projections."""
 
 import asyncio
-import contextlib
 import logging
 import secrets
 from typing import Literal
@@ -165,32 +166,35 @@ def install(app, config, cookie):
 
 
 async def run_tables(tables, npc):
-    pending = None
+    # Thinking waits are per turn, outside the writer and NPC inference lock.
+    # One table's presentation delay must never block another table's inference.
+    pending = {}
+    inference = asyncio.Lock()
+
+    async def decide(current):
+        async with inference:
+            result, error = await npc.decide(current)
+        due = min(current.get("npc_not_before", 0), current["deadline"] - 0.1)
+        await asyncio.sleep(max(0, due - time.time()))
+        if error:
+            log.warning("fixed_npc_fallback reason=%s", error)
+        await tables.npc_result(current["id"], current["turn"], result, error)
+
     try:
         while True:
             try:
-                hand = await tables.tick()
-                if pending is not None and pending.done():
-                    await pending
-                    pending = None
-                if hand is not None and pending is None:
-
-                    async def decide(current):
-                        result, error = await npc.decide(current)
-                        if error:
-                            log.warning("fixed_npc_fallback reason=%s", error)
-                        await tables.npc_result(
-                            current["id"], current["turn"], result, error
-                        )
-
-                    pending = asyncio.create_task(decide(hand))
+                for key in list(pending):
+                    if pending[key].done():
+                        completed = pending.pop(key)
+                        await completed
+                hand = await tables.tick(exclude_npcs=tuple(pending))
+                if hand is not None:
+                    key = (hand["id"], hand["turn"])
+                    pending[key] = asyncio.create_task(decide(hand))
             except Exception as error:
                 log.error("table_scheduler_failed type=%s", type(error).__name__)
-                if pending is not None and pending.done():
-                    pending = None
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0.05)
     finally:
-        if pending is not None:
-            pending.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await pending
+        for task in pending.values():
+            task.cancel()
+        await asyncio.gather(*pending.values(), return_exceptions=True)

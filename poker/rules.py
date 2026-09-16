@@ -221,6 +221,10 @@ def act(hand, user, action, target=None, automatic=False):
         raise_to=str(p["bet"]),
         all_in=p["stack"] == 0,
         automatic=automatic,
+        bet_level=(1 if hand["street"] == "preflop" else 0) + sum(
+            h["action"] == "raise" and h["street"] == hand["street"]
+            for h in hand["history"]
+        ),
     )
     advance(hand, actor)
 

@@ -63,8 +63,11 @@ The adapter preserves the upstream short-stack policy and five output classes,
 while exposing errors hidden by upstream decide(). Raise history is converted to
 upstream bet-to amounts, with explicit street boundaries.
 
-The queue holds at most eight requests; the two-second request deadline includes
-queueing. Bad/late output checks if legal or folds, and three consecutive failures
+The worker caps its inference queue at eight requests and each inference request
+at two seconds. The current scheduler serializes inference while allowing
+independent per-table thinking waits. The user-requested total turn deadline is
+now five seconds, with randomized 1-to-4.7-second ready times; see
+[PLAY_FEEDBACK.md](PLAY_FEEDBACK.md). Bad/late output checks if legal or folds, and three consecutive failures
 sit the NPC out next hand with visible status. A timed-out process is stopped so
 a stale reply cannot be reused. A service restart reloads the fixed runtime.
 
