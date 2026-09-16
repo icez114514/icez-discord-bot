@@ -72,6 +72,24 @@ def create_internal(config, public):
             return query(db, actor, period, opponents)
         return await public.state.store.run(operation)
 
+    @app.get("/operations")
+    async def operations():
+        from .operations import status
+        return await status(public)
+
+    @app.post("/backup")
+    async def backup():
+        from .backups import take_backup
+        if config.backup_dir is None:
+            raise Conflict("backup_directory_not_configured")
+        try:
+            result = await take_backup(public.state.store, config.backup_dir)
+        except Exception as error:
+            public.state.backup["error"] = type(error).__name__
+            return JSONResponse({"error": "backup_failed", "type": type(error).__name__}, status_code=503)
+        public.state.backup.update(result, error=None)
+        return result
+
     @app.get("/scans")
     async def scans():
         return await public.state.scan.status()

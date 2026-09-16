@@ -6,3 +6,6 @@ venv/
 imports/
 
 logs/
+backups/
+.python/
+.venv-deploy/

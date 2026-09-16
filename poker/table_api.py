@@ -73,6 +73,12 @@ def install(app, config, cookie):
             invitation=request.headers.get("x-table-invitation"),
         )
 
+    @app.get("/api/table/profiles")
+    async def profiles(request: Request):
+        state = await app.state.tables.view(request.cookies.get(cookie, ""))
+        users = sorted({m["id"] for m in state.get("members", []) if not m["id"].startswith("npc:")})
+        return {"table_id": state.get("id"), "profiles": app.state.profiles.view(users)}
+
     @app.post("/api/table/commands")
     async def command(data: TableCommand, request: Request):
         result = await app.state.tables.command(

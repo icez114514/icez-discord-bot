@@ -1,4 +1,4 @@
-"""Validated environment-only configuration, with no secret-bearing repr."""
+"""Validated configuration, with no secret-bearing repr."""
 
 import os
 import re
@@ -22,6 +22,8 @@ class Config:
     table_admins: tuple[str, ...] = ()
     public_port: int = 8765
     internal_port: int = 8766
+    backup_dir: Path | None = None
+    export_dir: Path | None = None
     static_dir: Path = Path(__file__).resolve().parent.parent / "poker_web" / "dist"
 
     @property
@@ -75,6 +77,10 @@ class Config:
             not 1024 <= port <= 65535 for port in (self.public_port, self.internal_port)
         ):
             errors.append("ports must be distinct and between 1024 and 65535")
+        for name in ("backup_dir", "export_dir"):
+            path = getattr(self, name)
+            if path is not None and (not path.is_absolute() or path.resolve().is_relative_to(self.static_dir.resolve())):
+                errors.append(name + " must be absolute and outside the public static directory")
         if errors:
             raise ValueError("; ".join(errors))
 
@@ -88,10 +94,10 @@ class Config:
             ),
             environment=os.environ.get("POKER_ENV", "production"),
             origin=os.environ.get("POKER_ORIGIN", "https://localhost"),
-            client_id=os.environ.get("POKER_CLIENT_ID", ""),
-            client_secret=os.environ.get("POKER_CLIENT_SECRET", ""),
-            bot_token=os.environ.get("POKER_BOT_TOKEN", ""),
-            guild_id=os.environ.get("POKER_GUILD_ID", ""),
+            client_id=os.environ.get("POKER_CLIENT_ID", os.environ.get("APPLICATION_ID", "")),
+            client_secret=os.environ.get("POKER_CLIENT_SECRET", os.environ.get("CLIENT_SECRET", "")),
+            bot_token=os.environ.get("POKER_BOT_TOKEN", os.environ.get("DISCORD_TOKEN", "")),
+            guild_id=os.environ.get("POKER_GUILD_ID", os.environ.get("DISCORD_GUILD_ID", "")),
             reader_token=os.environ.get("POKER_READER_TOKEN", ""),
             funds_token=os.environ.get("POKER_FUNDS_TOKEN", ""),
             funds_admins=tuple(
@@ -100,4 +106,16 @@ class Config:
             table_admins=tuple(filter(None, os.environ.get("POKER_TABLE_ADMINS", "").split(","))),
             public_port=int(os.environ.get("POKER_PUBLIC_PORT", "8765")),
             internal_port=int(os.environ.get("POKER_INTERNAL_PORT", "8766")),
+            backup_dir=Path(os.environ.get("POKER_BACKUP_DIR", str(Path(__file__).resolve().parent.parent / "backups/poker/snapshots"))),
+            export_dir=Path(os.environ.get("POKER_EXPORT_DIR", str(Path(__file__).resolve().parent.parent / "backups/poker/exports"))),
         )
+
+
+def load_environment(path=None):
+    """CLI only: fixed repository .env, no cwd search or shell evaluation."""
+    from dotenv import load_dotenv
+
+    load_dotenv(
+        path or Path(__file__).resolve().parent.parent / ".env",
+        override=False, encoding="utf-8-sig", interpolate=False,
+    )

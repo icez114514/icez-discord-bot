@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse, RedirectResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
 from .discord_api import Discord
+from .profiles import Profiles
 from .eligibility import Eligibility
 from .store import Store, Conflict, Unauthorized
 
@@ -38,7 +39,10 @@ def create_app(config, transport=None, initialize=False):
             ) as client,
         ):
             app.state.store = store
+            app.state.backup = {"completed_at": None, "error": None}
+            app.state.timing = {"max_loop_delay_ms": 0.0, "max_wall_clock_step_ms": 0.0}
             app.state.discord = Discord(config, client)
+            app.state.profiles = Profiles(app.state.discord)
             app.state.scan = Eligibility(store, app.state.discord)
             await app.state.scan.recover()
             from .tables import Tables
@@ -52,7 +56,13 @@ def create_app(config, transport=None, initialize=False):
                 await app.state.npc.start()
             except Exception:
                 log.error("fixed_npc_unavailable_at_startup")
+            backup_task = None
+            if config.backup_dir is not None:
+                from .backups import schedule
+                backup_task = asyncio.create_task(schedule(store, config.backup_dir, app.state.backup))
             game_task = asyncio.create_task(run_tables(app.state.tables, app.state.npc))
+            from .operations import monitor_timing
+            timing_task = asyncio.create_task(monitor_timing(app.state.timing))
 
             async def scheduler():
                 while True:
@@ -70,10 +80,18 @@ def create_app(config, transport=None, initialize=False):
             try:
                 yield
             finally:
+                timing_task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await timing_task
+                if backup_task:
+                    backup_task.cancel()
+                    with contextlib.suppress(asyncio.CancelledError):
+                        await backup_task
                 game_task.cancel()
                 with contextlib.suppress(asyncio.CancelledError):
                     await game_task
                 await app.state.npc.close()
+                await app.state.profiles.close()
                 if task:
                     task.cancel()
                     with contextlib.suppress(asyncio.CancelledError):
@@ -106,7 +124,7 @@ def create_app(config, transport=None, initialize=False):
         response.headers["Referrer-Policy"] = "no-referrer"
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Content-Security-Policy"] = (
-            "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+            "default-src 'self'; img-src 'self' https://cdn.discordapp.com; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
         )
         return response
 
@@ -125,7 +143,7 @@ def create_app(config, transport=None, initialize=False):
     @app.get("/health")
     async def health():
         await app.state.store.run(lambda db: db.execute("SELECT 1").fetchone())
-        return {"status": "ok", "schema": 4}
+        return {"status": "ok", "schema": 4, "maintenance": app.state.store.maintenance}
 
     @app.get("/auth/login")
     async def login():

@@ -53,7 +53,7 @@ async def create(tables, token, data):
                 )
                 if data["private"]:
                     table["invitation"] = secrets.token_urlsafe(32)
-                Transaction(db, table, cid, time.time()).command(
+                Transaction(db, table, cid, time.time(), tables.store.maintenance).command(
                     user, {"kind": "join", "amount": data["amount"]}
                 )
                 table["version"] += 1
@@ -78,7 +78,7 @@ async def create(tables, token, data):
             "state": public(db, current, user) if current else {"joined": False},
         }
 
-    return await tables.store.run(operation)
+    return await tables.store.run_command(operation)
 
 
 def install(app, cookie):

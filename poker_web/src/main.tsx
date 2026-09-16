@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import './style.css';
+import { sound } from './sound';
 import { Table } from './Table';
 import { Lobby } from './Lobby';
 import { AccountTools } from './AccountTools';
@@ -64,7 +65,7 @@ function App() {
     } catch (cause) { setError(cause instanceof Error ? cause.message : '連線失敗。'); }
     finally { setBusy(false); }
   }
-  return <ThemeProvider user={account?.user_id}><main>
+  return <ThemeProvider user={account?.user_id}><main className={tableOpen && account ? 'table-mode' : undefined} onPointerDownCapture={() => sound.unlock()} onKeyDownCapture={() => sound.unlock()}>
     <header><a className="brand" href="/" aria-label="ICEZ 德州撲克首頁"><span aria-hidden="true">♠</span> ICEZ <small>POKER CLUB</small></a><span className="tag">社群專屬</span>{account && !tableOpen ? <ThemePicker /> : null}</header>
     {environment === 'test' ? <p className="message" role="status">測試環境 · 模擬 Discord 身分，非真實 OAuth 驗收。</p> : null}
     

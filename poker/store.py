@@ -7,6 +7,7 @@ import secrets
 import sqlite3
 import time
 from concurrent.futures import ThreadPoolExecutor
+from collections import deque
 from pathlib import Path
 
 
@@ -22,9 +23,12 @@ from .sessions import Sessions, authenticate
 
 
 class Store(Sessions):
-    def __init__(self, path: Path, initialize: bool = False):
+    def __init__(self, path: Path, initialize: bool = False, migration_backup=None):
         self.path = path.resolve()
         self.initialize = initialize
+        self.migration_backup = migration_backup
+        self.latencies: deque[float] = deque(maxlen=10000)
+        self.command_latencies: deque[float] = deque(maxlen=10000)
         self.executor = ThreadPoolExecutor(
             max_workers=1, thread_name_prefix="poker-writer"
         )
@@ -57,6 +61,12 @@ class Store(Sessions):
         self.db.execute("PRAGMA synchronous=FULL")
         self.db.execute("PRAGMA foreign_keys=ON")
         version = self.db.execute("PRAGMA user_version").fetchone()[0]
+        if version and self.initialize and self.migration_backup is not None:
+            from .backups import snapshot as backup_snapshot
+            if self.db.execute("SELECT COUNT(*) FROM hands WHERE status='active'").fetchone()[0]:
+                raise Conflict("migration_requires_drained_hands")
+            self.path.with_name("maintenance").touch(mode=0o600)
+            backup_snapshot(self.db, self.migration_backup)
         if version == 0 and self.initialize:
             self.db.executescript(
                 (Path(__file__).with_name("schema.sql")).read_text(encoding="utf-8")
@@ -95,6 +105,10 @@ class Store(Sessions):
         if version != 4:
             raise Conflict("database_schema_requires_migrate")
 
+    @property
+    def maintenance(self):
+        return self.path.with_name("maintenance").exists()
+
     async def run(self, operation, transaction=True):
         def execute():
             db = getattr(self, "db", None)
@@ -109,7 +123,18 @@ class Store(Sessions):
                 db.execute("ROLLBACK")
                 raise
 
-        return await asyncio.get_running_loop().run_in_executor(self.executor, execute)
+        started = time.perf_counter()
+        try:
+            return await asyncio.get_running_loop().run_in_executor(self.executor, execute)
+        finally:
+            self.latencies.append((time.perf_counter() - started) * 1000)
+
+    async def run_command(self, operation):
+        started = time.perf_counter()
+        try:
+            return await self.run(operation)
+        finally:
+            self.command_latencies.append((time.perf_counter() - started) * 1000)
 
     async def login(self, user_id: str):
         token = secrets.token_urlsafe(32)

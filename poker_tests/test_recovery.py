@@ -1,4 +1,5 @@
 import asyncio
+import os
 import subprocess
 import sys
 import tempfile
@@ -23,6 +24,10 @@ async def work():
         for n in range(300):
             await store.command('debit'+str(n), 'adjust', user_id='111', amount='-1', reason='Crash exercise', actor='999')
             print(n, flush=True)
+            if n == 9:
+                # Keep the child alive after the parent's readiness marker so
+                # the test always interrupts a live writer, even on fast disks.
+                await asyncio.Event().wait()
 asyncio.run(work())
 """
             process = subprocess.Popen(
@@ -37,7 +42,13 @@ asyncio.run(work())
                         asyncio.to_thread(process.stdout.readline), 10
                     )
                     self.assertTrue(line, "child exited before committing transactions")
-                process.kill()
+                if os.name == "nt":
+                    # A Windows venv launcher can have a separate Python child.
+                    subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                                   capture_output=True, check=True, timeout=10,
+                                   creationflags=subprocess.CREATE_NO_WINDOW)
+                else:
+                    process.kill()
                 await asyncio.to_thread(process.wait, 10)
             finally:
                 if process.poll() is None:
