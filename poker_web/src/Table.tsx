@@ -12,6 +12,7 @@ import { actionLabel, useTablePresentation } from './tablePresentation';
 import { ChipFlights, SettlementDetails, type Settlement } from './TableEffects';
 import { IconButton } from './IconButton';
 import { AccountTools } from './AccountTools';
+import { handPositions } from './positions';
 import { PlayerAvatar, usePlayerProfiles } from './PlayerProfiles';
 import './table.css';
 
@@ -19,10 +20,13 @@ type Player = { id: string; stack: string; bet: string; paid: string; cards: str
 type Member = { id: string; seat: number; mode: string; sitout: boolean; connected: boolean; expires: number | null; stack: string; leaving: boolean; topup: string | null; notice: string | null; npc_failures: number };
 type Hand = { call_amount?: string | null; settlement?: Settlement | null; id: string; button: number; players: Player[]; board: string[]; street: string; actor: number | null; turn: number; pot: string; deadline: number | null; extensions: number; payouts: Record<string, string> | null; legal: { check?: boolean; fold?: boolean; call?: string; raise?: boolean; min_raise_to?: string; max_raise_to?: string } };
 type State = import('./tableAudio').EventState & { id: string; rules?: { small_blind?: string; big_blind?: string }; name?: string; private?: boolean; version: number; joined: boolean; closed: boolean; frozen?: boolean; control?: boolean; owner?: string; members?: Member[]; hand?: Hand | null; countdown?: number | null; time_bank?: number };
-type Payload = { command_id: string; table_id: string; version: number; kind: string; control: string | null; hand_id?: string; turn?: number; action?: string; amount?: string; npc_id?: string };
+type Payload = { command_id: string; table_id: string; version: number; kind: string; control: string | null; hand_id?: string; turn?: number; action?: string; amount?: string; npc_id?: string; seat?: number };
 const chips = (value: string) => BigInt(value).toLocaleString('zh-TW');
 const labels: Record<string, string> = { preflop: '翻牌前', flop: '翻牌', turn: '轉牌', river: '河牌', active: '', pending: '下手加入', sitout: '坐出' };
 const errors: Record<string, string> = {
+  seat_occupied: '這個座位已有人入座，請選其他座位。',
+  invalid_seat: '座位無效，請重新選擇。',
+  host_required: '只有房主可以加入 Bot。',
   topup_required: '桌上籌碼不足，請先補碼再重新坐入。',
   already_seated: '你已有座位，請返回目前牌桌。',
   table_unavailable: '牌桌不存在或邀請已失效。',
@@ -69,6 +73,7 @@ export function Table({ user, onClose, initialHistory = false }: { user: string;
   const [raiseDraft, setRaiseDraft] = useState({ turn: '', value: '' });
   const [options, setOptions] = useState(false);
   const [seatMenu, setSeatMenu] = useState(false);
+  const [addBotSeat, setAddBotSeat] = useState<number | null>(null);
   const [info, setInfo] = useState<'hand' | 'log' | null>(null);
   const [log, setLog] = useState<string[]>([]);
   const prefs = useSyncExternalStore(sound.subscribe, sound.preferences);
@@ -195,6 +200,7 @@ export function Table({ user, onClose, initialHistory = false }: { user: string;
   const memberIds = (state?.members ?? []).filter(m => !m.id.startsWith('npc:')).map(m => m.id).sort().join(',');
   const profiles = usePlayerProfiles(state?.joined ? state.id : undefined, memberIds);
   const hand = state?.hand;
+  const positions = handPositions(hand);
   const active = hand && !hand.payouts;
   const settlement = hand?.settlement;
   const refundTotal = Object.values(settlement?.refunds ?? {}).reduce((n, a) => n + BigInt(a), 0n);
@@ -288,16 +294,18 @@ export function Table({ user, onClose, initialHistory = false }: { user: string;
         {Array.from({ length: 6 }, (_, seat) => {
           const occupants = seated.filter(m => m.seat === seat);
           const m = occupants.find(m => hand?.players.some(p => p.id === m.id)) ?? occupants[0];
-          if (!m) return <article key={seat} className={`seat empty ${position(seat)}`}>空位 {seat + 1}</article>;
+          if (!m) return <article key={seat} className={`seat empty ${position(seat)}`}>
+            {state.owner === user ? <button className="empty-seat-button" aria-label={`在座位 ${seat + 1} 加入 Bot`} disabled={disabled} onClick={() => setAddBotSeat(seat)}><strong>{seat + 1}</strong><span aria-hidden="true">＋</span></button> : <strong className="empty-seat-number" aria-label={`座位 ${seat + 1}，尚未入座`}>{seat + 1}</strong>}
+          </article>;
           const player = hand?.players.find(p => p.id === m.id);
           const acting = active && hand.actor !== null && hand.players[hand.actor]?.id === m.id;
           const dealer = hand?.players[hand.button]?.id === m.id;
           return <article data-player={m.id} className={`seat ${position(seat)} ${acting ? 'acting' : ''} ${player?.folded ? 'folded' : ''} ${m.id === user ? 'hero-seat' : ''}`} key={seat} aria-label={`${playerName(m.id)}，${chips(m.stack)} 籌碼`}>
             {player ? <div className="seat-cards"><Cards cards={player.cards} hidden={player.cards.length === 0} /></div> : null}
-            <div className="seat-plaque"><div className="portrait">{presentation.view.wins[m.id] ? <span className="winner-badge" role="status">WIN<small>派彩 {chips(presentation.view.wins[m.id].amount ?? '0')}</small></span> : null}{m.id === user ? <button type="button" className="own-avatar" aria-label="我的座位選單" aria-haspopup="dialog" aria-expanded={seatMenu} onClick={() => setSeatMenu(true)}><PlayerAvatar url={profiles[m.id]?.avatar_url} npc={m.id.startsWith('npc:')} countdown={acting ? seconds : null} /></button> : <PlayerAvatar url={profiles[m.id]?.avatar_url} npc={m.id.startsWith('npc:')} countdown={acting ? seconds : null} />}{acting ? <svg className="countdown-ring" viewBox="0 0 100 100" aria-label={`剩餘 ${seconds} 秒`}><circle cx="50" cy="50" r="46" pathLength="100" /><circle cx="50" cy="50" r="46" pathLength="100" strokeDasharray={`${Math.min(100, seconds / (m.id.startsWith('npc:') ? 5 : hand?.extensions ? 5 : 20) * 100)} 100`} /></svg> : null}</div><div className="seat-info"><strong title={playerName(m.id)}>{playerName(m.id)}</strong><>{m.id === user ? <button className="seat-stack own-stack" aria-pressed={preferences.bb} aria-label={`桌上籌碼 ${chips(m.stack)}，切換 BB／實際額`} title={`原額 ${chips(m.stack)} 籌碼；點擊切換 BB／實際額`} onClick={() => changePreferences({ ...preferences, bb: !preferences.bb })}>{stackDisplay(m.stack, blind, preferences.bb)}</button> : <b className="seat-stack">{chips(m.stack)}</b>}</></div></div>
+            <div className="seat-plaque"><div className="portrait">{positions[m.id] ? <span className="position-badge" aria-label={`位置 ${positions[m.id]}`}>{positions[m.id]}</span> : null}{presentation.view.wins[m.id] ? <span className="winner-badge" role="status">WIN<small>派彩 {chips(presentation.view.wins[m.id].amount ?? '0')}</small></span> : null}{m.id === user ? <button type="button" className="own-avatar" aria-label="我的座位選單" aria-haspopup="dialog" aria-expanded={seatMenu} onClick={() => setSeatMenu(true)}><PlayerAvatar url={profiles[m.id]?.avatar_url} npc={m.id.startsWith('npc:')} countdown={acting ? seconds : null} /></button> : <PlayerAvatar url={profiles[m.id]?.avatar_url} npc={m.id.startsWith('npc:')} countdown={acting ? seconds : null} />}{acting ? <svg className="countdown-ring" viewBox="0 0 100 100" aria-label={`剩餘 ${seconds} 秒`}><circle cx="50" cy="50" r="46" pathLength="100" /><circle cx="50" cy="50" r="46" pathLength="100" strokeDasharray={`${Math.min(100, seconds / (m.id.startsWith('npc:') ? 5 : hand?.extensions ? 5 : 20) * 100)} 100`} /></svg> : null}</div><div className="seat-info"><strong title={playerName(m.id)}>{playerName(m.id)}</strong><>{m.id === user ? <button className="seat-stack own-stack" aria-pressed={preferences.bb} aria-label={`桌上籌碼 ${chips(m.stack)}，切換 BB／實際額`} title={`原額 ${chips(m.stack)} 籌碼；點擊切換 BB／實際額`} onClick={() => changePreferences({ ...preferences, bb: !preferences.bb })}>{stackDisplay(m.stack, blind, preferences.bb)}</button> : <b className="seat-stack">{chips(m.stack)}</b>}</></div></div>
             {presentation.view.actions[m.id] ? <span className={`action-label ${presentation.view.actions[m.id].all_in ? 'all-in-label' : ''}`} title={actionLabel(presentation.view.actions[m.id])} role="status">{actionLabel(presentation.view.actions[m.id])}</span> : <span className="action-label empty-label" aria-hidden="true">·</span>}
             <div className="seat-status">{(!m.connected && !m.id.startsWith('npc:')) || m.leaving || m.sitout || m.mode !== 'active' || occupants.length > 1 ? <IconButton icon={m.leaving ? 'leave' : !m.connected && !m.id.startsWith('npc:') ? 'warning' : 'clock'} label={[!m.connected && !m.id.startsWith('npc:') ? '離線' : '', m.leaving ? '本手結束後離桌' : m.sitout ? '手後坐出' : labels[m.mode] ?? m.mode, occupants.length > 1 ? '真人等待接替' : ''].filter(Boolean).join(' · ')} /> : null}</div>
-            {dealer ? <span className="dealer" aria-label="莊位">D</span> : null}
+            {dealer ? <span className="dealer" aria-label="Dealer Button 莊位">BTN</span> : null}
             {active && player && BigInt(player.bet) > 0n ? <span className="seat-bet"><span aria-hidden="true">◉</span> {chips(player.bet)}</span> : null}
           </article>;
         })}
@@ -321,6 +329,7 @@ export function Table({ user, onClose, initialHistory = false }: { user: string;
       {state.owner === user ? <details className="host-tools"><summary>房主選項</summary><div className="table-controls"><button disabled={disabled || state.closed} onClick={() => command('add_npc')}>新增固定 NPC</button>{seated.filter(m => m.id.startsWith('npc:')).map(m => <button key={m.id} disabled={disabled || m.leaving} onClick={() => command('remove_npc', { npc_id: m.id })}>移除座位 {m.seat + 1} NPC（手後）</button>)}{state.private ? <button disabled={inviteBusy} onClick={() => void invitation()}>私人桌邀請</button> : null}</div></details> : null}
       </Modal> : null}
     </> : <button onClick={onClose}>回到大廳</button>}
+    {addBotSeat !== null ? <Modal title={`加入 Bot 至座位 ${addBotSeat + 1}`} dismissOnBackdrop onClose={() => setAddBotSeat(null)}><p>確認在座位 {addBotSeat + 1} 加入 Bot？{active ? '將於下一手加入牌局。' : ''}</p>{seated.some(m => m.seat === addBotSeat) ? <p role="status">這個座位已有人入座，請選其他座位。</p> : null}<div className="table-controls"><button onClick={() => setAddBotSeat(null)}>取消</button><button disabled={disabled || state?.owner !== user || seated.some(m => m.seat === addBotSeat)} onClick={() => { command('add_npc', { seat: addBotSeat }); setAddBotSeat(null); }}>確認加入 Bot</button></div></Modal> : null}
     {seatMenu && mine ? <Modal title="我的座位" dismissOnBackdrop onClose={() => setSeatMenu(false)}><p>{mine.leaving ? '已排隊，本手結束後離桌。' : active ? '離桌申請會在本手結束後執行。' : '離桌後返回可用籌碼帳戶。'}</p><button disabled={disabled || mine.leaving} onClick={() => { command('leave'); setSeatMenu(false); }}>{mine.leaving ? '已排隊離桌' : active ? '本手結束後離桌' : '離桌'}</button></Modal> : null}
     {historyOpen ? <HandHistory user={user} ownTurn={ownTurn} seconds={seconds} connected={connected} onClose={() => toggleHistory(false)} /> : null}
     {confirm ? <Modal title="確認全下" onClose={() => setConfirm(null)}><p>將投入本手所有剩餘籌碼。確認後無法收回。</p><div className="table-controls"><button onClick={() => setConfirm(null)}>取消</button><button disabled={disabled || !ownTurn || state?.version !== confirm.version || hand?.id !== confirm.hand_id || hand?.turn !== confirm.turn} onClick={() => { const payload = confirm; setConfirm(null); void send(payload); }}>確認全下</button></div></Modal> : null}

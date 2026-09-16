@@ -135,6 +135,33 @@ class TableWebTests(unittest.TestCase):
         return self.connect(user)
 
 
+    def test_host_adds_bot_to_selected_seat_once(self):
+        self.join(A)
+        response, payload = self.command(A, "add_npc", seat=4)
+        self.assertEqual(response.status_code, 200, response.text)
+        npc = next(m for m in self.view()["members"] if m["id"].startswith("npc:"))
+        self.assertEqual(npc["seat"], 4)
+        replay = self.client.post("/api/table/commands", headers=self.headers(A), json=payload)
+        self.assertEqual(replay.status_code, 200, replay.text)
+        self.assertEqual(len([m for m in self.view()["members"] if m["id"].startswith("npc:")]), 1)
+        occupied, _ = self.command(A, "add_npc", seat=4)
+        self.assertEqual(occupied.status_code, 409)
+        self.assertEqual(occupied.json()["result"]["error"], "seat_occupied")
+        fallback, _ = self.command(A, "add_npc")
+        self.assertEqual(fallback.status_code, 200, fallback.text)
+        self.assertEqual(sorted(m["seat"] for m in self.view()["members"]), [0, 1, 4])
+
+    def test_selected_bot_seat_requires_host_and_valid_integer(self):
+        self.join(A)
+        self.join(B)
+        rejected, _ = self.command(B, "add_npc", seat=5)
+        self.assertEqual(rejected.status_code, 409)
+        self.assertEqual(rejected.json()["result"]["error"], "host_required")
+        for seat in (-1, 6, True, "3", 2.5):
+            rejected, _ = self.command(A, "add_npc", seat=seat)
+            self.assertEqual(rejected.status_code, 422, rejected.text)
+        self.assertEqual(len(self.view()["members"]), 2)
+
     def test_table_rules_and_waiting_call_are_exact_public_amounts(self):
         self.join(A)
         self.join(B)

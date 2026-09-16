@@ -385,3 +385,22 @@ main.table-mode { max-width: 1800px; padding: 12px 24px; }
 }
 
 .game .table-action-slot > .action-panel { align-self: stretch; justify-self: stretch; height: 100%; }
+
+/* Physical seat numbers stay distinct from the positions assigned each hand. */
+.game .seat.empty { padding: 0; border: 0; background: none; opacity: 1; }
+.game .empty-seat-button, .game .empty-seat-number { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 64px; border: 1px dashed var(--trim); border-radius: 32px; background: var(--felt-dark); color: var(--ink); padding: 8px; }
+.game .empty-seat-button strong, .game .empty-seat-number { font-size: 30px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.game .empty-seat-button > span { font-size: 20px; color: var(--accent); }
+.game .empty-seat-button:hover:not(:disabled) { border-style: solid; box-shadow: 0 0 0 2px var(--accent); }
+.game .position-badge { position: absolute; left: 50%; bottom: calc(100% + 5px); transform: translateX(-50%); z-index: 3; white-space: nowrap; padding: 2px 7px; border-radius: 5px; border: 1px solid var(--trim); background: var(--panel); color: var(--accent); font: 800 12px/18px system-ui,sans-serif; pointer-events: none; }
+.game .dealer { width: 32px; height: 32px; display: grid; place-items: center; font: 800 10px system-ui,sans-serif; border: 2px solid var(--trim); box-shadow: 0 2px 4px #0006; top: 70px; right: -24px; }
+.game .n .dealer { top: 85px; right: -12px; }
+.game .s .dealer { top: -32px; right: -16px; }
+@media (max-width: 600px) {
+  .game .empty-seat-button, .game .empty-seat-number { min-height: 52px; }
+  .game .empty-seat-button strong, .game .empty-seat-number { font-size: 26px; }
+  .game .position-badge { padding: 1px 4px; font-size: 10px; line-height: 16px; }
+  .game .dealer { width: 26px; height: 26px; top: 60px; right: -6px; font-size: 9px; }
+  .game .n .dealer { top: 76px; right: -4px; }
+  .game .s .dealer { top: -28px; right: -6px; }
+}

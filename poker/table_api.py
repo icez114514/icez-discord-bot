@@ -39,12 +39,15 @@ class TableCommand(BaseModel):
     action: Literal["check", "call", "raise", "fold", "all_in"] | None = None
     amount: str | None = Field(default=None, pattern=r"^(0|[1-9][0-9]{0,15})$")
     npc_id: str | None = Field(default=None, max_length=128)
+    seat: int | None = Field(default=None, ge=0, le=5)
 
     def payload(self):
         data = self.model_dump()
         # Preserve fingerprints of pre-lobby commands across schema upgrades.
         if data["invitation"] is None:
             data.pop("invitation")
+        if data["seat"] is None:
+            data.pop("seat")
         return data
 
     @model_validator(mode="after")
@@ -58,6 +61,8 @@ class TableCommand(BaseModel):
                 raise ValueError("amount_required")
         if self.kind == "remove_npc" and self.npc_id is None:
             raise ValueError("npc_id_required")
+        if self.seat is not None and self.kind != "add_npc":
+            raise ValueError("seat_only_for_add_npc")
         return self
 
 

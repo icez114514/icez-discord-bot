@@ -483,7 +483,14 @@ class Transaction:
                 npc["leaving"] = True
             else:
                 occupied = {m["seat"] for m in table["members"]}
-                seat = next((i for i in range(6) if i not in occupied), None)
+                seat = data.get("seat")
+                if seat is not None:
+                    if type(seat) is not int or not 0 <= seat < 6:
+                        raise Conflict("invalid_seat")
+                    if seat in occupied:
+                        raise Conflict("seat_occupied")
+                else:
+                    seat = next((i for i in range(6) if i not in occupied), None)
                 if seat is None:
                     raise Conflict("table_full")
                 npc = "npc:" + secrets.token_hex(12)
