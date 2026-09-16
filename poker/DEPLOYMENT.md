@@ -4,6 +4,9 @@ This delivery implements local operation tooling. Windows tests are not phone,
 real-browser OAuth, Discord message-delivery, or two-hour load acceptance.
 Do not close #26 until the outstanding acceptance matrix below has evidence.
 
+For the latest local preparation run, reproducible Windows checks, and pending
+phone evidence worksheet, see [WINDOWS_ACCEPTANCE.md](WINDOWS_ACCEPTANCE.md).
+
 ## Runtime and configuration
 
 Use the separate poker environment; never migrate the crystal Bot database.
