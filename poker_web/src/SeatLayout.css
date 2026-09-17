@@ -1,0 +1,98 @@
+/* Horizontal six-seat geometry. Card faces are exactly the community-card component. */
+.game .seat{--avatar:100px;--name:230px;--row:100px;--hole-w:112px;--hole-h:158px;width:calc(var(--avatar) + var(--name));height:calc(var(--row) + 90px)}
+.game .seat.n{left:50%;top:180px;--bet-x:165px;--bet-y:218px}
+.game .seat.nw{left:185px;top:355px;--bet-x:366px;--bet-y:75px}
+.game .seat.ne{left:1335px;top:355px;--bet-x:-36px;--bet-y:75px}
+.game .seat.sw{left:185px;top:800px;--bet-x:366px;--bet-y:-12px}
+.game .seat.se{left:1335px;top:800px;--bet-x:-36px;--bet-y:-12px}
+.game .seat.s{left:50%;top:965px;--bet-x:-10px;--bet-y:-115px}
+.game .seat.hero-seat{--avatar:110px;--hole-w:128.8px;--hole-h:181.7px;--row:110px}
+.game .seat-plaque{width:100%;height:var(--row)}
+.game .portrait{left:0;top:0;width:var(--avatar);height:var(--avatar);z-index:5}
+.game .seat-info{left:var(--avatar);top:5px;width:var(--name);height:calc(var(--row) - 10px);padding:8px 12px;border-radius:8px;box-shadow:0 3px 8px #0004}
+.game .seat-info strong{height:32px;font:400 25px/32px system-ui,sans-serif}
+.game .seat-stack{font-size:29px;line-height:36px}
+.game .seat.nw .portrait,.game .seat.sw .portrait{left:var(--name)}
+.game .seat.nw .seat-info,.game .seat.sw .seat-info{left:0}
+.game .hero-seat .seat-info{border-color:var(--accent);box-shadow:0 0 12px #c3b28c25}
+.game .seat .seat-cards{left:calc(var(--avatar) + var(--name)/2 - 50px);top:-84px;width:100px;height:74px;transform:none}
+.game .seat.nw .seat-cards,.game .seat.sw .seat-cards{left:calc(var(--name)/2 - 50px)}
+.game .seat .cards,.game .seat.open-cards .cards{width:100%;justify-content:center;gap:4px}
+.game .seat .card,.game .seat .card + .card,.game .seat.open-cards .card + .card{transform:none;margin-left:0}
+.game .seat.open-cards .seat-cards{top:calc(-1 * var(--hole-h) - 10px);width:calc(2 * var(--hole-w) + 4px);height:var(--hole-h)}
+.game .seat.open-cards .card{width:var(--hole-w);height:var(--hole-h)}
+.game .seat .face-rank{transform:none}
+.game .position-badge,.game .s .position-badge{top:calc(var(--row) + 1px);left:0;transform:none;font:600 14px/18px system-ui;color:var(--muted);z-index:5}
+.game .seat-feedback{left:0;top:calc(var(--row) + 24px);width:100%;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);grid-template-rows:34px 48px;gap:4px 8px;align-items:start}
+.game .seat-feedback .current-hand-rank{grid-column:1;grid-row:1;justify-self:start;max-width:100%;font-size:19px;line-height:26px;padding:1px 8px}
+.game .seat-feedback .equity-label,.game .seat-feedback .action-label{grid-column:2;grid-row:1;position:static;width:100%;font-size:20px;line-height:28px;padding:0 3px;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.game .seat-feedback .winner-badge{grid-column:1/-1;grid-row:2;width:100%;font-size:22px;line-height:24px}
+.game .seat-status{left:auto;right:-48px;top:28px}
+.game .seat.nw .seat-status,.game .seat.sw .seat-status{left:0;right:auto;top:-48px}
+.game .dealer{display:none} /* The position badge already contains BTN. */
+.game .seat-bet{font-size:26px;z-index:6}
+.game .seat-bet .poker-chips,.game .pot-chips .poker-chips{transform:scale(1.15);transform-origin:center}
+.game .pot>b{font-size:30px}
+.game .pot-chips{top:180px}
+.game .board{top:515px}
+.game .felt{inset:230px 90px 160px}
+/* Avatar ring overlays only the portrait; it never changes the hit target. */
+.game .portrait .turn-progress{position:absolute;inset:-4px;width:auto;height:auto;border-radius:50%;background:transparent;overflow:visible;z-index:6;pointer-events:none}
+.game .turn-progress svg{display:block;width:100%;height:100%;overflow:visible;transform:rotate(-90deg)}
+.game .turn-progress circle{fill:none;stroke-width:5}
+.game .timer-track{stroke:#163b29}
+.game .timer-ring{stroke:#55f486;stroke-dasharray:100;stroke-linecap:round;animation:avatar-drain linear both}
+.game .turn-progress b{position:absolute;inset:0;display:grid;place-items:center;border-radius:50%;background:#13221c66;color:#fff;font:700 36px/1 system-ui;text-shadow:0 2px 4px #000}
+@keyframes avatar-drain{from{stroke-dashoffset:0}to{stroke-dashoffset:100}}
+.game.reduced-motion .timer-ring{animation:none}
+@media(prefers-reduced-motion:reduce){.game .timer-ring{animation:none}}
+@media(max-width:899px) and (orientation:portrait){
+ .game.portrait-table .seat{--avatar:48px;--name:104px;--row:48px;--hole-w:48px;--hole-h:68px;width:152px;height:110px}
+ .game.portrait-table .seat.n{left:195px;top:82px;--bet-x:76px;--bet-y:99px}
+ .game.portrait-table .seat.nw{left:80px;top:180px;--bet-x:190px;--bet-y:40px}
+ .game.portrait-table .seat.ne{left:310px;top:180px;--bet-x:-39px;--bet-y:82px}
+ .game.portrait-table .seat.sw{left:80px;top:491px;--bet-x:190px;--bet-y:9px}
+ .game.portrait-table .seat.se{left:310px;top:491px;--bet-x:-39px;--bet-y:51px}
+ .game.portrait-table .seat.s{left:195px;top:705px;--bet-x:85px;--bet-y:-100px}
+ .game.portrait-table .seat.hero-seat{--avatar:56px;--name:114px;--row:56px;--hole-w:55.2px;--hole-h:78.2px;width:170px}
+ .game.portrait-table .seat-plaque{width:100%;height:var(--row)}
+ .game.portrait-table .portrait{left:0;width:var(--avatar);height:var(--avatar)}
+ .game.portrait-table .seat.nw .portrait,.game.portrait-table .seat.sw .portrait{left:var(--name)}
+ .game.portrait-table .seat-info{left:var(--avatar);top:2px;width:var(--name);height:calc(var(--row) - 4px);padding:2px 5px}
+ .game.portrait-table .seat.nw .seat-info,.game.portrait-table .seat.sw .seat-info{left:0}
+ .game.portrait-table .seat-info strong{font-size:max(14px,calc(12px / var(--table-scale)));line-height:19px;height:19px}
+ .game.portrait-table .seat-stack{font-size:max(15px,calc(12px / var(--table-scale)));line-height:20px}
+ .game.portrait-table .avatar>span{font-size:29px}
+ .game.portrait-table .seat .seat-cards{left:calc(var(--avatar) + var(--name)/2 - 24px);top:-36px;width:48px;height:32px}
+ .game.portrait-table .seat.nw .seat-cards,.game.portrait-table .seat.sw .seat-cards{left:calc(var(--name)/2 - 50px)}
+ .game.portrait-table .seat .card{width:22px;height:32px}
+ .game.portrait-table .seat.open-cards .seat-cards{top:calc(-1 * var(--hole-h) - 8px);width:calc(2 * var(--hole-w) + 4px);height:var(--hole-h)}
+ .game.portrait-table .seat.open-cards .cards{width:100%}
+ .game.portrait-table .seat.open-cards .card{width:var(--hole-w);height:var(--hole-h)}
+ .game.portrait-table .seat.open-cards .card + .card{margin:0;transform:none}
+ .game.portrait-table .position-badge,.game.portrait-table .s .position-badge{left:0;top:calc(var(--row) + 1px);font-size:10px;line-height:12px}
+ .game.portrait-table .seat-feedback{top:calc(var(--row) + 15px);width:100%;grid-template-rows:20px 28px;gap:2px 4px}
+ .game.portrait-table .seat-feedback .current-hand-rank{font-size:12px;line-height:17px;padding:0 3px;max-width:100%}
+ .game.portrait-table .seat-feedback .equity-label,.game.portrait-table .seat-feedback .action-label{font-size:12px;line-height:17px;padding:0 1px}
+ .game.portrait-table .seat-feedback .winner-badge{width:100%;font-size:12px;line-height:14px}
+ .game.portrait-table .seat-bet{font-size:14px;max-width:76px;gap:4px}
+ .game.portrait-table .pot>b{font-size:18px}
+ .game.portrait-table .board{top:337px}
+ .game.portrait-table .pot{top:-34px}
+ .game.portrait-table .pot-chips{top:80px}
+ .game.portrait-table .board-phase{top:109px;width:160px}
+ .game.portrait-table .felt{inset:85px 15px 52px}
+ .game.portrait-table .seat-status,.game.portrait-table .seat.nw .seat-status,.game.portrait-table .seat.sw .seat-status,.game.portrait-table .ne .seat-status,.game.portrait-table .se .seat-status{left:auto;right:0;top:calc(var(--row) - 4px)}
+ .game.portrait-table .seat-status .icon-button{width:28px;height:28px;padding:7px}
+ .game.portrait-table .turn-progress b{font-size:24px}
+}
+
+.game .seat.open-cards .seat-cards{left:calc(var(--avatar) + var(--name)/2 - var(--hole-w) - 2px)}
+.game .seat.nw.open-cards .seat-cards,.game .seat.sw.open-cards .seat-cards{left:calc(var(--name)/2 - var(--hole-w) - 2px)}
+@media(max-width:899px) and (orientation:portrait){
+ .game.portrait-table .seat.nw .seat-cards,.game.portrait-table .seat.sw .seat-cards{left:calc(var(--name)/2 - 24px)}
+ .game.portrait-table .seat.open-cards .seat-cards{left:calc(var(--avatar) + var(--name)/2 - var(--hole-w) - 2px)}
+ .game.portrait-table .seat.nw.open-cards .seat-cards,.game.portrait-table .seat.sw.open-cards .seat-cards{left:calc(var(--name)/2 - var(--hole-w) - 2px)}
+}
+
+@media(max-width:899px) and (orientation:portrait){.game.portrait-table .seat .card + .card{margin-left:0;transform:none}}

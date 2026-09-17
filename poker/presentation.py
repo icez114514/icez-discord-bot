@@ -20,12 +20,12 @@ def emit(table, now, kind, **data):
     table["events"] = [*table.get("events", []), event][-256:]
 
 
-RESULT_HOLD_SECONDS = 1.9
+RESULT_HOLD_SECONDS = 4.4
 
 
 def event_duration(event, players, all_in_runout=False):
     return {"deal": players * 140 + 420, "action": 120, "collect": 220,
-            "all_in_reveal": 700, "board": 900 if all_in_runout else 650,
+            "all_in_reveal": 700, "board": 2000 if all_in_runout else 650,
             "showdown": 650, "payout": 320, "refund": 320,
             "complete": 0}.get(event["kind"], 0) / 1000
 

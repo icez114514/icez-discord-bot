@@ -52,7 +52,7 @@ export function DealFlights({event,players,button,scene,duration}:{event?:Public
       if(!card)return [];
       let x=0,y=0,node:HTMLElement|null=card;
       while(node&&node!==root){x+=node.offsetLeft-(node.classList.contains('seat')?node.offsetWidth/2:0);y+=node.offsetTop;node=node.offsetParent as HTMLElement|null;}
-      return [{key:event.id+':'+id+':'+round,target:'[data-player="'+CSS.escape(id)+'"] .seat-cards .card:nth-child('+(round+1)+')',style:{'--to-x':x+'px','--to-y':y+'px','--card-angle':round?'7deg':'-7deg',width:card.offsetWidth,height:card.offsetHeight,animationDuration:220*factor+'ms',animationDelay:(round*players.length+index)*70*factor+'ms'} as CSSProperties}];
+      return [{key:event.id+':'+id+':'+round,target:'[data-player="'+CSS.escape(id)+'"] .seat-cards .card:nth-child('+(round+1)+')',style:{'--to-x':x+'px','--to-y':y+'px','--card-angle':'0deg',width:card.offsetWidth,height:card.offsetHeight,animationDuration:220*factor+'ms',animationDelay:(round*players.length+index)*70*factor+'ms'} as CSSProperties}];
     })));
   },[event,ids,button,scene,duration]);
   return <div className="deal-layer" aria-hidden="true">{cards.map(card=><CardBack key={card.key} target={card.target} style={card.style} className="deal-card"/>)}</div>;
