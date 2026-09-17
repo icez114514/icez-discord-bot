@@ -2,9 +2,12 @@
 main.table-mode { max-width:none; height:100dvh; padding:8px 12px; display:flex; flex-direction:column; }
 main.table-mode > .message { flex:none; margin:0 0 6px; padding:6px 10px; font-size:11px; }
 .table-mode > header,.table-mode > footer,.table-mode > .account-footer { display:none; }
-.table-mode > .game { flex:1; height:auto; min-height:0; display:grid; grid-template-rows:48px minmax(0,1fr); gap:6px; position:relative; }
+.table-mode > .game { flex:1; height:auto; min-height:0; display:grid; grid-template-rows:minmax(0,1fr); gap:0; position:relative; }
 .game-toolbar,.game .table-tools { display:flex; align-items:center; gap:6px; }
-.game-toolbar { position:relative; z-index:8; justify-content:space-between; }
+.game-toolbar { position:absolute; top:0; left:0; right:0; z-index:8; justify-content:space-between; pointer-events:none; }
+.game-toolbar button { pointer-events:auto; }
+.game-toolbar .icon-button { background:transparent; border-color:transparent; }
+@media (hover:hover) { .game-toolbar .icon-button:hover { background:var(--panel); border-color:var(--line); } }
 .game .table-tools { margin-left:auto; }
 .game .table-tools .account-tools { display:flex; gap:0; margin:0; }
 .icon-button { display:inline-grid; place-items:center; flex:none; width:44px; height:44px; min-height:44px; padding:10px; border:1px solid var(--line); border-radius:50%; background:var(--panel); color:var(--ink); }
@@ -148,7 +151,8 @@ main.table-mode > .message { flex:none; margin:0 0 6px; padding:6px 10px; font-s
 }
 @media (max-width:899px),(max-height:599px) {
   main.table-mode { height:auto; min-height:100dvh; padding:6px; }
-  .table-mode > .game { height:auto; grid-template-rows:48px auto; }
+  .table-mode > .game { height:auto; grid-template-rows:44px auto; gap:4px; }
+  .game-toolbar { position:relative; top:auto; left:auto; right:auto; }
   .game .table-stage { display:flex; flex-direction:column; align-items:center; }
   .game .table-action-slot { position:relative; inset:auto; align-self:flex-end; margin:8px 0 0; width:min(100%,400px); height:200px; flex:none; }
   .game .action-panel { grid-template-rows:20px 110px 44px; }
