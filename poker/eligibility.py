@@ -77,7 +77,7 @@ class Eligibility:
 
             if not await self.store.run(claim):
                 continue
-            result = await self.discord.member(item["user_id"])
+            result = await getattr(self.discord, "eligible", self.discord.member)(item["user_id"])
             commit_now = time.time() if realtime else now
 
             def commit(db):

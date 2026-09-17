@@ -28,10 +28,12 @@ class TableCommand(BaseModel):
         "leave",
         "sitout",
         "sit_in",
+        "set_autoplay",
         "add_npc",
         "remove_npc",
         "close",
     ]
+    enabled: bool | None = None
     invitation: str | None = Field(default=None, max_length=128)
     control: str | None = Field(default=None, max_length=128)
     hand_id: str | None = Field(default=None, max_length=128)
@@ -44,6 +46,8 @@ class TableCommand(BaseModel):
     def payload(self):
         data = self.model_dump()
         # Preserve fingerprints of pre-lobby commands across schema upgrades.
+        if data["enabled"] is None:
+            data.pop("enabled")
         if data["invitation"] is None:
             data.pop("invitation")
         if data["seat"] is None:
@@ -52,6 +56,8 @@ class TableCommand(BaseModel):
 
     @model_validator(mode="after")
     def required_fields(self):
+        if (self.kind == "set_autoplay") != (self.enabled is not None):
+            raise ValueError("autoplay_enabled_required")
         if self.kind in ("join", "topup") and self.amount is None:
             raise ValueError("amount_required")
         if self.kind == "act":
@@ -82,8 +88,8 @@ def install(app, config, cookie):
         )
 
     @app.get("/api/table/profiles")
-    async def profiles(request: Request):
-        state = await app.state.tables.view(request.cookies.get(cookie, ""))
+    async def profiles(request: Request, table_id: str | None = None):
+        state = await app.state.tables.view(request.cookies.get(cookie, ""), table_id=table_id)
         users = sorted({m["id"] for m in state.get("members", []) if not m["id"].startswith("npc:")})
         return {"table_id": state.get("id"), "profiles": app.state.profiles.view(users)}
 
@@ -101,15 +107,17 @@ def install(app, config, cookie):
         token = socket.cookies.get(cookie, "")
         connection = secrets.token_urlsafe(24)
         entered = False
+        table_id = socket.query_params.get("table_id")
         try:
             if socket.headers.get("origin") != config.origin:
                 await socket.close(code=4403)
                 return
-            state = await app.state.tables.view(token)
+            state = await app.state.tables.view(token, table_id=table_id)
+            table_id = state["id"]
             await socket.accept()
             await app.state.store.presence(token, connection, "enter")
             entered = True
-            state = await app.state.tables.connection(token, connection, "enter")
+            state = await app.state.tables.connection(token, connection, "enter", table_id=table_id)
             await socket.send_json(
                 {"type": "ready", "connection": connection, "state": state}
             )
@@ -118,7 +126,7 @@ def install(app, config, cookie):
                     message = await asyncio.wait_for(socket.receive_json(), 0.5)
                 except asyncio.TimeoutError:
                     # Revalidates session even when a tab sends no further messages.
-                    state = await app.state.tables.view(token, connection)
+                    state = await app.state.tables.view(token, connection, table_id=table_id)
                     await socket.send_json({"type": "state", "state": state})
                     continue
                 if not isinstance(message, dict):
@@ -127,7 +135,7 @@ def install(app, config, cookie):
                 kind = message.get("type")
                 if kind in ("heartbeat", "leave"):
                     await app.state.store.presence(token, connection, kind)
-                    state = await app.state.tables.connection(token, connection, kind)
+                    state = await app.state.tables.connection(token, connection, kind, table_id=table_id)
                     if kind == "leave":
                         entered = False
                         await socket.close(code=1000)
@@ -148,7 +156,7 @@ def install(app, config, cookie):
                                 if isinstance(error, Conflict)
                                 else "invalid_command"
                             },
-                            "state": await app.state.tables.view(token, connection),
+                            "state": await app.state.tables.view(token, connection, table_id=table_id),
                         }
                     await socket.send_json({"type": "result", **result})
                 else:
@@ -167,7 +175,7 @@ def install(app, config, cookie):
                 with contextlib.suppress(Unauthorized, Conflict):
                     await app.state.store.presence(token, connection, "disconnect")
                 with contextlib.suppress(Unauthorized, Conflict):
-                    await app.state.tables.connection(token, connection, "disconnect")
+                    await app.state.tables.connection(token, connection, "disconnect", table_id=table_id)
 
 
 async def run_tables(tables, npc):

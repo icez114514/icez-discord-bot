@@ -1,7 +1,7 @@
 // Built-client acceptance: isolated API/WS, real engine recordings, headless Chrome.
 const fs=require('node:fs'),path=require('node:path'),http=require('node:http'),os=require('node:os'),assert=require('node:assert/strict');
 const {spawn,execFileSync}=require('node:child_process');
-const root=path.resolve(__dirname,'../..'),dist=path.join(root,'poker_web/dist'),output=path.join(root,'tmp/reference-table');
+const root=path.resolve(__dirname,'../..'),dist=path.resolve(process.env.POKER_WEB_DIST||path.join(root,'poker_web/dist')),output=path.join(root,'tmp/reference-table');
 fs.mkdirSync(output,{recursive:true});
 const recordings=JSON.parse(execFileSync(path.join(root,'poker/.venv/Scripts/python.exe'),['-m','poker_tests.presentation_fixtures'],{cwd:root,encoding:'utf8',windowsHide:true}));
 const user='111111111111111111',temp=fs.mkdtempSync(path.join(os.tmpdir(),'poker-reference-'));
@@ -281,6 +281,45 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));let chrome,ws;
  await until("document.querySelector('.seat.n.empty')");
  assert(await run(`(()=>{const r=document.querySelector('.seat.n .empty-seat-button').getBoundingClientRect(),f=document.querySelector('.felt').getBoundingClientRect(),p=document.querySelector('.pot').getBoundingClientRect();return Math.abs(r.top+r.height/2-f.top)<1&&r.bottom<p.top&&f.width/innerWidth>=.85;})()`),'idle north seat sits on rail without covering pot');
  await shot('desktop-idle-expanded');
+
+ // Remove synthetic winner labels inserted by the geometry-only assertions above.
+ await run("document.querySelectorAll('.winner-badge').forEach(e=>e.remove())");
+ // Persistent autoplay uses explicit acknowledged commands; leaving keeps terminal motion.
+ await call('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'no-preference'}]});
+ for(const [w,h] of [[1920,1080],[320,568],[390,844]]){
+  await resize(w,h);await run('window.feed(geometry,true)');
+  await until("document.querySelector('.hero-seat .portrait')");
+  await run("document.querySelector('.hero-seat .own-avatar').click()");
+  await until("document.querySelector('dialog[open]')");
+  await run("[...document.querySelectorAll('dialog button')].find(b=>b.textContent.includes('啟用託管')).click()");
+  await until("commands.at(-1)?.kind==='set_autoplay'&&commands.at(-1)?.enabled===true");
+  await run("window.auto=structuredClone(geometry);auto.members.find(m=>m.id==='111111111111111111').autoplay=true;window.feed(auto)");
+  await until("document.querySelector('.autoplay-panel button:not(:disabled)')");
+  assert(await run(`(()=>{const r=document.querySelector('.autoplay-panel button').getBoundingClientRect();return r.left>=0&&r.right<=innerWidth&&r.top>=0&&r.bottom<=innerHeight&&r.height>=44;})()`),'autoplay cancel visible '+w);
+  await shot('autoplay-'+w);
+  await run("document.querySelector('.autoplay-panel button').click()");
+  await until("commands.at(-1)?.kind==='set_autoplay'&&commands.at(-1)?.enabled===false");
+  assert.equal(await run("!!document.querySelector('.autoplay-panel')"),true,'no optimistic cancellation');
+  await run('window.feed(geometry)');
+  await until("!document.querySelector('.autoplay-panel')");
+ }
+ const departed=structuredClone(rec.at(-1));departed.departure=structuredClone(departed);departed.joined=false;departed.control=false;departed.role='spectator';departed.members=departed.members.filter(m=>m.id!==user);
+ for(const [w,h] of [[1920,1080],[390,844]]){
+  await resize(w,h);await run('window.feed('+JSON.stringify(rec.at(-2))+',true);window.feed('+JSON.stringify(departed)+')');
+  await until("document.querySelectorAll('.seat.open-cards').length===4");
+  assert.equal(await run("!!document.querySelector('.spectator-panel')"),false,'leave must retain last hand');
+  await until("document.querySelector('.hero-seat.won .winner-badge') && !document.querySelector('.chip-flight') && JSON.stringify([...document.querySelectorAll('.seat-stack')].map(e=>e.textContent))==="+JSON.stringify(JSON.stringify(expected)),16000);
+  const start=Date.now();
+  assert.equal(await run("!!document.querySelector('.spectator-panel')"),false,'payout must finish before spectator');
+  await shot('departing-result-'+w);
+  await until("document.querySelector('.spectator-panel')",6000);
+  assert(Date.now()-start>=4200,'full result hold before spectator');
+  assert.equal(await run("document.querySelectorAll('.hero-seat:not(.empty)').length"),0,'released seat is gone');
+  await shot('spectator-'+w);
+  await run('window.feed('+JSON.stringify(departed)+')');
+  assert.equal(await run("document.querySelectorAll('.chip-flight,.winner-badge').length"),0,'departure duplicate stays silent');
+ }
+
  assert.deepEqual(errors,[]);
  assert(observed.some(v=>v.board.length===0&&v.shares.some(s=>s.includes('%'))),'preflop worker equity visible before flop');
  fs.writeFileSync(path.join(output,'measurements.json'),JSON.stringify({sizes,observed},null,2));

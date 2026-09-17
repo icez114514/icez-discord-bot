@@ -12,7 +12,7 @@ export function usePlayerProfiles(tableId: string | undefined, members: string) 
     async function refresh() {
       let missing = true;
       try {
-        const response = await fetch('/api/table/profiles', { signal: controller.signal });
+        const response = await fetch('/api/table/profiles?table_id=' + encodeURIComponent(tableId ?? ''), { signal: controller.signal });
         if (!response.ok) throw new Error('profiles');
         const result: { table_id: string; profiles: Profile[] } = await response.json();
         if (result.table_id !== tableId || controller.signal.aborted) return;

@@ -35,6 +35,10 @@ primary guild. Membership in any allowed guild grants access; departure is
 confirmed only when absent from every guild. Discord API failures remain retryable.
 The configured Bot must be present in each guild. Profiles prefer the primary
 guild, then additional guilds in configured order.
+POKER_ALLOWED_USER_IDS optionally adds comma-separated Discord user IDs that may
+log in without guild membership. OAuth identity verification remains required;
+this grants no table/funds administration and does not relax Bot internal guild
+checks. Values are validated and deduplicated at startup.
 Explicit POKER values win. The web service never imports the crystal Bot.
 
 Set POKER_ORIGIN=https://poker.ice-z.net and register the exact Discord callback

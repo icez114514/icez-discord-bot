@@ -49,7 +49,9 @@ def current_table(db, user):
     return next((t for t in all_tables(db) if member(t, user)), None)
 
 
-def accessible(table, user, invitation=None):
+def accessible(table, user, invitation=None, spectator=False):
+    if spectator and user in table.get("watchers", []):
+        return
     if table.get("private") and not member(table, user):
         if not invitation or not secrets.compare_digest(
             table.get("invitation", "").encode(), invitation.encode()
@@ -77,19 +79,16 @@ def stack(db, user):
 
 def public(db, table, user, connection=None):
     me = member(table, user)
-    if me is None:
-        if table.get("private"):
-            return {"joined": False}
-        return {
-            "id": table["id"],
-            "version": table["version"],
-            "joined": False,
-            "closed": table["closed"],
-        }
+    if table["closed"] and not me and user in table.get("watchers", []):
+        return {"id": table["id"], "version": table["version"], "joined": False, "role": "spectator", "closed": True, "control": False, "departure": table.get("departures", {}).get(user)}
+    if table.get("private") and not me and user not in table.get("watchers", []):
+        return {"id": table["id"], "version": table["version"], "joined": False, "closed": table["closed"]}
     return {
         "id": table["id"],
         "version": table["version"],
-        "joined": True,
+        "joined": me is not None,
+        "role": "player" if me else "spectator",
+        "departure": table.get("departures", {}).get(user),
         "rules": {"small_blind": str(rules.SMALL_BLIND), "big_blind": str(rules.BIG_BLIND)},
         "event_seq": table.get("event_seq", 0),
         "server_time": time.time(),
@@ -100,7 +99,7 @@ def public(db, table, user, connection=None):
         "countdown": table["countdown"],
         "closed": table["closed"],
         "frozen": table["frozen"],
-        "control": bool(connection and me.get("control") == connection),
+        "control": bool(me and connection and me.get("control") == connection),
         "members": [
             {
                 "id": m["id"],
@@ -109,6 +108,7 @@ def public(db, table, user, connection=None):
                 "stack": str(stack(db, m["id"])),
                 "leaving": m.get("leaving", False),
                 "sitout": m.get("sitout", False),
+                "autoplay": m.get("autoplay", False),
                 "topup": m.get("topup"),
                 "notice": m.get("notice"),
                 "expires": m.get("expires"),
@@ -118,7 +118,7 @@ def public(db, table, user, connection=None):
             }
             for m in table["members"]
         ],
-        "hand": rules.project(table["hand"] or table["last"], user),
+        "hand": rules.project(table["hand"] or table["last"], user if me else "spectator"),
         "time_bank": db.execute(
             "SELECT time_bank FROM accounts WHERE user_id=?", (user,)
         ).fetchone()[0],
@@ -143,6 +143,7 @@ class Transaction:
         if hand["actor"] is None:
             return
         user = hand["players"][hand["actor"]]["id"]
+        hand["autoplay_at"] = self.now + 1
         hand["extensions"] = 0
         hand["deadline"] = self.now + (5 if user.startswith("npc:") else 20)
         if user.startswith("npc:"):
@@ -207,6 +208,12 @@ class Transaction:
             snapshot=hand,
             opportunities=opportunities,
         )
+        self.table["departures"] = {}
+        for departing in self.table["members"]:
+            if departing.get("leaving") and not departing["id"].startswith("npc:"):
+                terminal = public(self.db, self.table, departing["id"])
+                terminal.pop("departure", None)
+                self.table["departures"][departing["id"]] = terminal
         self.table["last"], self.table["hand"] = hand, None
         self.between()
 
@@ -218,6 +225,9 @@ class Transaction:
             user = m["id"]
             npc = user.startswith("npc:")
             if m.get("leaving") or table["closed"]:
+                m["autoplay"] = False
+                if not npc and user not in table.setdefault("watchers", []):
+                    table["watchers"].append(user)
                 chips = stack(self.db, user)
                 if npc:
                     if chips:
@@ -262,6 +272,7 @@ class Transaction:
                 or (not npc and stack(self.db, user) == 0)
                 or (npc and m.get("failures", 0) >= 3)
             ):
+                m["autoplay"] = False
                 m["mode"], m["sitout"] = "sitout", False
                 if not npc and m.get("expires") is None:
                     m["expires"] = self.now + 120
@@ -311,16 +322,23 @@ class Transaction:
                 m["control"] = None
                 m["disconnected"] = m["heartbeat"] + 150
             if (m.get("expires") is not None and m["expires"] <= self.now) or (
-                m.get("disconnected") is not None and m["disconnected"] <= self.now
+                not m.get("autoplay") and m.get("disconnected") is not None and m["disconnected"] <= self.now
             ):
                 m["leaving"] = True
             if not self.db.execute(
                 "SELECT 1 FROM sessions WHERE user_id=? AND revoked=0", (m["id"],)
             ).fetchone():
                 m["leaving"] = True
+            if m.get("leaving"):
+                m["autoplay"] = False
         hand = table["hand"]
         if hand:
             user = hand["players"][hand["actor"]]["id"]
+            actor = member(table, user)
+            if actor and actor.get("autoplay") and not actor.get("leaving") and not actor.get("sitout"):
+                if hand.get("autoplay_at", self.now) <= self.now:
+                    self.action(user, "check" if rules.legal(hand)["check"] else "fold", automatic=True)
+                return
             if user.startswith("npc:") or hand["deadline"] > self.now:
                 return
             bank = self.db.execute(
@@ -429,6 +447,7 @@ class Transaction:
             self.funds(
                 "buy_in", user_id=user, table_id=table["id"], amount=data["amount"]
             )
+            table.get("departures", {}).pop(user, None)
             table["sequence"] += 1
             table["members"].append(
                 {
@@ -444,7 +463,16 @@ class Transaction:
                 table["owner"] = user
         elif m is None:
             raise Conflict("not_seated")
+        elif kind == "set_autoplay":
+            enabled = data["enabled"]
+            if enabled and (m.get("leaving") or m.get("sitout") or m["mode"] != "active"):
+                raise Conflict("autoplay_unavailable")
+            m["autoplay"] = enabled
+            if table["hand"] and table["hand"]["actor"] is not None and table["hand"]["players"][table["hand"]["actor"]]["id"] == user:
+                table["hand"]["autoplay_at"] = self.now + 1
         elif kind == "act":
+            if m.get("autoplay"):
+                raise Conflict("autoplay_enabled")
             hand = table["hand"]
             if (
                 not hand
@@ -465,8 +493,10 @@ class Transaction:
                 raise Conflict("topup_already_queued")
             m["topup"] = data["amount"]
         elif kind == "leave":
+            m["autoplay"] = False
             m["leaving"] = True
         elif kind == "sitout":
+            m["autoplay"] = False
             m["sitout"] = True
         elif kind == "sit_in":
             if stack(self.db, user) <= 0 or m.get("leaving"):
@@ -521,15 +551,8 @@ class Tables:
             table = (
                 load(db, table_id) if table_id else current_table(db, user) or load(db)
             )
-            accessible(table, user, invitation)
+            accessible(table, user, invitation, spectator=True)
             state = public(db, table, user, connection)
-            if not state["joined"]:
-                state = {
-                    "id": table["id"],
-                    "version": table["version"],
-                    "joined": False,
-                    "closed": table["closed"],
-                }
             return state
 
         return await self.store.run(operation)
@@ -595,12 +618,13 @@ class Tables:
 
         return await self.store.run_command(operation)
 
-    async def connection(self, token, connection, action, now=None):
+    async def connection(self, token, connection, action, now=None, table_id=None):
         now = time.time() if now is None else now
 
         def operation(db):
             user = authenticate(db, token)
-            table = current_table(db, user) or load(db)
+            table = load(db, table_id) if table_id else current_table(db, user) or load(db)
+            accessible(table, user, spectator=True)
             m = member(table, user)
             if m:
                 if action in ("enter", "heartbeat"):

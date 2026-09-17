@@ -72,6 +72,11 @@ class Discord:
         except (KeyError, ValueError, TypeError) as error:
             raise Unauthorized("discord_login_unavailable") from error
 
+    async def eligible(self, user):
+        if str(user) in self.config.allowed_user_ids:
+            return "member"
+        return await self.member(user)
+
     async def member(self, user):
         # Only proven absence in every allowed guild is evidence of departure.
         results = []

@@ -220,3 +220,15 @@
 /* Grow the portrait around its existing centre, preserving the seat and flight anchors. */
 .game .seat .portrait,.game .seat:is(.nw,.sw) .portrait,
 .game.portrait-table .seat .portrait,.game.portrait-table .seat:is(.nw,.sw) .portrait{width:calc(var(--avatar) * 1.18);height:calc(var(--avatar) * 1.18);left:calc(var(--avatar-x) - var(--avatar) * .09);top:calc(var(--avatar) * -.09)}
+/* Persistent modes occupy the same control dock as manual actions. */
+.game .autoplay-panel,.game .spectator-panel{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:10px;padding:10px;border:1px solid var(--trim);border-radius:10px;background:var(--panel);flex-wrap:wrap;z-index:2}
+.game .autoplay-panel button,.game .spectator-panel button{min-height:44px}
+.game .seat .portrait .position-badge.autoplay-indicator{max-width:none;color:#ffe4a0;border-color:#bdb27a}
+
+@media (max-width: 899px) and (orientation: portrait) {
+ .game .autoplay-panel,.game .spectator-panel { padding:4px;gap:4px;font-size:12px; }
+ .game .autoplay-panel strong { width:100%;text-align:center;line-height:16px; }
+ .game .autoplay-panel button,.game .spectator-panel button { font-size:12px;padding:4px 8px; }
+}
+
+.game.portrait-table .seat .portrait .position-badge.autoplay-indicator{font-size:calc(12px / var(--table-scale));padding:2px 4px}

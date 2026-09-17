@@ -25,13 +25,15 @@ import './table.css';
 import './SeatLayout.css';
 
 type Player = { id: string; stack: string; bet: string; paid: string; cards: string[]; folded: boolean };
-type Member = { id: string; seat: number; mode: string; sitout: boolean; connected: boolean; expires: number | null; stack: string; leaving: boolean; topup: string | null; notice: string | null; npc_failures: number; voice_pack?: import("./sound").VoicePack };
+type Member = { autoplay?: boolean; id: string; seat: number; mode: string; sitout: boolean; connected: boolean; expires: number | null; stack: string; leaving: boolean; topup: string | null; notice: string | null; npc_failures: number; voice_pack?: import("./sound").VoicePack };
 type Hand = { call_amount?: string | null; settlement?: Settlement | null; id: string; button: number; players: Player[]; board: string[]; street: string; actor: number | null; turn: number; pot: string; deadline: number | null; extensions: number; payouts: Record<string, string> | null; legal: { check?: boolean; fold?: boolean; call?: string; raise?: boolean; min_raise_to?: string; max_raise_to?: string } };
-type State = import('./tableAudio').EventState & { id: string; rules?: { small_blind?: string; big_blind?: string }; name?: string; private?: boolean; version: number; joined: boolean; closed: boolean; frozen?: boolean; control?: boolean; owner?: string; members?: Member[]; hand?: Hand | null; countdown?: number | null; time_bank?: number };
-type Payload = { command_id: string; table_id: string; version: number; kind: string; control: string | null; hand_id?: string; turn?: number; action?: string; amount?: string; npc_id?: string; seat?: number };
+type State = import('./tableAudio').EventState & { departure?: State; role?: "player" | "spectator"; id: string; rules?: { small_blind?: string; big_blind?: string }; name?: string; private?: boolean; version: number; joined: boolean; closed: boolean; frozen?: boolean; control?: boolean; owner?: string; members?: Member[]; hand?: Hand | null; countdown?: number | null; time_bank?: number };
+type Payload = { enabled?: boolean; invitation?: string; command_id: string; table_id: string; version: number; kind: string; control: string | null; hand_id?: string; turn?: number; action?: string; amount?: string; npc_id?: string; seat?: number };
 const chips = (value: string) => BigInt(value).toLocaleString('zh-TW');
 const labels: Record<string, string> = { preflop: '翻牌前', flop: '翻牌', turn: '轉牌', river: '河牌', active: '', pending: '下手加入', sitout: '坐出' };
 const errors: Record<string, string> = {
+  autoplay_enabled: '請先退出託管，再進行手動下注。',
+  autoplay_unavailable: '目前座位無法啟用託管。',
   seat_occupied: '這個座位已有人入座，請選其他座位。',
   invalid_seat: '座位無效，請重新選擇。',
   host_required: '只有房主可以加入 Bot。',
@@ -72,7 +74,13 @@ export function Table({ user, onClose, initialHistory = false }: { user: string;
   const [historyOpen, setHistoryOpen] = useState(initialHistory);
   const replaying = useRef(initialHistory);
   function toggleHistory(open: boolean) { clearSelection(); setConfirm(null); replaying.current = open; presentation.reset(); setHistoryOpen(open); }
-  const [state, setState] = useState<State | null>(null);
+  const [serverState, setState] = useState<State | null>(null);
+  const [departure, setDeparture] = useState<State | null>(null);
+  const departureRef = useRef<State | null>(null);
+  const watchedTable = useRef<string | null>(null);
+  const state = departure ?? serverState;
+  const [joinOpen, setJoinOpen] = useState(false);
+  const [joinInvitation, setJoinInvitation] = useState('');
   const [connected, setConnected] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -116,6 +124,14 @@ export function Table({ user, onClose, initialHistory = false }: { user: string;
     const prior = latest.current;
     if (prior?.id === next.id && next.version < prior.version) return;
     latest.current = next;
+    watchedTable.current = next.id;
+    if (baseline || (prior && prior.id !== next.id)) { departureRef.current = null; setDeparture(null); }
+    if (!baseline && prior?.joined && !next.joined && next.departure && next.departure.hand?.id === prior.hand?.id) {
+      departureRef.current = { ...next.departure, control: false, version: next.version };
+      setDeparture(departureRef.current);
+      clearSelection(); setConfirm(null); setSeatMenu(false);
+    }
+    if (next.members?.find(m => m.id === user)?.autoplay) clearSelection();
     if (next.server_time != null) serverOffset.current = next.server_time - Date.now() / 1000;
     setNow(clockNow());
     if (preselected.current) {
@@ -130,15 +146,21 @@ export function Table({ user, onClose, initialHistory = false }: { user: string;
         });
       }
     }
-    presentation.receive(next, baseline || replaying.current);
+    presentation.receive(departureRef.current ?? next, baseline || replaying.current);
     if (prior && prior.id !== next.id) { setLog([]); loggedEvents.current.clear(); }
     setState(next);
   }
   useEffect(() => {
+    if (departure && !presentation.view.playing && !presentation.view.celebrating) {
+      departureRef.current = null; setDeparture(null);
+      if (latest.current) presentation.receive(latest.current, true);
+    }
+  }, [departure, presentation.view.playing, presentation.view.celebrating]);
+  useEffect(() => {
     let stopped = false;
     let retry: ReturnType<typeof setTimeout> | undefined;
     const attach = () => {
-      const socket = new WebSocket(`${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/ws/table`);
+      const socket = new WebSocket(`${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/ws/table${watchedTable.current ? "?table_id=" + encodeURIComponent(watchedTable.current) : ""}`);
       socketRef.current = socket;
       socket.onopen = () => { if (!stopped && socketRef.current === socket && socket.readyState === WebSocket.OPEN && !['revoked', 'stopped'].includes(phaseRef.current)) connectionPhase('syncing'); };
       socket.onmessage = event => {
@@ -182,7 +204,7 @@ export function Table({ user, onClose, initialHistory = false }: { user: string;
     const retrying = pending.current === payload;
     const current = latest.current;
     if (sending.current || replaying.current || phaseRef.current !== 'synced') return;
-    if (!retrying && (pending.current || !current?.joined || current.closed || current.frozen || !current.control || payload.control !== control.current)) return;
+    if (!retrying && (pending.current || !current || current.closed || current.frozen || (payload.kind !== "join" && (!current.joined || !current.control)) || payload.control !== control.current)) return;
     if (!retrying && payload.kind === 'act') {
       const h = current?.hand;
       if (!h || payload.hand_id !== h.id || payload.turn !== h.turn || payload.version !== current?.version ||
@@ -218,7 +240,7 @@ export function Table({ user, onClose, initialHistory = false }: { user: string;
     void send({ command_id: crypto.randomUUID(), table_id: state.id, version: state.version, kind, control: control.current, ...extra });
   }
   const memberIds = (state?.members ?? []).filter(m => !m.id.startsWith('npc:')).map(m => m.id).sort().join(',');
-  const profiles = usePlayerProfiles(state?.joined ? state.id : undefined, memberIds);
+  const profiles = usePlayerProfiles(state?.id, memberIds);
   const hand = state?.hand;
   const positions = handPositions(hand);
   const active = hand && !hand.payouts;
@@ -235,7 +257,7 @@ export function Table({ user, onClose, initialHistory = false }: { user: string;
   const raiseValue = raiseValid ? BigInt(raise) : minimum;
   const setRaise = (value: string) => setRaiseDraft({ turn: turnKey, value });
   const ownTurn = !!(active && hand.actor !== null && hand.players[hand.actor]?.id === user && hand.legal.fold && hand.deadline && hand.deadline > now);
-  const canRaise = ownTurn && !!hand?.legal.raise && !disabled;
+  const canRaise = ownTurn && !!hand?.legal.raise && !disabled && !mine?.autoplay;
   const raiseContext=`${state?.id}:${turnKey}`;
   const raiseOpen=compactActions&&canRaise&&raisePanel===raiseContext;
   useEffect(()=>{if(!compactActions||!canRaise||raisePanel!==raiseContext)setRaisePanel(null);},[compactActions,canRaise,raiseContext,raisePanel]);
@@ -250,7 +272,7 @@ export function Table({ user, onClose, initialHistory = false }: { user: string;
   }, [seconds, turnKey, hand?.extensions, ownTurn, connected, state?.control, state?.frozen]);
   useEffect(() => () => sound.stop(), []);
   const act = (action: string, amount?: string) => {
-    if (!state || !hand || disabled || !ownTurn) return;
+    if (!state || !hand || disabled || !ownTurn || mine?.autoplay) return;
     clearSelection();
     const payload: Payload = { command_id: crypto.randomUUID(), table_id: state.id, version: state.version, kind: 'act', control: control.current, hand_id: hand.id, turn: hand.turn, action, ...(amount === undefined ? {} : { amount }) };
     const player = hand.players.find(p => p.id === user);
@@ -269,7 +291,7 @@ export function Table({ user, onClose, initialHistory = false }: { user: string;
     } catch { setError('邀請操作未完成，請重試同一操作。'); }
     finally { setInviteBusy(false); }
   }
-  const canPreselect = !disabled && !!active && !ownTurn && !!ownPlayer && !ownPlayer.folded && BigInt(ownPlayer.stack) > 0n && mine?.mode === 'active' && !mine.sitout && !mine.leaving;
+  const canPreselect = !mine?.autoplay && !disabled && !!active && !ownTurn && !!ownPlayer && !ownPlayer.folded && BigInt(ownPlayer.stack) > 0n && mine?.mode === 'active' && !mine.sitout && !mine.leaving;
   function choosePreselection(action: Preselection['action']) {
     if (!canPreselect || !state || !hand || !control.current) return;
     if (preselected.current?.action === action) { clearSelection(); return; }
@@ -306,7 +328,7 @@ export function Table({ user, onClose, initialHistory = false }: { user: string;
   const connectionText = phase === 'revoked' ? '登入已撤銷，請重新登入。' : phase === 'stopped' ? '連線已停止，請回大廳重新進入。'
     : phase === 'recovering' ? '正在恢復連線；操作暫停。' : phase === 'syncing' ? '已連線，正在同步桌況；操作暫停。'
     : state?.frozen ? '已同步 · 牌桌凍結，暫停操作。' : state?.closed ? '已同步 · 牌桌已關閉。'
-    : !state?.joined ? '已同步 · 已離桌，請返回大廳。'
+    : !state?.joined ? '已同步 · 觀戰中。'
     : !state.control ? '已同步 · 另一視窗控制，目前無操作權。'
     : pending.current ? '已同步 · 結果待確認，其他操作暫停。' : '已同步 · 此視窗可操作';
   const [announcement, setAnnouncement] = useState('');
@@ -333,7 +355,7 @@ export function Table({ user, onClose, initialHistory = false }: { user: string;
     {pending.current && !busy ? <button className="retry-command" disabled={phase !== 'synced' || historyOpen} onClick={() => pending.current && void send(pending.current)}>重送同一指令</button> : null}
     {state?.frozen ? <p role="alert">牌桌資金待恢復核對，暫停所有操作。</p> : null}
     {state?.closed ? <p className="table-closed">牌桌已關閉；當手完成後退回剩餘籌碼。</p> : null}
-    {state?.joined ? <>
+    {state?.id && (state.joined || state.role === "spectator") ? <>
       <TableStage portrait={portrait} onLayoutChange={presentation.cancelMotion}><div className="table-scene" ref={scene}><ChipFlights events={presentation.view.flights} scene={scene} format={displayAmount} duration={presentation.view.flightDuration} /><DealFlights event={presentation.view.deal} players={dealOrder} button={button} scene={scene} duration={presentation.view.flightDuration} /><div className="felt" aria-hidden="true" />
         <div className="board"><strong className={`pot ${chips(visualHand?.pot ?? '0').length > 18 ? 'long-pot' : ''}`}><span className="pot-tools"><IconButton icon="info" label="本手牌局" onClick={() => setInfo('hand')} /></span><span>總底池</span><b>{displayAmount(visualHand?.pot ?? '0')}</b></strong><Cards cards={boardCards} slots={5} reveal={reveal} highlight={highlight} /><div className="pot-chips" aria-label={`已收進底池 ${displayAmount(potChips)}`}><PokerChips amount={potChips} /></div><div className="board-phase">{state.countdown && !presentation.view.playing ? <IconButton icon="clock" label={`下一手倒數 ${Math.max(0, Math.ceil(state.countdown - now))} 秒`} /> : null}</div></div>
         {Array.from({ length: 6 }, (_, seat) => {
@@ -353,7 +375,7 @@ export function Table({ user, onClose, initialHistory = false }: { user: string;
           const dealer = hand?.players[hand.button]?.id === m.id;
           return <article data-player={m.id} className={`seat ${position(seat)} ${acting ? 'acting' : ''} ${player?.folded ? 'folded' : ''} ${m.id === user ? 'hero-seat' : ''} ${player?.cards.length ? 'open-cards' : ''} ${won ? 'won' : lost ? 'lost' : ''}`} key={seat} aria-label={`${playerName(m.id)}，${chips(visibleStack)} 籌碼`}>
             {player ? <div className="seat-cards"><Cards cards={player.cards} hidden={player.cards.length === 0} arrival={presentation.view.deal ? dealTiming(m.id) : undefined} /></div> : null}
-            <div className="seat-plaque"><div className="portrait">{currentRank ? <span className="current-hand-rank" aria-label={`目前牌型：${currentRank}`}>{currentRank}</span> : null}{positions[m.id] ? <span className="position-badge" aria-label={`位置 ${positions[m.id]}`}>{positions[m.id]}</span> : null}{acting && hand?.deadline ? <TurnProgress deadline={hand.deadline} now={now} duration={m.id.startsWith('npc:')||hand.extensions?5:20} /> : null}{m.id === user ? <button type="button" className="own-avatar" aria-label="我的座位選單" aria-haspopup="dialog" aria-expanded={seatMenu} onClick={() => setSeatMenu(true)}><PlayerAvatar url={profiles[m.id]?.avatar_url} npc={m.id.startsWith('npc:')} countdown={null} /></button> : <PlayerAvatar url={profiles[m.id]?.avatar_url} npc={m.id.startsWith('npc:')} countdown={null} />}</div>{m.id === user ? <button type="button" className="seat-info own-stack" aria-pressed={preferences.bb} aria-label={`桌上籌碼 ${chips(visibleStack)}，切換 BB／實際額`} title={`原額 ${chips(visibleStack)} 籌碼；點擊切換 BB／實際額`} onClick={() => changePreferences({ ...preferences, bb: !preferences.bb })}><strong title={playerName(m.id)}>{playerName(m.id)}</strong><b className="seat-stack">{stackDisplay(visibleStack, blind, preferences.bb)}</b></button> : <div className="seat-info"><strong title={playerName(m.id)}>{playerName(m.id)}</strong><b className="seat-stack">{displayAmount(visibleStack)}</b></div>}</div>
+            <div className="seat-plaque"><div className="portrait">{currentRank ? <span className="current-hand-rank" aria-label={`目前牌型：${currentRank}`}>{currentRank}</span> : null}{positions[m.id] || m.autoplay ? <span className={`position-badge ${m.autoplay ? "autoplay-indicator" : ""}`} aria-label={`${positions[m.id] ? "位置 " + positions[m.id] : ""}${m.autoplay ? " · 託管中" : ""}`}>{[positions[m.id], m.autoplay ? "託管中" : ""].filter(Boolean).join(" · ")}</span> : null}{acting && hand?.deadline ? <TurnProgress deadline={hand.deadline} now={now} duration={m.id.startsWith('npc:')||hand.extensions?5:20} /> : null}{m.id === user ? <button type="button" className="own-avatar" aria-label="我的座位選單" aria-haspopup="dialog" aria-expanded={seatMenu} onClick={() => setSeatMenu(true)}><PlayerAvatar url={profiles[m.id]?.avatar_url} npc={m.id.startsWith('npc:')} countdown={null} /></button> : <PlayerAvatar url={profiles[m.id]?.avatar_url} npc={m.id.startsWith('npc:')} countdown={null} />}</div>{m.id === user ? <button type="button" className="seat-info own-stack" aria-pressed={preferences.bb} aria-label={`桌上籌碼 ${chips(visibleStack)}，切換 BB／實際額`} title={`原額 ${chips(visibleStack)} 籌碼；點擊切換 BB／實際額`} onClick={() => changePreferences({ ...preferences, bb: !preferences.bb })}><strong title={playerName(m.id)}>{playerName(m.id)}</strong><b className="seat-stack">{stackDisplay(visibleStack, blind, preferences.bb)}</b></button> : <div className="seat-info"><strong title={playerName(m.id)}>{playerName(m.id)}</strong><b className="seat-stack">{displayAmount(visibleStack)}</b></div>}</div>
             <div className="seat-feedback">
             {presentation.view.revealed && player && !player.folded ? <span className="equity-label" title="勝率採預期底池占比，包含平手分配；預設顯示主池。">{share === undefined ? (equity ? '僅參與邊池' : equityPending ? '計算勝率…' : '勝率暫不可用') : `勝率 ${equity?.approximate ? '約 ' : ''}${share.toFixed(1)}%`}</span> : null}
             {presentation.view.actions[m.id] ? <span className={`action-label ${presentation.view.actions[m.id].all_in ? 'all-in-label' : ''}`} title={actionLabel(presentation.view.actions[m.id], displayAmount)} role="status">{actionLabel(presentation.view.actions[m.id], displayAmount)}</span> : <span className="action-label empty-label" aria-hidden="true">·</span>}
@@ -364,8 +386,10 @@ export function Table({ user, onClose, initialHistory = false }: { user: string;
           </article>;
         })}
       </div>
-      <div className="table-action-slot" data-visible={ownTurn || canPreselect}>
-      <section className={`action-panel ${ownTurn ? '' : 'action-panel-hidden'}`} aria-label="牌桌操作" aria-hidden={!ownTurn} inert={!ownTurn}>
+      <div className="table-action-slot" data-visible={ownTurn || canPreselect || !!mine?.autoplay || !state.joined}>
+      {mine?.autoplay ? <section className="autoplay-panel" aria-label="託管模式"><strong>託管中：過牌／棄牌</strong><button disabled={disabled} onClick={() => command('set_autoplay', { enabled: false })}>{busy || pending.current ? '處理中…' : '取消過牌／棄牌並退出託管'}</button></section> : null}
+      {!state.joined ? <section className="spectator-panel" aria-label="觀戰模式"><strong>觀戰中</strong><button disabled={busy || phase !== 'synced' || state.closed || state.frozen} onClick={() => setJoinOpen(true)}>重新入座</button><button onClick={onClose}>返回大廳</button></section> : null}
+      <section className={`action-panel ${ownTurn && !mine?.autoplay && state.joined ? '' : 'action-panel-hidden'}`} aria-label="牌桌操作" aria-hidden={!ownTurn || !!mine?.autoplay || !state.joined} inert={!ownTurn || !!mine?.autoplay || !state.joined}>
         <div className="turn-line"><strong>輪到你行動</strong><span className="timebank" title="行動時間用盡時自動補時，每次 5 秒，每手最多 4 次">◷ 補時池 {state.time_bank ?? 0}s{active && hand.extensions > 0 ? ` · 已用 ${hand.extensions}/4` : ''}</span></div>
         {!compactActions?betSizing:null}
         <div className="action-buttons"><button className="action-fold" disabled={disabled || !ownTurn} onClick={() => act('fold')}>棄牌</button><button className="action-call" disabled={disabled || !ownTurn} onClick={() => act(hand?.legal.check ? 'check' : 'call')}>{hand?.legal.check ? '過牌' : <>跟注<span>{chips(hand?.legal.call ?? '0')}</span></>}</button><button className={raiseValue === maximum && canRaise ? 'action-raise action-all-in' : 'action-raise'} disabled={!canRaise || (!compactActions && !raiseValid)} aria-haspopup={compactActions?'dialog':undefined} aria-expanded={compactActions?raiseOpen:undefined} onClick={() => compactActions?setRaisePanel(raiseContext):act('raise', raise)}>{compactActions?'加注':raiseValue === maximum && canRaise ? '全下' : betLabel}<span>{chips(raiseValue.toString())}</span></button></div>
@@ -381,8 +405,9 @@ export function Table({ user, onClose, initialHistory = false }: { user: string;
       {state.owner === user ? <details className="host-tools"><summary>房主選項</summary><div className="table-controls"><button disabled={disabled || state.closed} onClick={() => command('add_npc')}>新增固定 NPC</button>{seated.filter(m => m.id.startsWith('npc:')).map(m => <button key={m.id} disabled={disabled || m.leaving} onClick={() => command('remove_npc', { npc_id: m.id })}>移除座位 {m.seat + 1} NPC（手後）</button>)}{state.private ? <button disabled={inviteBusy} onClick={() => void invitation()}>私人桌邀請</button> : null}</div></details> : null}
       </Modal> : null}
     </> : <button onClick={onClose}>回到大廳</button>}
+    {joinOpen && state ? <Modal title="重新入座" onClose={() => setJoinOpen(false)}><label>買入籌碼<input inputMode="numeric" value={amount} onChange={e => setAmount(e.target.value)} /></label>{state.private ? <label>私人桌邀請連結<input value={joinInvitation} onChange={e => setJoinInvitation(e.target.value)} /></label> : null}<button disabled={busy || !!pending.current || phase !== 'synced' || state.closed || !/^[1-9][0-9]*$/.test(amount) || (state.private && !joinInvitation)} onClick={() => { command('join', { amount, ...(state.private ? { invitation: joinInvitation.split(':').at(-1) } : {}) }); setJoinOpen(false); }}>確認買入</button></Modal> : null}
     {addBotSeat !== null ? <Modal title={`加入 Bot 至座位 ${addBotSeat + 1}`} dismissOnBackdrop onClose={() => setAddBotSeat(null)}><p>確認在座位 {addBotSeat + 1} 加入 Bot？{active ? '將於下一手加入牌局。' : ''}</p>{seated.some(m => m.seat === addBotSeat) ? <p role="status">這個座位已有人入座，請選其他座位。</p> : null}<div className="table-controls"><button onClick={() => setAddBotSeat(null)}>取消</button><button disabled={disabled || state?.owner !== user || seated.some(m => m.seat === addBotSeat)} onClick={() => { command('add_npc', { seat: addBotSeat }); setAddBotSeat(null); }}>確認加入 Bot</button></div></Modal> : null}
-    {seatMenu && mine ? <Modal title="我的座位" dismissOnBackdrop onClose={() => setSeatMenu(false)}><p>{mine.leaving ? '已排隊，本手結束後離桌。' : active ? '離桌申請會在本手結束後執行。' : '離桌後返回可用籌碼帳戶。'}</p><button disabled={disabled || mine.leaving} onClick={() => { command('leave'); setSeatMenu(false); }}>{mine.leaving ? '已排隊離桌' : active ? '本手結束後離桌' : '離桌'}</button></Modal> : null}
+    {seatMenu && mine ? <Modal title="我的座位" dismissOnBackdrop onClose={() => setSeatMenu(false)}><button disabled={disabled || mine.leaving || mine.sitout || mine.mode !== 'active'} onClick={() => { command('set_autoplay', { enabled: !mine.autoplay }); setSeatMenu(false); }}>{mine.autoplay ? '退出託管' : '啟用託管（只過牌／棄牌）'}</button><p>{mine.leaving ? '已排隊，本手結束後離桌。' : active ? '離桌申請會在本手結束後執行。' : '離桌後返回可用籌碼帳戶。'}</p><button disabled={disabled || mine.leaving} onClick={() => { command('leave'); setSeatMenu(false); }}>{mine.leaving ? '已排隊離桌' : active ? '本手結束後離桌' : '離桌'}</button></Modal> : null}
     {historyOpen ? <HandHistory user={user} ownTurn={ownTurn} seconds={seconds} connected={connected} onClose={() => toggleHistory(false)} /> : null}
     {confirm ? <Modal title="確認全下" onClose={() => setConfirm(null)}><p>將投入本手所有剩餘籌碼。確認後無法收回。</p><div className="table-controls"><button onClick={() => setConfirm(null)}>取消</button><button disabled={disabled || !ownTurn || state?.version !== confirm.version || hand?.id !== confirm.hand_id || hand?.turn !== confirm.turn} onClick={() => { const payload = confirm; setConfirm(null); void send(payload); }}>確認全下</button></div></Modal> : null}
     {invite ? <Modal title="私人桌邀請" onClose={() => setInvite('')}><p>持有效邀請的已登入成員可入座；重設後舊連結立即失效。</p><label>邀請連結<input readOnly value={invite} onFocus={event => event.target.select()} /></label><div className="table-controls"><button onClick={() => void navigator.clipboard.writeText(invite).catch(() => setError('請選取邀請連結並手動複製。'))}>複製邀請</button><button disabled={disabled || inviteBusy} onClick={() => void invitation(true)}>重設邀請</button></div></Modal> : null}

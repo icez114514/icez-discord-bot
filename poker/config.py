@@ -17,6 +17,7 @@ class Config:
     bot_token: str = field(default="", repr=False)
     guild_id: str = ""
     additional_guild_ids: tuple[str, ...] = ()
+    allowed_user_ids: tuple[str, ...] = ()
     reader_token: str = field(default="", repr=False)
     funds_token: str = field(default="", repr=False)
     funds_admins: tuple[str, ...] = ()
@@ -64,6 +65,8 @@ class Config:
                 errors.append(name + " must be a Discord ID")
         if any(not re.fullmatch(r"[0-9]{1,20}", guild) for guild in self.additional_guild_ids):
             errors.append("POKER_ADDITIONAL_GUILD_IDS must contain Discord IDs")
+        if any(not re.fullmatch(r"[0-9]{1,20}", user) for user in self.allowed_user_ids):
+            errors.append("POKER_ALLOWED_USER_IDS must contain Discord IDs")
         for name in ("client_secret", "bot_token", "reader_token", "funds_token"):
             if len(getattr(self, name)) < 16:
                 errors.append(name + " must be configured (minimum 16 characters)")
@@ -106,6 +109,7 @@ class Config:
             bot_token=os.environ.get("POKER_BOT_TOKEN", os.environ.get("DISCORD_TOKEN", "")),
             guild_id=os.environ.get("POKER_GUILD_ID", os.environ.get("DISCORD_GUILD_ID", "")),
             additional_guild_ids=tuple(value.strip() for value in os.environ.get("POKER_ADDITIONAL_GUILD_IDS", "").split(",") if value.strip()),
+            allowed_user_ids=tuple(dict.fromkeys(value.strip() for value in os.environ.get("POKER_ALLOWED_USER_IDS", "").split(",") if value.strip())),
             reader_token=os.environ.get("POKER_READER_TOKEN", ""),
             funds_token=os.environ.get("POKER_FUNDS_TOKEN", ""),
             funds_admins=tuple(

@@ -180,7 +180,7 @@ def create_app(config, transport=None, initialize=False):
             state, request.cookies.get("poker_oauth", "")
         )
         user = await app.state.discord.identity(code)
-        member = await app.state.discord.member(user)
+        member = await getattr(app.state.discord, "eligible", app.state.discord.member)(user)
         if member != "member":
             return JSONResponse(
                 {
