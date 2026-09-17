@@ -214,6 +214,12 @@ def create_app(config, transport=None, initialize=False):
             "environment": config.environment,
         }
 
+    @app.get("/api/profile")
+    async def profile(request: Request):
+        user = await app.state.store.authenticate(request.cookies.get(COOKIE, ""))
+        profiles = app.state.profiles.view([user])
+        return {"user_id": user, "profile": profiles[0] if profiles else None}
+
     @app.post("/api/subsidy")
     async def subsidy(command: Command, request: Request):
         token = request.cookies.get(COOKIE, "")

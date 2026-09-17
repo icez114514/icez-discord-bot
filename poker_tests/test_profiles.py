@@ -136,3 +136,22 @@ class ProfileEndpointTests(unittest.TestCase):
                 app.state.profiles.view.reset_mock()
                 client.get("/api/table/profiles")
                 app.state.profiles.view.assert_called_once_with([])
+
+    def test_home_profile_is_session_scoped_and_available_without_a_seat(self):
+        with tempfile.TemporaryDirectory() as directory:
+            config = Config(data_dir=Path(directory), environment="test", origin="http://testserver", client_id="123", guild_id="456", client_secret="s" * 32, bot_token="b" * 32, reader_token="r" * 32, funds_token="f" * 32)
+            app = create_app(config, transport=httpx.MockTransport(lambda r: httpx.Response(200, json={})), initialize=True)
+            with TestClient(app) as client:
+                self.assertEqual(client.get("/api/profile").status_code, 401)
+                token = client.portal.call(app.state.store.login, A)
+                client.cookies.set("poker_session", token)
+                own_profile = presentation(A, "456", member())
+                app.state.profiles.view = Mock(return_value=[own_profile])
+                response = client.get("/api/profile?user_id=" + B)
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.json(), {"user_id": A, "profile": own_profile})
+                app.state.profiles.view.assert_called_once_with([A])
+                app.state.profiles.view = Mock(return_value=[])
+                self.assertIsNone(client.get("/api/profile").json()["profile"])
+                client.post("/auth/logout", headers={"origin": config.origin})
+                self.assertEqual(client.get("/api/profile").status_code, 401)

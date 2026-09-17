@@ -1,8 +1,13 @@
-import { useEffect, useId, useRef, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type ReactNode, type PointerEvent } from 'react';
 
-export function Modal({ title, onClose, children, dismissOnBackdrop = false, className, fitVisualViewport = false }: { title: string; onClose: () => void; children: ReactNode; dismissOnBackdrop?: boolean; className?: string; fitVisualViewport?: boolean }) {
+export function Modal({ title, onClose, children, dismissOnBackdrop = true, className, fitVisualViewport = false }: { title: string; onClose: () => void; children: ReactNode; dismissOnBackdrop?: boolean; className?: string; fitVisualViewport?: boolean }) {
   const ref = useRef<HTMLDialogElement>(null);
   const id = useId();
+  const startedOutside = useRef(false);
+  function outside(event: PointerEvent<HTMLDialogElement>) {
+    const rect = event.currentTarget.getBoundingClientRect();
+    return event.target === event.currentTarget && (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom);
+  }
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
     const dialog = ref.current!;
@@ -16,7 +21,7 @@ export function Modal({ title, onClose, children, dismissOnBackdrop = false, cla
     viewport.addEventListener('resize',resize);viewport.addEventListener('scroll',resize);resize();
     return()=>{viewport.removeEventListener('resize',resize);viewport.removeEventListener('scroll',resize);};
   },[fitVisualViewport]);
-  return <dialog className={className} ref={ref} aria-labelledby={id} onClick={event => { if (dismissOnBackdrop && event.target === event.currentTarget) { const rect = event.currentTarget.getBoundingClientRect(); if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) onClose(); } }} onCancel={event => { event.preventDefault(); onClose(); }}>
+  return <dialog className={className} ref={ref} aria-labelledby={id} onPointerDown={event => { startedOutside.current = dismissOnBackdrop && outside(event); }} onPointerCancel={() => { startedOutside.current = false; }} onPointerUp={event => { const dismiss = startedOutside.current && outside(event); startedOutside.current = false; if (dismiss) onClose(); }} onCancel={event => { event.preventDefault(); onClose(); }}>
     <div className="panel-top"><h2 id={id}>{title}</h2><button className="text" aria-label="關閉對話框" onClick={onClose}>關閉</button></div>
     {children}
   </dialog>;

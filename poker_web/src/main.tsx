@@ -5,7 +5,9 @@ import { sound } from './sound';
 import { Table } from './Table';
 import { Lobby } from './Lobby';
 import { AccountTools } from './AccountTools';
-import { ThemeProvider, ThemePicker } from './Theme';
+import { ThemeProvider } from './Theme';
+import { Modal } from './Modal';
+import './Home.css';
 
 type Account = {
   user_id: string; available: string; table: string; in_flight: string; settled: string;
@@ -20,6 +22,7 @@ const reasons: Record<string, string> = {
 
 function App() {
   const [tableOpen, setTableOpen] = useState(false);
+  const [walletOpen, setWalletOpen] = useState(false);
   const [historyStart, setHistoryStart] = useState(false);
   const [environment, setEnvironment] = useState('');
   const [account, setAccount] = useState<Account | null>(null);
@@ -67,21 +70,18 @@ function App() {
     } catch (cause) { setError(cause instanceof Error ? cause.message : '連線失敗。'); }
     finally { setBusy(false); }
   }
-  return <ThemeProvider user={account?.user_id}><main className={tableOpen && account ? 'table-mode' : undefined} onPointerDownCapture={() => sound.unlock()} onKeyDownCapture={() => sound.unlock()}>
-    <header><a className="brand" href="/" aria-label="德州撲克首頁"><span aria-hidden="true">♠</span> POKER CLUB</a><span className="tag">社群專屬</span>{account && !tableOpen ? <ThemePicker /> : null}</header>
+  return <ThemeProvider user={account?.user_id}><main className={tableOpen && account ? 'table-mode' : 'home-page'} onPointerDownCapture={() => sound.unlock()} onKeyDownCapture={() => sound.unlock()}>
+    <header><a className="brand" href="/" aria-label="德州撲克首頁"><span aria-hidden="true">♠</span> POKER CLUB</a>{account && !tableOpen ? <AccountTools key={account.user_id} user={account.user_id} home busy={busy} onLogout={() => void logout()} /> : null}</header>
     {environment === 'test' ? <p className="message" role="status">測試環境 · 模擬 Discord 身分，非真實 OAuth 驗收。</p> : null}
     
     {error ? <div className="message error" role="alert">{error} <button className="text" onClick={() => void refresh()}>重新整理</button></div> : null}
     {notice ? <p className="message" role="status">{notice}</p> : null}
     {loading ? <section className="panel" aria-busy="true">正在讀取帳戶…</section> : account ? <>
-      {!tableOpen ? <AccountTools user={account.user_id} /> : null}
-      {!tableOpen ? <><section className="panel balance"><div className="panel-top"><span>已結算總資產</span><span className="unit">德撲籌碼</span></div><strong className="total">{format(account.settled)}</strong><div className="balances"><div><span>可用籌碼</span><strong>{format(account.available)}</strong></div><div><span>桌上籌碼</span><strong>{format(account.table)}</strong></div><div><span>在途底池</span><strong>{format(account.in_flight)}</strong></div></div><p className="caption">下注中的籌碼會在牌局結算後反映至總資產。</p></section>
-      <section className="panel subsidy"><div><p className="eyebrow">DAILY SUPPORT</p><h2>每日補助</h2><p>{account.subsidy.eligible ? `可領取 ${format(account.subsidy.amount)} 籌碼，補足至 5,000。` : reasons[account.subsidy.reason ?? ''] ?? '目前無法領取，請重新整理。'}</p><small>台灣時間每日 04:00 更新 · 未領不累積</small></div><button disabled={busy || !account.subsidy.eligible} onClick={() => void claim()}>{busy ? '處理中…' : account.subsidy.eligible ? '領取補助' : '目前不可領取'}</button></section>
-      </> : null}
-      {tableOpen ? <Table user={account.user_id} initialHistory={historyStart} onClose={() => { setTableOpen(false); setHistoryStart(false); void refresh(); }} /> : <><button onClick={() => { setHistoryStart(true); setTableOpen(true); }}>上一手摘要與歷史回放</button><Lobby onEnter={() => setTableOpen(true)} /></>}
-      <div className="account-footer"><span>Discord ID <code>{account.user_id}</code></span><button className="text" disabled={busy} onClick={() => void logout()}>登出所有裝置</button></div>
+      {!tableOpen ? <section className="home-content"><div className="home-balance-row"><button className="home-wallet" onClick={() => setWalletOpen(true)} aria-label="查看資產明細"><span>可用籌碼 ↗</span><strong>{format(account.available)}<small>籌碼</small></strong></button>{account.subsidy.eligible ? <button className="home-subsidy" disabled={busy} onClick={() => void claim()}>{busy ? '處理中…' : <>領取補助 <b>+{format(account.subsidy.amount)}</b></>}</button> : null}</div>
+        <Lobby onEnter={() => setTableOpen(true)} onHistory={() => { setHistoryStart(true); setTableOpen(true); }} />
+      </section> : <Table user={account.user_id} initialHistory={historyStart} onClose={() => { setTableOpen(false); setHistoryStart(false); void refresh(); }} />}
+      {walletOpen && !tableOpen ? <Modal title="資產明細" onClose={() => setWalletOpen(false)}><dl className="home-assets">{[['可用籌碼', account.available], ['桌上籌碼', account.table], ['在途底池', account.in_flight], ['已結算總資產', account.settled]].map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{format(value)}</dd></div>)}</dl><p>{account.subsidy.eligible ? `可領取 ${format(account.subsidy.amount)} 籌碼，補足至 5,000。` : reasons[account.subsidy.reason ?? ''] ?? '目前無法領取補助。'}</p><small>台灣時間每日 04:00 更新 · 未領不累積</small></Modal> : null}
     </> : <section className="panel login"><span className="suit" aria-hidden="true">♠</span><h2>歡迎回到牌桌旁</h2><p>使用 Discord 登入，確認社群資格後<br/>即可查看你的獨立德撲帳戶。</p><a className="button" href="/auth/login">使用 Discord 登入 <span aria-hidden="true">↗</span></a><small>首次建立帳戶獲得 50,000 德撲籌碼。</small></section>}
-    <footer><span>COMMUNITY · POKER</span><p>德撲籌碼與水晶分開計算。</p></footer>
   </main></ThemeProvider>;
 }
 createRoot(document.getElementById('root')!).render(<App />);
