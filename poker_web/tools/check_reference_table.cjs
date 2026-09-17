@@ -52,7 +52,7 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));let chrome,ws;
  await until("[...document.images].filter(i=>i.classList.contains('casino-art')).every(i=>i.complete&&i.naturalWidth>0)");
  await run('window.geometry=structuredClone(snapshot)');
  const sizes=[];
- for(const [width,height] of [[1920,1080],[1440,900],[1280,720],[1200,800],[1399,900],[900,600],[320,568],[360,780],[390,844],[430,932]]) {
+ for(const [width,height] of [[1920,1080],[1440,900],[1366,768],[1280,580],[1024,576],[853,480],[1280,720],[1200,800],[1399,900],[900,600],[320,568],[360,780],[390,844],[430,932]]) {
   await resize(width,height);
   const result=await run(`(()=>{
    const rect=q=>{const r=document.querySelector(q).getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height};};
@@ -62,7 +62,7 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));let chrome,ws;
    const fan=q=>{const rs=[...document.querySelectorAll(q+' .seat-cards .card')].map(e=>e.getBoundingClientRect());return Math.max(...rs.map(r=>r.right))-Math.min(...rs.map(r=>r.left));};
    return {avatar,card,name,board,panel,hiddenFan:fan('.seat.n'),openFan:fan('.hero-seat'),boardOverlap:seats.some(s=>intersects(s,board)),panelOverlap:seats.some(s=>intersects({...s,h:Math.min(s.h,document.querySelector('.table-viewport').getBoundingClientRect().bottom-s.y)},panel)),overflow:document.documentElement.scrollWidth>innerWidth,buttons:[...document.querySelectorAll('.action-buttons button')].map(e=>e.getBoundingClientRect().height)};
   })()`);
-  if(width>=900){
+  if(width>=900||width>height){
   assert(Math.abs(result.card.w/result.avatar.w-112/110)<.01,'card/avatar ratio '+width);
   assert(Math.abs(result.card.h/result.avatar.h-158/110)<.01,'card height ratio '+width);
   assert(Math.abs(result.name.w/result.avatar.w-230/110)<.01,'name/avatar ratio '+width);
@@ -79,6 +79,14 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));let chrome,ws;
   assert(!result.boardOverlap,'board overlaps seat '+width);assert(!result.panelOverlap,'panel overlaps seat '+width);
   assert(!result.overflow,'horizontal overflow '+width); if(width>=320) assert(await run('document.documentElement.scrollHeight<=innerHeight+1'),'vertical overflow '+width);assert(result.buttons.every(h=>h>=43.9),'button hit height');
   assert(await run(`(()=>{const seat=document.querySelector('.hero-seat'),plaque=seat.querySelector('.seat-info').getBoundingClientRect();return [...seat.querySelectorAll('.seat-cards .casino-art')].every(e=>e.getBoundingClientRect().bottom<plaque.top);})()`),'both ranks and suits clear of plaque '+width);
+  if(width>=900||width>height){
+   assert(await run(`(()=>{const visible=r=>r.left>=-.5&&r.top>=-.5&&r.right<=innerWidth+.5&&r.bottom<=innerHeight+.5;const panel=document.querySelector('.table-action-slot').getBoundingClientRect();const parts=[...document.querySelectorAll('.hero-seat .seat-cards,.hero-seat .seat-plaque,.hero-seat .seat-feedback')];return visible(panel)&&[...document.querySelectorAll('.action-buttons button')].every(e=>visible(e.getBoundingClientRect())&&e.getBoundingClientRect().height>=44)&&parts.every(e=>e.getBoundingClientRect().bottom<=panel.top);})()`),'desktop controls and hero visible '+width+'x'+height);
+   const before=await run("document.querySelector('.table-action-slot').getBoundingClientRect().y");
+   await run('window.otherTurn=structuredClone(geometry);otherTurn.hand.actor=1;window.feed(otherTurn,true)');
+   await until("!document.querySelector('.preselection').classList.contains('preselection-idle')");
+   assert.equal(await run("document.querySelector('.table-action-slot').getBoundingClientRect().y"),before,'preselection keeps dock position');
+   await run('window.feed(geometry,true)');
+  }
   sizes.push({width,height,...result});await shot('table-'+width);
  }
  // Mobile action drawer sends nothing until an explicit confirmation.

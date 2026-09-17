@@ -5,18 +5,14 @@ export function TableStage({ children,portrait=false,onLayoutChange }: { childre
   const change=useRef(onLayoutChange),previousScale=useRef(1);change.current=onLayoutChange;
   const size=portrait?tableSizes.portrait:tableSizes.landscape;
   useLayoutEffect(()=>{
-    const element=root.current!;
-    const media=matchMedia('(max-width: 899px), (max-height: 599px)');
+    const element=viewport.current!;
     const resize=()=>{
-      const controls=element.querySelector<HTMLElement>('.table-action-slot');
-      const reserved=controls&&getComputedStyle(controls).position==='relative'?controls.offsetHeight+10:0;
-      const available=Math.min(viewport.current?.clientWidth??element.clientWidth,element.clientWidth);
-      const next=Math.max(.1,portrait?Math.min(available/size.width,1.25,Math.max(.8,Math.max(0,element.clientHeight-reserved)/size.height)):media.matches?available/size.width:Math.min(available/size.width,Math.max(0,element.clientHeight-reserved)/size.height));
+      const available=element.clientWidth;
+      const next=Math.max(.1,portrait?Math.min(available/size.width,1.25,Math.max(.8,element.clientHeight/size.height)):Math.min(available/size.width,element.clientHeight/size.height));
       if(Math.abs(previousScale.current-next)>=.0001){previousScale.current=next;change.current?.();setScale(next);}
     };
-    const observer=new ResizeObserver(resize);observer.observe(element);media.addEventListener('change',resize);resize();
-    const frame=requestAnimationFrame(()=>{if(portrait&&viewport.current)viewport.current.scrollTop=viewport.current.scrollHeight;});
-    return ()=>{cancelAnimationFrame(frame);observer.disconnect();media.removeEventListener('change',resize);};
+    const observer=new ResizeObserver(resize);observer.observe(element);resize();
+    return ()=>observer.disconnect();
   },[portrait,size]);
   useLayoutEffect(()=>{
     if(!portrait)return;
