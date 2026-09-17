@@ -20,10 +20,30 @@ def emit(table, now, kind, **data):
     table["events"] = [*table.get("events", []), event][-256:]
 
 
+RESULT_HOLD_SECONDS = 1.9
+
+
+def event_duration(event, players, all_in_runout=False):
+    return {"deal": players * 140 + 420, "action": 120, "collect": 220,
+            "all_in_reveal": 700, "board": 900 if all_in_runout else 650,
+            "showdown": 650, "payout": 320, "refund": 320,
+            "complete": 0}.get(event["kind"], 0) / 1000
+
+
+def next_hand_delay(table, now):
+    # Admission countdown also gives the result its full hold after queued awards.
+    minimum = 5.5 if table.get("last") else 5
+    return max(now + minimum, table.get("presentation_end", now) + RESULT_HOLD_SECONDS + 0.5)
+
+
 def publish_hand(table, now, db=None):
     hand = table["hand"]
     events = hand.get("presentation", [])
-    for event in events[hand.get("published", 0) :]:
+    published = hand.get("published", 0)
+    runout = any(e["kind"] == "all_in_reveal" for e in events[:published])
+    for event in events[published:]:
+        runout = runout or event["kind"] == "all_in_reveal"
+        table["presentation_end"] = max(now, table.get("presentation_end", now)) + event_duration(event, len(hand["players"]), runout)
         data = dict(event)
         if db is not None and event.get("user") and event["kind"] == "action":
             from .voices import voice_for

@@ -20,7 +20,7 @@ main.table-mode > .message { flex:none; margin:0 0 6px; padding:6px 10px; font-s
 .game .table-frame { position:relative; width:calc(var(--canvas-width) * var(--table-scale)); height:calc(var(--canvas-height) * var(--table-scale)); }
 .game .table-canvas { position:absolute; width:var(--canvas-width); height:var(--canvas-height); transform:scale(var(--table-scale)); transform-origin:0 0; }
 .game .table-scene { position:relative; isolation:isolate; width:var(--canvas-width); height:var(--canvas-height); }
-.game .felt { position:absolute; z-index:-1; inset:154px 140px 160px; border:19px solid var(--wood); border-radius:43% / 47%; background:radial-gradient(ellipse at 50% 40%,var(--felt),var(--felt-dark)); box-shadow:0 2px 0 var(--trim),0 12px 0 var(--wood),0 20px 35px #0005; }
+.game .felt { position:absolute; z-index:-1; inset:154px 140px 208px; border:19px solid var(--wood); border-radius:43% / 47%; background:radial-gradient(ellipse at 50% 40%,var(--felt),var(--felt-dark)); box-shadow:0 2px 0 var(--trim),0 12px 0 var(--wood),0 20px 35px #0005; }
 .game .felt::before { content:''; position:absolute; inset:20px; border:1px solid var(--trim); border-radius:inherit; opacity:.4; }
 :root[data-theme=burgundy_leather] .game .felt::before { border-style:dashed; }
 .game .seat { position:absolute; width:190px; height:252px; padding:0; margin:0; border:0; background:none; text-align:center; transform:translateX(-50%); z-index:2; }
@@ -190,7 +190,7 @@ main.table-mode > .message { flex:none; margin:0 0 6px; padding:6px 10px; font-s
 .game.reduced-motion .turn-progress > span { animation:none; }
 @media (prefers-reduced-motion:reduce) { .game .turn-progress > span { animation:none; } }
 
-.game .seat .face-rank { transform:translateX(-22px); }
+.game .seat .face-rank { transform:none; }
 
 .game .table-viewport { width:100%; min-width:0; max-width:100%; min-height:0; display:grid; place-items:start center; }
 /* Mobile portrait has its own coordinates; controls remain outside the scaled scene. */
@@ -200,12 +200,12 @@ main.table-mode > .message { flex:none; margin:0 0 6px; padding:6px 10px; font-s
   .game.portrait-table .table-stage { min-height:0; display:grid; grid-template-rows:minmax(0,1fr) auto; gap:4px; overflow:hidden; }
   .game.portrait-table .table-viewport { height:100%; overflow:auto; overscroll-behavior:contain; scrollbar-width:none; }
   .portrait-table .table-scene { --deal-x:183px; --deal-y:210px; }
-  .game.portrait-table .felt { inset:36px 22px 31px; border-width:9px; border-radius:48% / 26%; }
+  .game.portrait-table .felt { inset:36px 22px 79px; border-width:9px; border-radius:48% / 26%; }
   .game.portrait-table .felt::before { inset:7px; }
   .game.portrait-table .seat { width:82px; height:126px; }
   .game.portrait-table .seat.n { left:195px; top:12px; --bet-x:41px; --bet-y:157px; }
-  .game.portrait-table .seat.nw { left:46px; top:145px; --bet-x:111px; --bet-y:88px; }
-  .game.portrait-table .seat.ne { left:344px; top:145px; --bet-x:-29px; --bet-y:88px; }
+  .game.portrait-table .seat.nw { left:46px; top:110px; --bet-x:111px; --bet-y:88px; }
+  .game.portrait-table .seat.ne { left:344px; top:110px; --bet-x:-29px; --bet-y:88px; }
   .game.portrait-table .seat.sw { left:46px; top:358px; --bet-x:115px; --bet-y:68px; }
   .game.portrait-table .seat.se { left:344px; top:358px; --bet-x:-33px; --bet-y:68px; }
   .game.portrait-table .seat.s { left:195px; top:470px; --bet-x:41px; --bet-y:-26px; }
@@ -278,4 +278,22 @@ dialog.mobile-raise-dialog { position:fixed; inset:auto 0 0; margin:0 auto; widt
 .game .current-hand-rank { position:absolute; z-index:4; top:94px; left:50%; transform:translateX(-50%); padding:1px 12px; border:1px solid #bea971; border-radius:5px; background:#24332e; color:#ffe4a0; font:700 20px/24px system-ui,sans-serif; white-space:nowrap; pointer-events:none; }
 @media (max-width:899px) and (orientation:portrait) {
   .game.portrait-table .current-hand-rank { top:31px; max-width:82px; padding:0 5px; font-size:max(12px,calc(11px / var(--table-scale))); line-height:16px; border-radius:3px; }
+}
+
+/* Hole-card faces keep both symbols above the fixed nameplate. */
+.game .seat.open-cards .card + .card { margin-left:-34px; }
+.game .seat-feedback { position:absolute; top:222px; left:0; width:190px; display:flex; flex-direction:column; align-items:center; gap:4px; pointer-events:none; z-index:5; }
+.game .seat-feedback .current-hand-rank { position:static; transform:none; max-width:100%; font-size:20px; line-height:24px; padding:1px 10px; }
+.game .seat-feedback .equity-label { position:static; width:100%; }
+.game .seat-feedback .action-label { height:auto; min-height:0; line-height:24px; max-width:100%; }
+.game .seat-feedback:has(.equity-label) .action-label,.game .seat-feedback .empty-label { display:none; }
+.game .seat-feedback .winner-badge { position:static; width:100%; }
+@media (max-width:899px) and (orientation:portrait) {
+ .game.portrait-table .seat.open-cards .card + .card { margin-left:-14px; }
+ .game.portrait-table .seat-feedback { top:100px; width:82px; gap:2px; }
+ .game.portrait-table .seat-feedback .current-hand-rank { font-size:max(12px,calc(11px / var(--table-scale))); line-height:16px; padding:0 5px; }
+ .game.portrait-table .seat-feedback .action-label { line-height:16px; }
+ .game.portrait-table .seat-feedback .winner-badge { width:82px; }
+ /* Leave space for the north player's expanded result stack. */
+ .game.portrait-table .seat.n { --bet-x:105px; }
 }

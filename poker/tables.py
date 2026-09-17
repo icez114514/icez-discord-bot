@@ -8,7 +8,7 @@ import sqlite3
 import time
 
 from . import money, rules
-from .presentation import emit, publish_hand
+from .presentation import emit, publish_hand, next_hand_delay
 from .sessions import authenticate
 from .store import Conflict
 from .voices import VOICE_PACKS, voice_for
@@ -360,7 +360,7 @@ class Transaction:
             table["countdown"] = None
             return
         if table["countdown"] is None:
-            table["countdown"] = self.now + 5
+            table["countdown"] = next_hand_delay(table, self.now)
             return
         if table["countdown"] > self.now:
             return

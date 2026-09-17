@@ -204,7 +204,7 @@ class TableWebTests(unittest.TestCase):
 
     def start_hand(self):
         self.advance(0)
-        self.advance(5)
+        self.advance(max(0, self.view()["countdown"] - self.now))
         hand = self.view()["hand"]
         self.assertIsNotNone(hand)
         return hand
@@ -303,7 +303,7 @@ class TableWebTests(unittest.TestCase):
         self.assertEqual([self.account(u)["in_flight"] for u in (A, B)], ["0", "0"])
         self.assertEqual([len(p["cards"]) for p in state["players"]], [2, 2])
         self.advance(0)
-        self.advance(5)
+        self.advance(max(0, self.view()["countdown"] - self.now))
         self.assertNotEqual(self.view()["hand"]["id"], hand["id"])
 
     def test_maintenance_finishes_current_hand_and_prevents_new_admission(self):

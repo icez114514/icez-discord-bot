@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { EventCursor, eventSound, eventVoice, actorVoice, type EventState, type PublicEvent } from './tableAudio';
-import { baseline as sceneBaseline, startHand, present, eventDuration, type SceneState, type ShownHand } from './presentationState';
+import { baseline as sceneBaseline, startHand, present, presentationDurations, RESULT_HOLD_MS, type SceneState, type ShownHand } from './presentationState';
 import { sound } from './sound';
 export const chips = (value: string) => BigInt(value).toLocaleString('zh-TW');
 const actions: Record<string, string> = { small_blind: '小盲', big_blind: '大盲', check: '過牌', fold: '棄牌', call: '跟注', bet: '下注', raise: '加注' };
@@ -18,10 +18,11 @@ export function useTablePresentation(user:string,reduced=false) {
   const [view,setView]=useState<View>(()=>empty());
   const current=useRef(view), cursor=useRef(new EventCursor()), context=useRef(''), last=useRef<Snapshot|null>(null);
   const timers=useRef(new Set<ReturnType<typeof setTimeout>>()), end=useRef(0), receipts=useRef(new Set<string>()), announced=useRef(new Set<string>());
+  const allInRunout=useRef(false);
   const reduce=useRef(reduced);reduce.current=reduced||systemReduced;
   function update(work:(v:View)=>View) {current.current=work(current.current);setView(current.current);}
   function delay(ms:number,work:()=>void) {const t=setTimeout(()=>{timers.current.delete(t);work();},ms);timers.current.add(t);}
-  function clear() {for(const t of timers.current)clearTimeout(t);timers.current.clear();end.current=0;announced.current.clear();sound.stop();}
+  function clear() {allInRunout.current=false;for(const t of timers.current)clearTimeout(t);timers.current.clear();end.current=0;announced.current.clear();sound.stop();}
   function sync(state:Snapshot) {
     clear();
     const stacks=Object.fromEntries((state.members??[]).filter(m=>m.stack!==undefined).map(m=>[m.id,m.stack!]));
@@ -71,13 +72,12 @@ export function useTablePresentation(user:string,reduced=false) {
     }
     const final=structuredClone(state.hand);
     if(events.some(e=>e.kind==='deal')) update(v=>({...v,...startHand(final,user)}));
-    const durations=events.map(e=>eventDuration(e,final.players.length)), total=durations.reduce((a,b)=>a+b,0);
-    // Finish bursts before the server's five-second next-hand countdown.
-    const factor=Math.min(1,4200/Math.max(1,total));
+    const timing=presentationDurations(events,final.players.length,allInRunout.current);
+    const durations=timing.durations;allInRunout.current=timing.allInRunout;
     let at=Math.max(performance.now(),end.current);
     update(v=>({...v,playing:true}));
     for(let index=0;index<events.length;index++) {
-      const event=events[index], duration=durations[index]*factor;
+      const event=events[index], duration=durations[index];
       const flight=event.kind==='collect'||['payout','refund'].includes(event.kind)||event.kind==='action'&&BigInt(event.amount??'0')>0n;
       const award=event.kind==='payout'||event.kind==='refund';
       delay(Math.max(0,at-performance.now()),()=>{
@@ -94,7 +94,7 @@ export function useTablePresentation(user:string,reduced=false) {
       at+=duration;
     }
     end.current=at;
-    delay(Math.max(0,at-performance.now()),()=>{if(performance.now()+5>=end.current){update(v=>({...v,playing:false}));delay(1400,()=>{if(!current.current.playing)update(v=>({...v,celebrating:false}));});}});
+    delay(Math.max(0,at-performance.now()),()=>{if(performance.now()+5>=end.current){update(v=>({...v,playing:false}));delay(RESULT_HOLD_MS,()=>{if(!current.current.playing&&end.current===at)update(v=>({...v,celebrating:false}));});}});
     return events;
   }
   function result(id:string,failed:boolean) {

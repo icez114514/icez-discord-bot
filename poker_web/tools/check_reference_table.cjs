@@ -67,17 +67,18 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));let chrome,ws;
   assert(Math.abs(result.card.h/result.avatar.h-158/160)<.01,'card height ratio '+width);
   assert(Math.abs(result.name.w/result.avatar.w-190/160)<.01,'name/avatar ratio '+width);
   assert(Math.abs(result.hiddenFan/result.avatar.w-82/160)<.03*(82/160),'hidden fan ratio '+width);
-  assert(Math.abs(result.openFan/result.avatar.w-178/160)<.03*(178/160),'open fan ratio '+width);
+  assert(Math.abs(result.openFan/result.avatar.w-228/160)<.03*(228/160),'open fan ratio '+width);
   } else {
    assert(Math.abs(result.card.w/result.avatar.w-48/64)<.01,'portrait card ratio');
    assert(Math.abs(result.name.w/result.avatar.w-82/64)<.01,'portrait plaque ratio');
-   assert(await run(`document.querySelector('.table-scene').offsetWidth===390&&document.querySelector('.table-scene').offsetHeight===620`),'portrait canvas');
+   assert(await run(`document.querySelector('.table-scene').offsetWidth===390&&document.querySelector('.table-scene').offsetHeight===668`),'portrait canvas');
    assert(await run(`[...document.querySelectorAll('.seat-info strong,.seat-stack')].every(e=>parseFloat(getComputedStyle(e).fontSize)*document.querySelector('.table-scene').getBoundingClientRect().width/390>=11.99)`),'readable mobile names');
    assert(await run(`parseFloat(getComputedStyle(document.querySelector('.own-stack'),'::after').height)*document.querySelector('.table-scene').getBoundingClientRect().width/390>=43.9`),'BB touch height');
    assert(await run(`(()=>{const a=document.querySelector('.hero-seat .seat-plaque').getBoundingClientRect(),b=document.querySelector('.table-viewport').getBoundingClientRect();return a.top>=b.top&&a.bottom<=b.bottom;})()`),'hero initially visible in portrait '+width);
   }
   assert(!result.boardOverlap,'board overlaps seat '+width);assert(!result.panelOverlap,'panel overlaps seat '+width);
   assert(!result.overflow,'horizontal overflow '+width); if(width>=320) assert(await run('document.documentElement.scrollHeight<=innerHeight+1'),'vertical overflow '+width);assert(result.buttons.every(h=>h>=43.9),'button hit height');
+  assert(await run(`(()=>{const seat=document.querySelector('.hero-seat'),plaque=seat.querySelector('.seat-info').getBoundingClientRect();return [...seat.querySelectorAll('.face-rank,.face-suit')].every(e=>e.getBoundingClientRect().bottom<plaque.top);})()`),'both ranks and suits clear of plaque '+width);
   sizes.push({width,height,...result});await shot('table-'+width);
  }
  // Mobile action drawer sends nothing until an explicit confirmation.
@@ -167,6 +168,7 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));let chrome,ws;
  assert(await run("[...document.querySelectorAll('.current-hand-rank')].every(e=>e.textContent==='一對')"),'preflop ranks cannot use future board');
  await shot('all-in-reveal');
  await until("document.querySelectorAll('.board .card:not(.blank)').length===3");
+ assert.equal(await run("getComputedStyle(document.querySelector('.board .card')).getPropertyValue('--flip-duration')"),'585ms','all-in street uses 900ms without compression');
  await shot('all-in-flop');
  await until("document.querySelector('.settlement') && [...document.querySelectorAll('.equity-label')].some(e=>e.textContent.includes('%'))");
  const observed=await run('window.observer.disconnect();window.observed');
@@ -179,6 +181,11 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));let chrome,ws;
  assert(await run("[...document.querySelectorAll('.board .casino-art')].every(e=>e instanceof SVGElement&&getComputedStyle(e).mixBlendMode==='normal'&&getComputedStyle(e).filter==='none')"),'clean vector faces without tint filters');
  assert(await run(`(()=>{const a=document.querySelector('.hero-seat .equity-label').getBoundingClientRect(),b=document.querySelector('.hero-seat .winner-badge').getBoundingClientRect();return b.top>=a.bottom;})()`),'winner and equity do not overlap');
  await shot('settlement');
+ const holdStarted=await run('performance.now()');
+ await until("document.querySelectorAll('.winner-badge').length===0");
+ const held=(await run('performance.now()'))-holdStarted;
+ assert(held>=1700&&held<=2200,'result hold is 1900ms after awards: '+held);
+ console.log('Result hold measured after screenshot',Math.round(held),'ms');
  await run('window.feed('+JSON.stringify(rec.at(-1))+')');
  assert.equal(await run("document.querySelectorAll('.chip-flight').length"),0,'duplicate does not replay');
  // Portrait runout, rotation halfway through, and all side-pot outcomes.
@@ -196,6 +203,7 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));let chrome,ws;
  await until("document.querySelectorAll('.board-deal').length===0");
  assert(await run(`(()=>{const a=document.querySelector('.hero-seat .equity-label').getBoundingClientRect(),b=document.querySelector('.hero-seat .winner-badge').getBoundingClientRect(),v=document.querySelector('.table-viewport').getBoundingClientRect();return b.top>=a.bottom&&b.bottom<=v.bottom;})()`),'portrait winner fits without covering equity');
  await shot('mobile-settlement');
+ assert(await run(`(()=>{const board=document.querySelector('.board>.cards').getBoundingClientRect();return [...document.querySelectorAll('.seat-feedback')].every(e=>{const r=e.getBoundingClientRect();return !(r.left<board.right&&r.right>board.left&&r.top<board.bottom&&r.bottom>board.top);});})()`),'result stacks do not cover community cards');
 
  // Reconnect uses a silent, final baseline and clears queued effects.
  await run('window.feed('+JSON.stringify(rec.at(-2))+',true);window.feed('+JSON.stringify(rec.at(-1))+');window.feed('+JSON.stringify(rec.at(-1))+',true)');

@@ -50,6 +50,12 @@ export function present(scene:SceneState,event:PublicEvent,final:ShownHand,user:
   }
   return next;
 }
-export function eventDuration(event:PublicEvent,players:number) {
-  return ({deal:players*140+420,action:120,collect:220,all_in_reveal:700,board:650,showdown:650,payout:320,refund:320,complete:0} as Record<string,number>)[event.kind]??0;
+export const RESULT_HOLD_MS = 1900;
+export function eventDuration(event:PublicEvent,players:number,allInRunout=false) {
+  return ({deal:players*140+420,action:120,collect:220,all_in_reveal:700,board:allInRunout?900:650,showdown:650,payout:320,refund:320,complete:0} as Record<string,number>)[event.kind]??0;
+}
+
+export function presentationDurations(events:PublicEvent[],players:number,allInRunout=false) {
+  let runout=allInRunout;
+  return {durations:events.map(event=>{if(event.kind==='all_in_reveal')runout=true;return eventDuration(event,players,runout);}),allInRunout:runout};
 }
