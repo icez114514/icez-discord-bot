@@ -22,11 +22,6 @@
 .game .seat.open-cards .seat-cards{top:calc(-1 * var(--hole-h) - 10px);width:calc(2 * var(--hole-w) + 4px);height:var(--hole-h)}
 .game .seat.open-cards .card{width:var(--hole-w);height:var(--hole-h)}
 .game .seat .face-rank{transform:none}
-.game .position-badge,.game .s .position-badge{top:calc(var(--row) + 1px);left:0;transform:none;font:600 14px/18px system-ui;color:var(--muted);z-index:5}
-.game .seat-feedback{left:0;top:calc(var(--row) + 24px);width:100%;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);grid-template-rows:34px 48px;gap:4px 8px;align-items:start}
-.game .seat-feedback .current-hand-rank{grid-column:1;grid-row:1;justify-self:start;max-width:100%;font-size:19px;line-height:26px;padding:1px 8px}
-.game .seat-feedback .equity-label,.game .seat-feedback .action-label{grid-column:2;grid-row:1;position:static;width:100%;font-size:20px;line-height:28px;padding:0 3px;max-width:100%;overflow:hidden;text-overflow:ellipsis}
-.game .seat-feedback .winner-badge{grid-column:1/-1;grid-row:2;width:100%;font-size:22px;line-height:24px}
 .game .seat-status{left:auto;right:-48px;top:28px}
 .game .seat.nw .seat-status,.game .seat.sw .seat-status{left:0;right:auto;top:-48px}
 .game .dealer{display:none} /* The position badge already contains BTN. */
@@ -48,14 +43,14 @@
 .game.reduced-motion .timer-ring{animation:none}
 @media(prefers-reduced-motion:reduce){.game .timer-ring{animation:none}}
 @media(max-width:899px) and (orientation:portrait){
- .game.portrait-table .seat{--avatar:48px;--name:104px;--row:48px;--hole-w:48px;--hole-h:68px;width:152px;height:110px}
- .game.portrait-table .seat.n{left:195px;top:82px;--bet-x:76px;--bet-y:99px}
- .game.portrait-table .seat.nw{left:80px;top:180px;--bet-x:190px;--bet-y:40px}
- .game.portrait-table .seat.ne{left:310px;top:180px;--bet-x:-39px;--bet-y:82px}
- .game.portrait-table .seat.sw{left:80px;top:491px;--bet-x:190px;--bet-y:9px}
- .game.portrait-table .seat.se{left:310px;top:491px;--bet-x:-39px;--bet-y:51px}
- .game.portrait-table .seat.s{left:195px;top:705px;--bet-x:85px;--bet-y:-100px}
- .game.portrait-table .seat.hero-seat{--avatar:56px;--name:114px;--row:56px;--hole-w:55.2px;--hole-h:78.2px;width:170px}
+ .game.portrait-table .seat{--avatar:48px;--name:108px;--row:48px;--hole-w:48px;--hole-h:68px;width:calc(var(--avatar) + var(--name));height:110px}
+ .game.portrait-table .seat.n{left:195px;top:82px;--bet-x:-10px;--bet-y:90px}
+ .game.portrait-table .seat.nw{left:80px;top:280px;--bet-x:190px;--bet-y:40px}
+ .game.portrait-table .seat.ne{left:310px;top:280px;--bet-x:-39px;--bet-y:82px}
+ .game.portrait-table .seat.sw{left:80px;top:640px;--bet-x:190px;--bet-y:9px}
+ .game.portrait-table .seat.se{left:310px;top:640px;--bet-x:-39px;--bet-y:51px}
+ .game.portrait-table .seat.s{left:195px;top:885px;--bet-x:85px;--bet-y:-110px}
+ .game.portrait-table .seat.hero-seat{--avatar:56px;--name:124px;--row:56px;--hole-w:55.2px;--hole-h:78.2px;width:calc(var(--avatar) + var(--name))}
  .game.portrait-table .seat-plaque{width:100%;height:var(--row)}
  .game.portrait-table .portrait{left:0;width:var(--avatar);height:var(--avatar)}
  .game.portrait-table .seat.nw .portrait,.game.portrait-table .seat.sw .portrait{left:var(--name)}
@@ -71,17 +66,12 @@
  .game.portrait-table .seat.open-cards .cards{width:100%}
  .game.portrait-table .seat.open-cards .card{width:var(--hole-w);height:var(--hole-h)}
  .game.portrait-table .seat.open-cards .card + .card{margin:0;transform:none}
- .game.portrait-table .position-badge,.game.portrait-table .s .position-badge{left:0;top:calc(var(--row) + 1px);font-size:10px;line-height:12px}
- .game.portrait-table .seat-feedback{top:calc(var(--row) + 15px);width:100%;grid-template-rows:20px 28px;gap:2px 4px}
- .game.portrait-table .seat-feedback .current-hand-rank{font-size:12px;line-height:17px;padding:0 3px;max-width:100%}
- .game.portrait-table .seat-feedback .equity-label,.game.portrait-table .seat-feedback .action-label{font-size:12px;line-height:17px;padding:0 1px}
- .game.portrait-table .seat-feedback .winner-badge{width:100%;font-size:12px;line-height:14px}
  .game.portrait-table .seat-bet{font-size:14px;max-width:76px;gap:4px}
  .game.portrait-table .pot>b{font-size:18px}
- .game.portrait-table .board{top:337px}
+ .game.portrait-table .board{top:460px}
  .game.portrait-table .pot{top:-34px}
  .game.portrait-table .pot-chips{top:80px;left:50%}
- .game.portrait-table .board-phase{top:109px;left:50%;width:160px}
+ .game.portrait-table .board-phase{top:180px;left:50%;width:56px;flex-direction:column;align-items:center}
  .game.portrait-table .felt{inset:85px 15px 52px}
  .game.portrait-table .seat-status,.game.portrait-table .seat.nw .seat-status,.game.portrait-table .seat.sw .seat-status,.game.portrait-table .ne .seat-status,.game.portrait-table .se .seat-status{left:auto;right:0;top:calc(var(--row) - 4px)}
  .game.portrait-table .seat-status .icon-button{width:28px;height:28px;padding:7px}
@@ -103,33 +93,23 @@
 .game.large-cards .seat.open-cards .card{width:var(--hole-w);height:var(--hole-h)}
 .game.large-cards .seat.open-cards .card + .card{margin-left:0;transform:none}
 .game .seat.n{top:190px}
-.game .position-badge,.game .s .position-badge{left:var(--avatar)}
-.game .nw .position-badge,.game .sw .position-badge{left:0}
 @media(max-width:899px) and (orientation:portrait){
  .game.portrait-table.large-cards .seat{--hole-w:51px;--hole-h:72px}
  .game.portrait-table.large-cards .seat.hero-seat{--hole-w:58.65px;--hole-h:82.8px}
  .game.portrait-table.large-cards .seat.open-cards .card{width:var(--hole-w);height:var(--hole-h)}
  .game.portrait-table.large-cards .seat.open-cards .card + .card{margin-left:0;transform:none}
  .game.portrait-table .seat.n{top:82px}
- .game.portrait-table .position-badge,.game.portrait-table .s .position-badge{left:var(--avatar)}
- .game.portrait-table .nw .position-badge,.game.portrait-table .sw .position-badge{left:0}
 }
 
 /* Landscape uses the bottom corners, rather than reserving an empty full-width row. */
 @media (min-width:900px), (orientation:landscape){
  .game .seat.n{--bet-x:420px;--bet-y:120px}
- .game .seat.n .seat-feedback{left:340px;top:0;width:300px}
- .game .seat.n .position-badge{left:350px;top:90px}
- .game .seat.nw,.game .seat.ne{top:220px}
- .game .seat.sw,.game .seat.se{top:620px}
- .game .seat.sw .seat-feedback{left:260px;top:-80px;width:290px}
- .game .seat.se .seat-feedback{left:-210px;top:-80px;width:290px}
- .game .seat.sw .position-badge{left:365px;top:70px}
- .game .seat.se .position-badge{left:-55px;top:70px}
+ .game .seat.nw,.game .seat.ne{top:var(--upper-y)}
+ .game .seat.sw,.game .seat.se{top:max(650px,calc(var(--upper-y) + 304px + var(--status-row) + max(44px,36px / var(--table-scale))))}
  .game .seat.sw{--bet-x:400px;--bet-y:45px}
  .game .seat.se{--bet-x:-70px;--bet-y:45px}
- .game .seat.s{top:760px}
- .game .board{top:350px}
+ .game .seat.s{top:870px}
+ .game .board{top:480px}
  .game .pot{bottom:calc(100% + 12px)}
  .game .board-phase{left:0;top:-200px;width:240px}
  .game .pot-chips{left:95%}
@@ -146,6 +126,57 @@
 @media (min-width:900px), (orientation:landscape){
  .game .seat.nw,.game .seat.sw{left:12.17%}
  .game .seat.ne,.game .seat.se{left:87.83%}
- .game .seat.n.empty{top:90px}
+
  .game .table-scene{--deal-x:calc(var(--canvas-width) / 2 - 30px)}
+}
+/* Shared seat information anchors: mirrored by column, never by individual label. */
+.game .seat{--info-x:var(--avatar);--avatar-x:0px;--status-font:max(22px,calc(16px / var(--table-scale)));--status-row:max(42px,calc(42px / var(--table-scale)))}
+.game .seat.nw,.game .seat.sw{--info-x:0px;--avatar-x:var(--name)}
+.game .seat .seat-feedback{left:var(--info-x);top:calc(var(--row) + 8px);width:var(--name);display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:var(--status-row) max(44px,calc(36px / var(--table-scale)));gap:6px;align-items:start}
+.game .seat .seat-feedback .action-label,.game .seat .seat-feedback .equity-label{position:static;grid-column:1;grid-row:1;width:100%;height:auto;min-height:0;max-height:var(--status-row);padding:3px 6px;border:1px solid var(--trim);border-radius:7px;background:#172629;color:#f5f2e8;font:700 var(--status-font)/1.15 system-ui,sans-serif;white-space:normal;overflow-wrap:anywhere;overflow:hidden;box-sizing:border-box;text-overflow:clip}
+.game .seat .seat-feedback .equity-label{color:#b7ffcc;border-color:#58ab78;background:#123126}
+.game .seat .seat-feedback .all-in-label{background:#56321d;color:#fff1be;border-color:#e6b56c}
+.game .seat .seat-feedback .winner-badge{grid-column:1;grid-row:2;position:static;width:100%;font-size:max(20px,calc(14px / var(--table-scale)));line-height:1.15}
+.game .seat .portrait .current-hand-rank{position:absolute;top:auto;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%);width:calc(var(--avatar) - 8px);max-width:none;max-height:2.7em;padding:3px 2px;box-sizing:border-box;border:1px solid #bea971;border-radius:6px;background:#202a29;color:#ffe4a0;font:700 var(--status-font)/1.15 system-ui,sans-serif;white-space:normal;overflow-wrap:anywhere;overflow:hidden;text-align:center;pointer-events:none}
+.game .seat .portrait .position-badge{position:absolute;left:50%;top:auto;bottom:-7px;transform:translateX(-50%);width:max-content;max-width:calc(var(--avatar) + 8px);padding:2px 7px;border:1px solid var(--trim);border-radius:999px;background:#182528;color:#f5f2e8;font:700 max(14px,calc(11px / var(--table-scale)))/1.1 system-ui,sans-serif;white-space:nowrap;z-index:8;pointer-events:none}
+@media (min-width:900px), (orientation:landscape){
+ .table-mode > .game{grid-template-rows:minmax(0,1fr);gap:0}
+ .game-toolbar{position:absolute;inset:0 0 auto;z-index:8}
+ .game .seat{--name:max(230px,calc(2 * var(--hole-w) + 4px))}
+ .game .table-scene{--north-y:calc(184px + 8px / var(--table-scale));--upper-y:max(220px,calc(184px + 52px / var(--table-scale)))}
+ .game .seat.n{top:var(--north-y)}
+ .game .seat.n.empty{top:calc(var(--north-y) + 50px - 80px)}
+ .game .felt{top:calc(var(--north-y) + 50px);bottom:315px}
+}
+@media(max-width:899px) and (orientation:portrait){
+ .game.portrait-table .seat{--status-font:max(14px,calc(12px / var(--table-scale)));--status-row:max(32px,calc(32px / var(--table-scale)))}
+ .game.portrait-table .seat .seat-feedback{top:calc(var(--row) + 8px);grid-template-rows:var(--status-row) 30px;gap:3px}
+ .game.portrait-table .seat .seat-feedback .action-label,.game.portrait-table .seat .seat-feedback .equity-label{padding:2px 3px;border-radius:5px}
+ .game.portrait-table .seat .portrait .current-hand-rank{width:var(--avatar);bottom:calc(100% + 8px);font-size:var(--status-font);padding:2px 1px}
+ .game.portrait-table .seat .portrait .position-badge{font-size:10px;padding:1px 4px;bottom:-5px}
+ .game.portrait-table .seat .seat-feedback .winner-badge{font-size:max(12px,calc(12px / var(--table-scale)))}
+}
+/* Keep two-line rank labels readable even when a short desktop scales the canvas. */
+@media (min-width:900px), (orientation:landscape){
+ .game .seat{--column-gap:max(12px,calc(12px / var(--table-scale)));--info-x:calc(var(--avatar) + var(--column-gap));width:calc(var(--avatar) + var(--column-gap) + var(--name))}
+ .game .seat.nw,.game .seat.sw{--info-x:0px;--avatar-x:calc(var(--name) + var(--column-gap))}
+ .game .seat .portrait,.game .seat:is(.nw,.sw) .portrait{left:var(--avatar-x)}
+ .game .seat .seat-info{left:var(--info-x)}
+ .game .seat .seat-cards{left:calc(var(--info-x) + var(--name)/2 - 50px)}
+ .game .seat.open-cards .seat-cards{left:calc(var(--info-x) + var(--name)/2 - var(--hole-w) - 2px)}
+ .game .seat .portrait .current-hand-rank{width:max(calc(var(--avatar) - 8px),3.4em)}
+}
+@media(max-width:899px) and (orientation:portrait){
+ .game.portrait-table .seat{--column-gap:6px;--info-x:calc(var(--avatar) + var(--column-gap));width:calc(var(--avatar) + var(--column-gap) + var(--name))}
+ .game.portrait-table .seat.nw,.game.portrait-table .seat.sw{left:83px;--info-x:0px;--avatar-x:calc(var(--name) + var(--column-gap))}
+ .game.portrait-table .seat.ne,.game.portrait-table .seat.se{left:307px}
+ .game.portrait-table .seat .portrait,.game.portrait-table .seat:is(.nw,.sw) .portrait{left:var(--avatar-x)}
+ .game.portrait-table .seat .seat-info{left:var(--info-x)}
+ .game.portrait-table .seat .seat-cards{left:calc(var(--info-x) + var(--name)/2 - 24px)}
+ .game.portrait-table .seat.open-cards .seat-cards{left:calc(var(--info-x) + var(--name)/2 - var(--hole-w) - 2px)}
+ .game.portrait-table .seat .portrait .current-hand-rank{width:max(var(--avatar),3.4em)}
+}
+/* Short landscape windows place the pot above the first card, clear of north payouts. */
+@media (max-height:800px) and (orientation:landscape){
+ .game .pot{left:0;width:300px}
 }
