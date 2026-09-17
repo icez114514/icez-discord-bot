@@ -16,7 +16,7 @@ const catalog: Record<Sound, { file: string; group: Group; rate?: number }> = {
   fold: { file: 'fold', group: 'chips' }, check: { file: 'check', group: 'chips' },
   collect: { file: 'chips', group: 'chips', rate: 0.8 },
   payout: { file: 'chips', group: 'settlement' }, settle: { file: 'settle', group: 'settlement' }, refund: { file: 'chips', group: 'settlement', rate: 1.2 },
-  turn: { file: 'turn', group: 'reminders' }, tick: { file: 'tick', group: 'reminders' },
+  turn: { file: 'turn-page-chime', group: 'reminders' }, tick: { file: 'tick', group: 'reminders' },
   bank: { file: 'bank', group: 'reminders' }, click: { file: 'click-a3', group: 'interface' },
   topup: { file: 'bank', group: 'interface' }, result: { file: 'click', group: 'interface' },
   error: { file: 'fold', group: 'interface', rate: 0.7 },

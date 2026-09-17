@@ -45,3 +45,12 @@ License: Mixkit Sound Effects Free License, https://mixkit.co/license/#sfxFree
 Converted to Ogg Vorbis without trimming, pitch changes or extra filtering.
 Existing interface volume controls apply. Other cue categories are unchanged.
 click.ogg remains a legacy Kenney asset.
+
+2026-09-18: Turn reminder changed to user-selected Page forward single chime.
+turn-page-chime.ogg: Mixkit / Page forward single chime (SFX 1107).
+Source: https://mixkit.co/free-sound-effects/chimes/
+Original: https://assets.mixkit.co/active_storage/sfx/1107/1107-preview.mp3
+License: Mixkit Sound Effects Free License, https://mixkit.co/license/#sfxFree
+Converted to Ogg Vorbis without trimming, pitch changes or extra filtering.
+Applies to the own-turn cue and reminder preview; countdown and time-bank cues stay unchanged.
+turn.ogg remains a legacy Kenney asset.
