@@ -16,6 +16,7 @@ class Config:
     client_secret: str = field(default="", repr=False)
     bot_token: str = field(default="", repr=False)
     guild_id: str = ""
+    additional_guild_ids: tuple[str, ...] = ()
     reader_token: str = field(default="", repr=False)
     funds_token: str = field(default="", repr=False)
     funds_admins: tuple[str, ...] = ()
@@ -25,6 +26,10 @@ class Config:
     backup_dir: Path | None = None
     export_dir: Path | None = None
     static_dir: Path = Path(__file__).resolve().parent.parent / "poker_web" / "dist"
+
+    @property
+    def allowed_guild_ids(self):
+        return tuple(dict.fromkeys((self.guild_id, *self.additional_guild_ids)))
 
     @property
     def callback(self):
@@ -57,6 +62,8 @@ class Config:
         for name in ("client_id", "guild_id"):
             if not re.fullmatch(r"[0-9]{1,20}", getattr(self, name)):
                 errors.append(name + " must be a Discord ID")
+        if any(not re.fullmatch(r"[0-9]{1,20}", guild) for guild in self.additional_guild_ids):
+            errors.append("POKER_ADDITIONAL_GUILD_IDS must contain Discord IDs")
         for name in ("client_secret", "bot_token", "reader_token", "funds_token"):
             if len(getattr(self, name)) < 16:
                 errors.append(name + " must be configured (minimum 16 characters)")
@@ -98,6 +105,7 @@ class Config:
             client_secret=os.environ.get("POKER_CLIENT_SECRET", os.environ.get("CLIENT_SECRET", "")),
             bot_token=os.environ.get("POKER_BOT_TOKEN", os.environ.get("DISCORD_TOKEN", "")),
             guild_id=os.environ.get("POKER_GUILD_ID", os.environ.get("DISCORD_GUILD_ID", "")),
+            additional_guild_ids=tuple(value.strip() for value in os.environ.get("POKER_ADDITIONAL_GUILD_IDS", "").split(",") if value.strip()),
             reader_token=os.environ.get("POKER_READER_TOKEN", ""),
             funds_token=os.environ.get("POKER_FUNDS_TOKEN", ""),
             funds_admins=tuple(

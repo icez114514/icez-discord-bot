@@ -60,7 +60,7 @@ def create_internal(config, public):
 
         actor = request.headers.get("x-actor-id", "")
         if (not actor.isdigit() or len(actor) > 20
-                or request.headers.get("x-guild-id") != config.guild_id
+                or request.headers.get("x-guild-id") not in config.allowed_guild_ids
                 or (user_id is not None and user_id != actor)):
             raise Unauthorized("personal_statistics_only")
         if await public.state.discord.member(actor) != "member":

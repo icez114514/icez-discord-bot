@@ -56,13 +56,16 @@ class Profiles:
             if self.discord.lock.locked():
                 self.retry_at[user] = self.clock() + 2
                 return
-            response = await self.discord.request(
-                "GET", f"/guilds/{self.discord.config.guild_id}/members/{user}",
-                headers={"Authorization": "Bot " + self.discord.config.bot_token}, timeout=2,
-            )
             profile = None
-            if response is not None and response.status_code == 200:
-                profile = presentation(user, self.discord.config.guild_id, response.json())
+            for guild in self.discord.config.allowed_guild_ids:
+                response = await self.discord.request(
+                    "GET", f"/guilds/{guild}/members/{user}",
+                    headers={"Authorization": "Bot " + self.discord.config.bot_token}, timeout=2,
+                )
+                if response is not None and response.status_code == 200:
+                    profile = presentation(user, guild, response.json())
+                    if profile:
+                        break
             if profile:
                 self.cache[user] = profile
             self.retry_at[user] = self.clock() + (300 if profile else 60)

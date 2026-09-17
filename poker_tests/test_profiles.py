@@ -49,7 +49,7 @@ class PresentationTests(unittest.TestCase):
 class CacheTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.now = 0
-        self.discord = SimpleNamespace(lock=asyncio.Lock(), config=SimpleNamespace(guild_id="456", bot_token="test-only"), request=AsyncMock(return_value=httpx.Response(200, json=member())))
+        self.discord = SimpleNamespace(lock=asyncio.Lock(), config=SimpleNamespace(guild_id="456", allowed_guild_ids=("456",), bot_token="test-only"), request=AsyncMock(return_value=httpx.Response(200, json=member())))
         self.cache = Profiles(self.discord, clock=lambda: self.now)
         self.addAsyncCleanup(self.cache.close)
 
@@ -102,6 +102,12 @@ class CacheTests(unittest.IsolatedAsyncioTestCase):
         self.cache.view([A]); await self.flush()
         self.assertEqual(self.discord.request.await_args.kwargs["timeout"], 2)
         self.assertEqual(len(self.cache.view([A])), 1)
+
+    async def test_profile_can_come_from_second_allowed_guild(self):
+        self.discord.config.allowed_guild_ids = ("456", "789")
+        self.discord.request.side_effect = [httpx.Response(404, json={"code": 10007}), httpx.Response(200, json=member(avatar="b" * 32))]
+        self.cache.view([A]); await self.flush()
+        self.assertIn("guilds/789/", self.cache.view([A])[0]["avatar_url"])
 
     async def test_shutdown_cancels_inflight_profile_work(self):
         self.discord.request.side_effect = lambda *a, **kw: None

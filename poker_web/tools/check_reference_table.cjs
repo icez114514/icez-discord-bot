@@ -156,6 +156,7 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));let chrome,ws;
 
  await until("document.querySelectorAll('.deal-card').length===0 && document.querySelector('.hero-seat.open-cards')");
  assert.equal(await run("document.querySelectorAll('.seat.open-cards').length"),1,'only own cards known at deal');
+ assert.equal(await run("document.querySelectorAll('.current-hand-rank').length"),1,'only viewer sees live private hand category');
  // Baseline immediately before the last call: only the public prefix is visible.
  await run('window.feed('+JSON.stringify(rec.at(-2))+',true)');
  await until("document.querySelectorAll('.board .card:not(.blank)').length===0");
@@ -163,6 +164,7 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));let chrome,ws;
  await run('window.feed('+JSON.stringify(rec.at(-1))+')');
  await until("document.querySelectorAll('.seat.open-cards').length===4");
  assert.equal(await run("document.querySelectorAll('.board .card:not(.blank)').length"),0,'all-in cards must precede runout');
+ assert(await run("[...document.querySelectorAll('.current-hand-rank')].every(e=>e.textContent==='一對')"),'preflop ranks cannot use future board');
  await shot('all-in-reveal');
  await until("document.querySelectorAll('.board .card:not(.blank)').length===3");
  await shot('all-in-flop');

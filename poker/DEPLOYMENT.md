@@ -30,6 +30,11 @@ variables taking precedence and interpolation disabled. --env-file explicitly
 selects another file. Test subprocesses using POKER_ENV=test do not auto-load it.
 Existing APPLICATION_ID, CLIENT_SECRET, DISCORD_TOKEN, DISCORD_GUILD_ID are
 fallbacks for POKER_CLIENT_ID, POKER_CLIENT_SECRET, POKER_BOT_TOKEN, POKER_GUILD_ID.
+POKER_ADDITIONAL_GUILD_IDS adds comma-separated guild IDs without replacing the
+primary guild. Membership in any allowed guild grants access; departure is
+confirmed only when absent from every guild. Discord API failures remain retryable.
+The configured Bot must be present in each guild. Profiles prefer the primary
+guild, then additional guilds in configured order.
 Explicit POKER values win. The web service never imports the crystal Bot.
 
 Set POKER_ORIGIN=https://poker.ice-z.net and register the exact Discord callback

@@ -43,6 +43,13 @@ export function handLabel(cards: string[]): string {
   if (cards.length < 5) return '';
   return ['高牌','一對','兩對','三條','順子','同花','葫蘆','四條','同花順'][Math.floor(strength(cards) / 15 ** 5)];
 }
+/** Evaluate only the hole cards and board already visible to this viewer. */
+export function currentHandLabel(hole: string[], board: string[]): string {
+  const cards = [...hole, ...board];
+  if (hole.length !== 2 || ![0,3,4,5].includes(board.length) || new Set(cards).size !== cards.length || cards.some(card => !deck.includes(card))) return '';
+  if (!board.length) return hole[0][0] === hole[1][0] ? '一對' : '高牌';
+  return handLabel(cards);
+}
 export function eligiblePots(players: EquityPlayer[]) {
   let floor = 0n;
   return [...new Set(players.map(p => p.paid))].map(BigInt).filter(n => n>0n).sort((a,b) => a<b?-1:a>b?1:0).flatMap(level => {

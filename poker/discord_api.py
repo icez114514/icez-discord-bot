@@ -73,10 +73,20 @@ class Discord:
             raise Unauthorized("discord_login_unavailable") from error
 
     async def member(self, user):
+        # Only proven absence in every allowed guild is evidence of departure.
+        results = []
+        for guild in self.config.allowed_guild_ids:
+            result = await self._member_in_guild(user, guild)
+            if result == "member":
+                return "member"
+            results.append(result)
+        return "absent" if all(result == "absent" for result in results) else "retry"
+
+    async def _member_in_guild(self, user, guild_id):
         headers = {"Authorization": "Bot " + self.config.bot_token}
         response = await self.request(
             "GET",
-            "/guilds/" + self.config.guild_id + "/members/" + user,
+            "/guilds/" + guild_id + "/members/" + user,
             headers=headers,
         )
         if response is not None and response.status_code == 200:
@@ -91,7 +101,7 @@ class Discord:
             absent = False
         if absent:
             guild = await self.request(
-                "GET", "/guilds/" + self.config.guild_id, headers=headers
+                "GET", "/guilds/" + guild_id, headers=headers
             )
             if guild is not None and guild.status_code == 200:
                 return "absent"

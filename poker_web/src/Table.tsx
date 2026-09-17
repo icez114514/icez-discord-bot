@@ -1,7 +1,7 @@
 import { usePortraitTable } from './tableLayout';
 import { TurnProgress } from './TurnProgress';
 import { useEquity } from './useEquity';
-import { bestFive, handLabel } from './equity';
+import { bestFive, handLabel, currentHandLabel } from './equity';
 import { TableStage } from './TableStage';
 import { collectedPot } from './chipStacks';
 import { PokerChips } from './PokerChips';
@@ -348,11 +348,14 @@ export function Table({ user, onClose, initialHistory = false }: { user: string;
           const won = !!presentation.view.wins[m.id];
           const lost = presentation.view.resolved && !settlement?.void && player && !player.folded && !won;
           const share = equity?.pots[0]?.shares[m.id];
+          const currentRank = player && !player.folded && !settlement?.void && (m.id === user || presentation.view.revealed)
+            ? currentHandLabel(player.cards, boardCards) : '';
           const acting = active && hand.actor !== null && hand.players[hand.actor]?.id === m.id;
           const dealer = hand?.players[hand.button]?.id === m.id;
           return <article data-player={m.id} className={`seat ${position(seat)} ${acting ? 'acting' : ''} ${player?.folded ? 'folded' : ''} ${m.id === user ? 'hero-seat' : ''} ${player?.cards.length ? 'open-cards' : ''} ${won ? 'won' : lost ? 'lost' : ''}`} key={seat} aria-label={`${playerName(m.id)}，${chips(visibleStack)} 籌碼`}>
             {player ? <div className="seat-cards"><Cards cards={player.cards} hidden={player.cards.length === 0} arrival={presentation.view.deal ? dealTiming(m.id) : undefined} /></div> : null}
             <div className="seat-plaque"><div className="portrait">{positions[m.id] ? <span className="position-badge" aria-label={`位置 ${positions[m.id]}`}>{positions[m.id]}</span> : null}{presentation.view.celebrating && presentation.view.wins[m.id] ? <span className="winner-badge" role="status">WINNER{presentation.view.wins[m.id].amount !== '0' ? <small>派彩 {displayAmount(presentation.view.wins[m.id].amount)}</small> : null}</span> : null}{m.id === user ? <button type="button" className="own-avatar" aria-label="我的座位選單" aria-haspopup="dialog" aria-expanded={seatMenu} onClick={() => setSeatMenu(true)}><PlayerAvatar url={profiles[m.id]?.avatar_url} npc={m.id.startsWith('npc:')} countdown={null} /></button> : <PlayerAvatar url={profiles[m.id]?.avatar_url} npc={m.id.startsWith('npc:')} countdown={null} />}</div>{m.id === user ? <button type="button" className="seat-info own-stack" aria-pressed={preferences.bb} aria-label={`桌上籌碼 ${chips(visibleStack)}，切換 BB／實際額`} title={`原額 ${chips(visibleStack)} 籌碼；點擊切換 BB／實際額`} onClick={() => changePreferences({ ...preferences, bb: !preferences.bb })}><strong title={playerName(m.id)}>{playerName(m.id)}</strong><b className="seat-stack">{stackDisplay(visibleStack, blind, preferences.bb)}</b></button> : <div className="seat-info"><strong title={playerName(m.id)}>{playerName(m.id)}</strong><b className="seat-stack">{displayAmount(visibleStack)}</b></div>}{acting && hand?.deadline ? <TurnProgress deadline={hand.deadline} now={now} duration={m.id.startsWith('npc:')||hand.extensions?5:20} /> : null}</div>
+            {currentRank ? <span className="current-hand-rank" aria-label={`目前牌型：${currentRank}`}>{currentRank}</span> : null}
             {presentation.view.revealed && player && !player.folded ? <span className="equity-label" title="勝率採預期底池占比，包含平手分配；預設顯示主池。">{share === undefined ? (equity ? '僅參與邊池' : equityPending ? '計算勝率…' : '勝率暫不可用') : `勝率 ${equity?.approximate ? '約 ' : ''}${share.toFixed(1)}%`}</span> : null}
             {presentation.view.actions[m.id] ? <span className={`action-label ${presentation.view.actions[m.id].all_in ? 'all-in-label' : ''}`} title={actionLabel(presentation.view.actions[m.id], displayAmount)} role="status">{actionLabel(presentation.view.actions[m.id], displayAmount)}</span> : <span className="action-label empty-label" aria-hidden="true">·</span>}
             <div className="seat-status">{(!m.connected && !m.id.startsWith('npc:')) || m.leaving || m.sitout || m.mode !== 'active' || occupants.length > 1 ? <IconButton icon={m.leaving ? 'leave' : !m.connected && !m.id.startsWith('npc:') ? 'warning' : 'clock'} label={[!m.connected && !m.id.startsWith('npc:') ? '離線' : '', m.leaving ? '本手結束後離桌' : m.sitout ? '手後坐出' : labels[m.mode] ?? m.mode, occupants.length > 1 ? '真人等待接替' : ''].filter(Boolean).join(' · ')} /> : null}</div>

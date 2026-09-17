@@ -37,3 +37,16 @@ test('evaluator agrees with authoritative Python oracle on deterministic 5/7-car
  }
  assert.deepEqual(eligiblePots([player('a',[],'100'),player('b',[],'200')]).map(p=>p.amount),['200']);
 });
+
+test('current hand labels use only visible cards at each street', async()=>{
+ const {currentHandLabel}=await import('./equity.ts');
+ assert.equal(currentHandLabel(['As','Kd'],[]),'高牌');
+ assert.equal(currentHandLabel(['As','Ad'],[]),'一對');
+ assert.equal(currentHandLabel(['As','Ad'],['Ac','Kh','Kd']),'葫蘆');
+ assert.equal(currentHandLabel(['As','Ad'],['Ac','Kh','Kd','Ah']),'四條');
+ assert.equal(currentHandLabel(['As','Ks'],['Qs','Js','Ts']),'同花順');
+ assert.equal(currentHandLabel([],['As','Ks','Qs','Js','Ts']),'');
+ assert.equal(currentHandLabel(['As','As'],[]),'');
+ assert.equal(currentHandLabel(['As','Kd'],['xx','Jh','Tc']),'');
+ assert.equal(currentHandLabel(['As','Kd'],['Qh']),'');
+});

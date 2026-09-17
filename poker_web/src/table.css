@@ -273,3 +273,9 @@ dialog.mobile-raise-dialog { position:fixed; inset:auto 0 0; margin:0 auto; widt
 .mobile-raise-dialog .bet-slider button,.mobile-raise-dialog .bet-slider input { min-width:0; width:100%; min-height:44px; padding:6px; font-size:16px; }
 .mobile-raise-dialog .raise-range { font-size:12px; }
 .mobile-raise-dialog .confirm-raise { width:100%; min-height:48px; }
+
+/* Keep the live hand category just above the nameplate, clear of rank corners. */
+.game .current-hand-rank { position:absolute; z-index:4; top:94px; left:50%; transform:translateX(-50%); padding:1px 12px; border:1px solid #bea971; border-radius:5px; background:#24332e; color:#ffe4a0; font:700 20px/24px system-ui,sans-serif; white-space:nowrap; pointer-events:none; }
+@media (max-width:899px) and (orientation:portrait) {
+  .game.portrait-table .current-hand-rank { top:31px; max-width:82px; padding:0 5px; font-size:max(12px,calc(11px / var(--table-scale))); line-height:16px; border-radius:3px; }
+}
