@@ -68,7 +68,7 @@ function App() {
     finally { setBusy(false); }
   }
   return <ThemeProvider user={account?.user_id}><main className={tableOpen && account ? 'table-mode' : undefined} onPointerDownCapture={() => sound.unlock()} onKeyDownCapture={() => sound.unlock()}>
-    <header><a className="brand" href="/" aria-label="ICEZ 德州撲克首頁"><span aria-hidden="true">♠</span> ICEZ <small>POKER CLUB</small></a><span className="tag">社群專屬</span>{account && !tableOpen ? <ThemePicker /> : null}</header>
+    <header><a className="brand" href="/" aria-label="德州撲克首頁"><span aria-hidden="true">♠</span> POKER CLUB</a><span className="tag">社群專屬</span>{account && !tableOpen ? <ThemePicker /> : null}</header>
     {environment === 'test' ? <p className="message" role="status">測試環境 · 模擬 Discord 身分，非真實 OAuth 驗收。</p> : null}
     
     {error ? <div className="message error" role="alert">{error} <button className="text" onClick={() => void refresh()}>重新整理</button></div> : null}
@@ -81,7 +81,7 @@ function App() {
       {tableOpen ? <Table user={account.user_id} initialHistory={historyStart} onClose={() => { setTableOpen(false); setHistoryStart(false); void refresh(); }} /> : <><button onClick={() => { setHistoryStart(true); setTableOpen(true); }}>上一手摘要與歷史回放</button><Lobby onEnter={() => setTableOpen(true)} /></>}
       <div className="account-footer"><span>Discord ID <code>{account.user_id}</code></span><button className="text" disabled={busy} onClick={() => void logout()}>登出所有裝置</button></div>
     </> : <section className="panel login"><span className="suit" aria-hidden="true">♠</span><h2>歡迎回到牌桌旁</h2><p>使用 Discord 登入，確認社群資格後<br/>即可查看你的獨立德撲帳戶。</p><a className="button" href="/auth/login">使用 Discord 登入 <span aria-hidden="true">↗</span></a><small>首次建立帳戶獲得 50,000 德撲籌碼。</small></section>}
-    <footer><span>ICEZ COMMUNITY · POKER</span><p>德撲籌碼與水晶分開計算。</p></footer>
+    <footer><span>COMMUNITY · POKER</span><p>德撲籌碼與水晶分開計算。</p></footer>
   </main></ThemeProvider>;
 }
 createRoot(document.getElementById('root')!).render(<App />);
