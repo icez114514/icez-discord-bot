@@ -1,4 +1,4 @@
-Sound effects by Kenney, CC0.
+Original sound effects by Kenney, CC0; the selected A3 click uses Mixkit (see below).
 
 Sources: https://kenney.nl/assets/casino-audio and https://kenney.nl/assets/interface-sounds
 
@@ -36,3 +36,12 @@ Do not use the legacy tools/generate_action_voice.py to overwrite these
 finalized files: their parameters and selected takes differ. Runtime serves
 only static Vorbis clips; no model, reference audio or TTS dependency runs
 on the phone. Preferences remain local to this browser and account.
+
+2026-09-18: Interface click changed to user-selected A3.
+click-a3.ogg: Mixkit / Cool interface click tone (SFX 2568).
+Source: https://mixkit.co/free-sound-effects/interface/
+Original: https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3
+License: Mixkit Sound Effects Free License, https://mixkit.co/license/#sfxFree
+Converted to Ogg Vorbis without trimming, pitch changes or extra filtering.
+Existing interface volume controls apply. Other cue categories are unchanged.
+click.ogg remains a legacy Kenney asset.
