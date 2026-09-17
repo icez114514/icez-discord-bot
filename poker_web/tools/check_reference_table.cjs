@@ -78,19 +78,21 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));let chrome,ws;
    return {avatar,card,name,board,panel,hiddenFan:fan('.seat.n'),openFan:fan('.hero-seat'),boardOverlap:seats.some(s=>intersects(s,board)),panelOverlap:seats.some(s=>intersects({...s,h:Math.min(s.h,document.querySelector('.table-viewport').getBoundingClientRect().bottom-s.y)},panel)),overflow:document.documentElement.scrollWidth>innerWidth,buttons:[...document.querySelectorAll('.action-buttons button')].map(e=>e.getBoundingClientRect().height)};
   })()`);
   if(width>=900||width>height){
-  assert(Math.abs(result.card.w/result.avatar.w-112/110)<.01,'card/avatar ratio '+width);
-  assert(Math.abs(result.card.h/result.avatar.h-158/110)<.01,'card height ratio '+width);
-  assert(Math.abs(result.name.w/result.avatar.w-261.6/110)<.01,'name/avatar ratio '+width);
-  assert(Math.abs(result.hiddenFan/result.avatar.w-100/110)<.03*(100/110),'hidden fan ratio '+width);
-  assert(Math.abs(result.openFan/result.avatar.w-261.6/110)<.03*(261.6/110),'open fan ratio '+width);
+  assert(Math.abs(result.card.w/result.avatar.w-112/143)<.01,'card/avatar ratio '+width);
+  assert(Math.abs(result.card.h/result.avatar.h-158/143)<.01,'card height ratio '+width);
+  assert(Math.abs(result.name.w/result.avatar.w-314/143)<.01,'name/avatar ratio '+width);
+  assert(Math.abs(result.hiddenFan/result.avatar.w-100/143)<.03*(100/143),'hidden fan ratio '+width);
+  assert(Math.abs(result.openFan/result.avatar.w-261.6/143)<.03*(261.6/143),'open fan ratio '+width);
   } else {
-   assert(Math.abs(result.card.w/result.avatar.w-48/56)<.01,'portrait card ratio');
-   assert(Math.abs(result.name.w/result.avatar.w-124/56)<.01,'portrait plaque ratio');
+   assert(Math.abs(result.card.w/result.avatar.w-48/70)<.01,'portrait card ratio');
+   assert(Math.abs(result.name.w/result.avatar.w-144/70)<.01,'portrait plaque ratio');
    assert(await run(`document.querySelector('.table-scene').offsetWidth===390&&document.querySelector('.table-scene').offsetHeight===1030`),'portrait canvas');
    assert(await run(`[...document.querySelectorAll('.seat-info strong,.seat-stack')].every(e=>parseFloat(getComputedStyle(e).fontSize)*document.querySelector('.table-scene').getBoundingClientRect().width/390>=11.99)`),'readable mobile names');
    assert(await run(`parseFloat(getComputedStyle(document.querySelector('.own-stack'),'::after').height)*document.querySelector('.table-scene').getBoundingClientRect().width/390>=43.9`),'BB touch height');
    assert(await run(`(()=>{const a=document.querySelector('.hero-seat .seat-plaque').getBoundingClientRect(),b=document.querySelector('.table-viewport').getBoundingClientRect();return a.top>=b.top&&a.bottom<=b.bottom;})()`),'hero initially visible in portrait '+width);
   }
+  assert(await run(`(()=>{const pot=document.querySelector('.pot').getBoundingClientRect(),icon=document.querySelector('.pot-tools .icon-button').getBoundingClientRect();return icon.right<pot.left&&Math.abs(icon.top+icon.height/2-pot.top-pot.height/2)<1&&icon.width>=43.9;})()`),'pot information icon anchored to bar '+width);
+  assert(await run(`(()=>{const seat=document.querySelector('.hero-seat'),avatar=seat.querySelector('.portrait').getBoundingClientRect(),info=seat.querySelector('.seat-info').getBoundingClientRect();return avatar.right>info.left&&avatar.right<info.left+info.width/4;})()`),'avatar overlaps information frame edge '+width);
   assert(!result.boardOverlap,'board overlaps seat '+width);assert(!result.panelOverlap,'panel overlaps seat '+width);
   assert(!result.overflow,'horizontal overflow '+width); if(width>=320) assert(await run('document.documentElement.scrollHeight<=innerHeight+1'),'vertical overflow '+width);assert(result.buttons.every(h=>h>=43.9),'button hit height');
   assert(await run(`(()=>{const seat=document.querySelector('.hero-seat'),plaque=seat.querySelector('.seat-info').getBoundingClientRect();return [...seat.querySelectorAll('.seat-cards .casino-art')].every(e=>e.getBoundingClientRect().bottom<plaque.top);})()`),'both ranks and suits clear of plaque '+width);
