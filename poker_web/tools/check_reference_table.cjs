@@ -336,6 +336,24 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));let chrome,ws;
   }
  }
 
+ for(const [width,height] of [[1920,1080],[390,844]]) {
+  await resize(width,height);
+  const j=await run('structuredClone(geometry)');j.game_mode='double_joker';j.hand.game_mode='double_joker';j.hand.players[0].cards=['Xr','2d'];j.hand.board=['Xb','Js','Qs','Ks','3h'];
+  [['2c','3c'],['4d','5d'],['6h','7h'],['8c','9c'],['2s','3s']].forEach((cards,i)=>{j.hand.players[i+1].cards=cards;});j.hand.payouts={[user]:'600'};j.hand.settlement={void:false,pots:[{id:'main',amount:'600',winners:[user],awards:{[user]:'600'}}],refunds:{}};
+  await run('window.feed('+JSON.stringify(j)+',true)');
+  await until("document.querySelector('.hero-seat .card[aria-label=紅鬼牌] img')?.naturalWidth>0");
+  assert.equal(await run("document.querySelector('.hero-seat .card[aria-label=紅鬼牌]').classList.contains('unused')"),false);
+  assert.equal(await run(`document.querySelector('.hero-seat .card[aria-label="2♦"]').classList.contains('unused')`),true);
+  await until("document.querySelector('.board .card[aria-label=黑鬼牌] img')?.naturalWidth>0");
+  await until("document.querySelector('.hero-seat .equity-label')?.textContent.includes('100.0%')");
+  await shot('joker-showdown-'+width);
+  await run("document.querySelector('.pot-tools button').click()");
+  await until("document.querySelector('.hand-info')?.textContent.includes('紅鬼牌 → A♠')");
+  assert(await run("document.querySelector('.hand-info').textContent.includes('雙鬼牌德州')"));
+  await shot('joker-details-'+width);
+  await call('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
+  await until("!document.querySelector('dialog[open]')");
+ }
  assert.deepEqual(errors,[]);
  assert(observed.some(v=>v.board.length===0&&v.shares.some(s=>s.includes('%'))),'preflop worker equity visible before flop');
  fs.writeFileSync(path.join(output,'measurements.json'),JSON.stringify({sizes,observed},null,2));

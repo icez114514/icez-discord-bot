@@ -18,6 +18,15 @@ POLICY = {
 
 def frames(hand, user):
     """Validate public events against settlement before exposing any frames."""
+    mode = hand.get("game_mode", "standard")
+    allowed = set(rules.deck_for(mode))
+    cards = hand["deck"] + hand["board"] + [c for p in hand["players"] for c in p["cards"]]
+    street_index = rules.STREETS.index(hand["street"])
+    if (len(cards) != len(set(cards)) or not set(cards) <= allowed
+            or len(cards) != len(allowed) - street_index
+            or len(hand["board"]) != (0, 3, 4, 5)[street_index]
+            or any(len(p["cards"]) != 2 for p in hand["players"])):
+        raise ValueError("invalid_cards")
     events = hand["presentation"]
     if hand.get("replay_version") != 1 or hand.get("void"):
         raise ValueError("unsupported")
@@ -141,6 +150,7 @@ def frames(hand, user):
         output.append(
             {
                 "step": index,
+                "game_mode": mode,
                 "event": public,
                 "street": street,
                 "board": list(board),
@@ -221,7 +231,7 @@ def detail(db, user, hand_id):
             != evidence["data"]["payouts"]
         ):
             return result
-        result.update(frames=frames(hand, user), complete=True, reason=None)
+        result.update(frames=frames(hand, user), complete=True, reason=None, game_mode=hand.get("game_mode", "standard"))
     except (KeyError, ValueError, TypeError, IndexError):
         pass
     return result

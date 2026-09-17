@@ -5,6 +5,7 @@ from collections import Counter
 from itertools import combinations
 
 from .store import Conflict
+from .wildcards import deck_for, evaluate as wild_evaluate, JOKERS
 from .presentation import collect, hand_event
 
 CARDS = tuple(r + s for r in "23456789TJQKA" for s in "cdhs")
@@ -15,6 +16,9 @@ BIG_BLIND = 100
 
 def strength(cards):
     """Comparable best-five score, including the ace-low straight."""
+
+    if any(c in JOKERS for c in cards):
+        return wild_evaluate(cards)
 
     def five(hand):
         ranks = sorted(("23456789TJQKA".index(c[0]) + 2 for c in hand), reverse=True)
@@ -53,7 +57,7 @@ def clockwise(hand, after):
     return [(after + i) % n for i in range(1, n + 1)]
 
 
-def create(players, button, hand_id):
+def create(players, button, hand_id, game_mode="standard"):
     """Production always uses OS-backed randomness. No seed/deck input."""
     if (
         not 2 <= len(players) <= 6
@@ -69,10 +73,11 @@ def create(players, button, hand_id):
         )
     ):
         raise Conflict("invalid_participants")
-    deck = list(CARDS)
+    deck = list(deck_for(game_mode))
     secrets.SystemRandom().shuffle(deck)
     hand = {
         "id": hand_id,
+        "game_mode": game_mode,
         "players": [],
         "button": button,
         "deck": deck,
@@ -344,10 +349,13 @@ def project(hand, user):
                 "paid": str(p["paid"]),
                 "folded": p["folded"],
                 "cards": p["cards"] if shown else [],
+                "best_hand": wild_evaluate(p["cards"] + hand["board"], details=True)
+                if shown and not p["folded"] and len(hand["board"]) >= 3 else None,
             }
         )
     return {
         "id": hand["id"],
+        "game_mode": hand.get("game_mode", "standard"),
         "players": players,
         "button": hand["button"],
         "board": hand["board"],

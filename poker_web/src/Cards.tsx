@@ -1,7 +1,7 @@
 import { casinoCard } from './casinoCard';
 import { TableGeometryContext } from './tableLayout';
 import { memo, useContext, useState, type CSSProperties } from 'react';
-const suits: Record<string, string> = { c: '♣', d: '♦', h: '♥', s: '♠' };
+import { cardLabel } from './wildcards';
 export function CardBack({className='',style,target}:{className?:string;style?:CSSProperties;target?:string}) {
   return <img data-target={target} className={className} style={style} src="/assets/cards/casino/back.png" alt="" aria-hidden="true" draggable={false}/>;
 }
@@ -10,7 +10,7 @@ const Card=memo(function Card({card,hidden,unused,token,delay,duration,enter}:Ca
   const [finished,setFinished]=useState('');
   const animating=!!token&&finished!==token;
   const style={'--card-delay':delay+'ms','--flip-duration':duration+'ms'} as CSSProperties;
-  const label=card?`${card[0]==='T'?'10':card[0]}${suits[card[1]]}`:hidden?'未公開底牌':'尚未發牌';
+  const label=card?cardLabel(card):hidden?'未公開底牌':'尚未發牌';
   return <span data-suit={card?.[1]} aria-label={label} className={'card casino-card'+(card?'':hidden?' back':' blank')+(unused?' unused':'')+(animating?(enter?' board-deal':' hole-arrival'):'')} style={style}>
     {card?<span className="card-face" onAnimationEnd={event=>{if(event.target===event.currentTarget)setFinished(token);}}><img className="casino-art" src={casinoCard(card)} alt="" aria-hidden="true" draggable={false}/></span>:hidden?<CardBack className="casino-art"/>:null}
     {animating&&card?<CardBack className="deal-back"/>:null}

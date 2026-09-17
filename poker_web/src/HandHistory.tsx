@@ -5,6 +5,7 @@ import { SettlementDetails, type Settlement } from './TableEffects';
 import { actionLabel, chips } from './tablePresentation';
 import type { PublicEvent } from './tableAudio';
 import './replay.css';
+import { modeLabel, type GameMode } from './wildcards';
 
 type Frame = {
   step: number; event: PublicEvent & { automatic?: boolean }; street: string; board: string[]; pot: string;
@@ -14,7 +15,7 @@ type Frame = {
 type Policy = { support: string; retention: string };
 type Hand = { hand_id: string; table_id: string; status: string };
 type History = { hands: Hand[]; next_cursor: number | null; policy: Policy };
-type Replay = { hand_id: string; complete: boolean; reason: string | null; frames: Frame[]; policy: Policy };
+type Replay = { game_mode?: GameMode; hand_id: string; complete: boolean; reason: string | null; frames: Frame[]; policy: Policy };
 const streets: Record<string, string> = { preflop: '翻牌前', flop: '翻牌', turn: '轉牌', river: '河牌' };
 
 function description(frame: Frame, name: (id: string) => string) {
@@ -112,7 +113,7 @@ export function HandHistory({ user, ownTurn, seconds, connected, onClose }: {
           })}
           <button onClick={() => seek(last)}>最終結算</button>
         </div>
-        <p className="replay-step" role="status">{summary ? '上一手摘要' : `步驟 ${step + 1} / ${last + 1}`} · {streets[frame.street]} · {description(frame, name)}</p>
+        <p className="replay-step" role="status">{modeLabel(replay?.game_mode)} · {summary ? '上一手摘要' : `步驟 ${step + 1} / ${last + 1}`} · {streets[frame.street]} · {description(frame, name)}</p>
         <div className="replay-board"><Cards cards={frame.board} slots={5} /><p>未派發底池 {chips(frame.pot)}</p></div>
         <div className="replay-players">{frame.players.map(p => <article key={p.id} data-replay-player={p.id}><strong>{name(p.id)}{p.folded ? ' · 已棄牌' : ''}</strong><Cards cards={p.cards} hidden={!p.cards.length} /><small>籌碼 {chips(p.stack)} · 本街 {chips(p.bet)} · 總投入 {chips(p.paid)}</small></article>)}</div>
         {frame.settlement ? <SettlementDetails settlement={frame.settlement} name={name} /> : null}

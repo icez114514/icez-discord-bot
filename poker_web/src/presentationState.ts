@@ -1,6 +1,6 @@
 import type { PublicEvent } from './tableAudio';
 export type ShownPlayer = {id:string;cards:string[];stack:string;paid:string;bet:string;folded:boolean};
-export type ShownHand = {id:string;board:string[];players:ShownPlayer[];pot:string;street:string;button?:number;payouts:Record<string,string>|null;settlement?:{void:boolean;pots:{id:string;amount:string;winners:string[];awards:Record<string,string>}[];refunds:Record<string,string>}|null};
+export type ShownHand = {game_mode?: import("./wildcards").GameMode;id:string;board:string[];players:ShownPlayer[];pot:string;street:string;button?:number;payouts:Record<string,string>|null;settlement?:{void:boolean;pots:{id:string;amount:string;winners:string[];awards:Record<string,string>}[];refunds:Record<string,string>}|null};
 export type Outcome = {amount:string};
 export type SceneState = {hand:ShownHand|null;revealed:boolean;resolved:boolean;wins:Record<string,Outcome>};
 export function baseline(hand:ShownHand|null, stacks:Record<string,string>={}):SceneState {

@@ -24,6 +24,10 @@ def main():
         sys.path.insert(0, str(ROOT))
         eval7 = importlib.import_module("eval7")
         fixed = importlib.import_module("bot.bot")
+        # Load vendor bot first: the repository also contains an unrelated bot.py.
+        sys.path.append(str(Path(__file__).resolve().parent.parent))
+        from poker.joker_npc import decide as joker_decide
+        sys.path.pop()
         eval7.evaluate([eval7.Card(c) for c in ("As", "Kd", "Qh", "Jc", "Tc")])
         print(json.dumps({"ready": True}), flush=True)
     except Exception as error:
@@ -39,7 +43,7 @@ def main():
             state = json.loads(line)
             # Keep upstream short-stack strategy and the same five-action conversion.
             # Bypass only decide()'s silent exception fallback.
-            decision = fixed._push_fold(state) if state["street"] == "preflop" else None
+            decision = joker_decide(state) if state.get("game_mode") == "double_joker" else (fixed._push_fold(state) if state["street"] == "preflop" else None)
             if decision is None:
                 strategy = fixed._DEEP_CFR.get_strategy(state)
                 strategy = fixed._apply_legal_mask(strategy, state)

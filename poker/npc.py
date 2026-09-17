@@ -41,6 +41,8 @@ def observation(hand):
     legal = rules.legal(hand)
     return {
         "street": hand["street"],
+        "game_mode": hand.get("game_mode", "standard"),
+        "max_raise_to": legal.get("max_raise_to", 0),
         "dealer": hand["button"],
         "seat_to_act": i,
         "your_cards": p["cards"],
@@ -56,6 +58,7 @@ def observation(hand):
             {
                 "seat": j,
                 "stack": q["stack"],
+                "paid": q["paid"],
                 "bet_this_street": q["bet"],
                 "is_folded": q["folded"],
                 "is_all_in": q["stack"] == 0,

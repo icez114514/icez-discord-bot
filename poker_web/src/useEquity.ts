@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
+import type { GameMode } from './wildcards';
 import type { EquityPlayer, EquityResult } from './equity';
-export function useEquity(hand: string, board: string[], players: EquityPlayer[], enabled: boolean) {
+export function useEquity(hand: string, board: string[], players: EquityPlayer[], enabled: boolean, game_mode: GameMode = "standard") {
   // Serialization deliberately strips all fields other than public cards/contributions.
-  const payload = enabled ? JSON.stringify({ board, players: players.map(p=>({id:p.id,cards:p.folded?[]:p.cards,paid:p.paid,folded:p.folded})) }) : '';
+  const payload = enabled ? JSON.stringify({ game_mode, board, players: players.map(p=>({id:p.id,cards:p.folded?[]:p.cards,paid:p.paid,folded:p.folded})) }) : '';
   const key = hand + ':' + payload;
   const [state,setState] = useState<{key:string;result:EquityResult|null}>({key:'',result:null});
   useEffect(()=>{

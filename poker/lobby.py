@@ -4,6 +4,7 @@ import json
 import secrets
 import sqlite3
 import time
+from typing import Literal
 
 from fastapi import Request
 from fastapi.responses import JSONResponse
@@ -27,10 +28,15 @@ class CreateTable(BaseModel):
     command_id: str = Field(min_length=1, max_length=80, pattern=r"^[A-Za-z0-9_-]+$")
     name: str = Field(min_length=1, max_length=40)
     private: bool = False
+    game_mode: Literal["standard", "double_joker"] = "standard"
     amount: str = Field(pattern=r"^[1-9][0-9]{0,15}$")
 
 
 async def create(tables, token, data):
+    data = dict(data)
+    # Preserve pre-mode standard creation fingerprints for idempotent retries.
+    if data.get("game_mode") == "standard":
+        data.pop("game_mode")
     def operation(db):
         user = authenticate(db, token)
         cid = "create:" + user + ":" + data["command_id"]
@@ -49,7 +55,8 @@ async def create(tables, token, data):
             try:
                 table = initial(secrets.token_hex(12))
                 table.update(
-                    name=data["name"].strip() or "50 / 100", private=data["private"]
+                    name=data["name"].strip() or "50 / 100", private=data["private"],
+                    game_mode=data.get("game_mode", "standard")
                 )
                 if data["private"]:
                     table["invitation"] = secrets.token_urlsafe(32)
@@ -96,6 +103,7 @@ def install(app, cookie):
                     {
                         "id": t["id"],
                         "name": t.get("name", "50 / 100"),
+                        "game_mode": t.get("game_mode", "standard"),
                         "version": t["version"],
                         "seats": len({m["seat"] for m in t["members"]}),
                         "limit": 6,

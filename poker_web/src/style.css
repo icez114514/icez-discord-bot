@@ -140,3 +140,7 @@ select { min-height: 44px; border: 1px solid var(--line); border-radius: 6px; pa
 .audit-records pre { white-space: pre-wrap; overflow-wrap: anywhere; padding: 12px; border-bottom: 1px solid var(--line); font-size: 12px; }
 
 .audit-record { padding: 12px 0; border-bottom: 1px solid var(--line); }.audit-record dl > div { display: grid; grid-template-columns: 100px minmax(0,1fr); gap: 10px; }.audit-record dt { color: var(--muted); }.audit-record dd { margin: 0; overflow-wrap: anywhere; }
+
+.game-mode-label { color:var(--accent); font-size:14px; font-weight:600; }
+.home-room-info .game-mode-label { display:block; margin:0 0 8px; }
+.lobby label select { width:100%; margin-top:6px; }

@@ -1,14 +1,17 @@
 // Built-homepage acceptance with isolated API fixtures; never contacts a real account.
 const fs=require('node:fs'),path=require('node:path'),http=require('node:http'),os=require('node:os'),assert=require('node:assert/strict'),{spawn}=require('node:child_process');
 const root=path.resolve(__dirname,'../..'),dist=path.resolve(root,process.env.HOME_BUILD||'poker_web/dist'),out=path.join(root,'tmp/home-acceptance');fs.mkdirSync(out,{recursive:true});
-let requests=[],pendingResponse=null,empty=false,seated=false,profile=true,loggedIn=true;
+let createRequests=[];
+let requests=[];pendingResponse=null,empty=false,seated=false,profile=true,loggedIn=true;
 const user='111111111111111111';
 const api={ '/api/environment':{environment:'production'},'/api/roles':{tables:true,funds:true},'/api/preferences':{theme:'midnight_oak'},'/api/voice':{voice_pack:'default'}};
 const server=http.createServer((req,res)=>{const url=new URL(req.url,'http://localhost');const json=(data,status=200)=>{res.writeHead(status,{'Content-Type':'application/json'});res.end(JSON.stringify(data));};
+if(req.method==='POST'&&url.pathname==='/api/tables'){let body='';req.on('data',d=>body+=d);req.on('end',()=>{createRequests.push(JSON.parse(body));json({result:{error:'table_capacity'}},409);});return;}
+if(url.pathname==='/api/table')return json({id:'private',name:'鬼牌私人桌',game_mode:'double_joker',version:3,joined:false});
 if(req.method==='POST'&&url.pathname==='/api/table/commands'){let body='';req.on('data',d=>body+=d);req.on('end',()=>{requests.push(JSON.parse(body));pendingResponse=()=>json({error:'temporary'},503);});return;}
 if(url.pathname==='/api/account')return loggedIn?json({user_id:user,available:'3200',table:'0',in_flight:'0',settled:'3200',subsidy:{eligible:true,amount:'1800',reason:null}}):json({},401);
 if(url.pathname==='/api/profile')return json({user_id:user,profile:profile?{id:user,display_name:'MexicatI · 很長很長的玩家名字',avatar_url:'/missing-avatar.png'}:null});
-if(url.pathname==='/api/tables')return json({current_table:seated?'one':null,tables:empty?[]:[{id:'one',name:'朋友小聚',version:1,seats:3,limit:6},{id:'two',name:'深夜牌局',version:2,seats:6,limit:6}]});
+if(url.pathname==='/api/tables')return json({current_table:seated?'one':null,tables:empty?[]:[{id:'one',game_mode:'double_joker',name:'朋友小聚',version:1,seats:3,limit:6},{id:'two',name:'深夜牌局',version:2,seats:6,limit:6}]});
 if(api[url.pathname])return json(api[url.pathname]);
 if(url.pathname.startsWith('/api/'))return json({});
 const file=path.resolve(dist,'.'+decodeURIComponent(url.pathname==='/'?'/index.html':url.pathname));if(!file.startsWith(dist+path.sep)||!fs.existsSync(file)){res.writeHead(404);return res.end();}
@@ -18,6 +21,35 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));let chrome,ws;
 ws=new WebSocket(pages.find(p=>p.type==='page').webSocketDebuggerUrl);await new Promise(r=>ws.onopen=r);let id=0;const callbacks=new Map(),errors=[];ws.onmessage=e=>{const d=JSON.parse(e.data);if(d.method==='Runtime.exceptionThrown')errors.push(d.params.exceptionDetails);if(d.id){callbacks.get(d.id)(d.result);callbacks.delete(d.id);}};const call=(method,params={})=>new Promise(r=>{callbacks.set(++id,r);ws.send(JSON.stringify({id,method,params}));});const run=async expression=>{const r=await call('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});if(r.exceptionDetails)throw Error(JSON.stringify(r.exceptionDetails));return r.result.value;};const until=async expr=>{for(let i=0;i<150;i++){if(await run(expr))return;await delay(40);}throw Error('Timeout '+expr);};
 await call('Page.enable');await call('Runtime.enable');const load=async()=>{await call('Page.navigate',{url:'http://127.0.0.1:18988/'});await until('!!document.querySelector(".home-lobby .room,.empty-lobby")');};
 for(const [width,height] of [[1920,1080],[1440,900],[1280,720],[320,568],[360,780],[390,844],[430,932]]){await call('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:false});await load();await until('document.querySelector(".home-profile").textContent.includes("MexicatI")');assert(await run('document.documentElement.scrollWidth<=innerWidth'),'overflow '+width);assert(await run('document.querySelectorAll(".room button")[1].disabled'),'full room');fs.writeFileSync(path.join(out,'home-'+width+'.png'),Buffer.from((await call('Page.captureScreenshot',{format:'png',captureBeyondViewport:true})).data,'base64'));}
+for(const [width,height] of [[1440,900],[390,844]]) {
+ await call('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:false});await load();
+ assert(await run("document.querySelector('.room .game-mode-label').textContent==='雙鬼牌德州'"));
+ await run("document.querySelector('.home-lobby .panel-top button').click()");
+ await until("!!document.querySelector('dialog select')");
+ assert.equal(await run("document.querySelector('dialog select').value"),'standard');
+ await run("(()=>{const s=document.querySelector('dialog select');s.value='double_joker';s.dispatchEvent(new Event('change',{bubbles:true}));})()");
+ assert(await run("document.querySelector('dialog').textContent.includes('開桌後不可更改')"));
+ assert(await run("document.documentElement.scrollWidth<=innerWidth"));
+ fs.writeFileSync(path.join(out,'joker-create-'+width+'.png'),Buffer.from((await call('Page.captureScreenshot',{format:'png',captureBeyondViewport:true})).data,'base64'));
+ const before=createRequests.length;
+ await run("document.querySelector('dialog form').requestSubmit();document.querySelector('dialog form').requestSubmit()");
+ await until("document.querySelector('dialog').textContent.includes('目前兩張活動桌')");
+ assert.equal(createRequests.length,before+1);assert.equal(createRequests.at(-1).game_mode,'double_joker');
+ await load();
+ await run("[...document.querySelectorAll('.home-utilities button')].find(b=>b.textContent.includes('私人邀請')).click()");
+ await until("!!document.querySelector('dialog input[type=url]')");
+ await run("(()=>{const e=document.querySelector('dialog input[type=url]');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(e,'http://127.0.0.1:18988/#invite=private:secret');e.dispatchEvent(new Event('input',{bubbles:true}));})()");
+ const joins=requests.length;
+ await run("document.querySelector('dialog form').requestSubmit()");
+ await until("document.querySelector('dialog .game-mode-label')?.textContent.includes('雙鬼牌德州')");
+ assert.equal(requests.length,joins,'preview must not buy in');
+ fs.writeFileSync(path.join(out,'joker-invite-'+width+'.png'),Buffer.from((await call('Page.captureScreenshot',{format:'png',captureBeyondViewport:true})).data,'base64'));
+ await run("document.querySelector('dialog form').requestSubmit()");
+ for(let i=0;i<100&&!pendingResponse;i++)await delay(20);
+ assert.equal(requests.length,joins+1);assert.equal(requests.at(-1).invitation,'secret');
+ pendingResponse();pendingResponse=null;await load();
+}
+requests=[];
 const click=async(x,y)=>{await call('Input.dispatchMouseEvent',{type:'mousePressed',x,y,button:'left',clickCount:1});await call('Input.dispatchMouseEvent',{type:'mouseReleased',x,y,button:'left',clickCount:1});};
 await run('document.querySelector(".home-profile").focus();document.querySelector(".home-profile").click()');await until('!!document.querySelector("dialog[open]")');await run('(()=>{const b=[...document.querySelectorAll("dialog button")].find(b=>b.textContent==="外觀主題");b.focus();b.click();})()');await until('document.querySelectorAll("dialog[open]").length===2');await click(2,2);await until('document.querySelectorAll("dialog[open]").length===1');assert(await run('document.activeElement.textContent==="外觀主題"'),'nested focus');await click(2,2);await until('!document.querySelector("dialog")');assert(await run('document.activeElement.className==="home-profile"'),'profile focus');
 await run('document.querySelector(".home-wallet").click()');await until('!!document.querySelector("dialog[open]")');const rect=await run('(()=>{const r=document.querySelector("dialog").getBoundingClientRect();return{x:r.x+30,y:r.y+30}})()');await call('Input.dispatchMouseEvent',{type:'mousePressed',...rect,button:'left',clickCount:1});await call('Input.dispatchMouseEvent',{type:'mouseReleased',x:2,y:2,button:'left',clickCount:1});assert(await run('!!document.querySelector("dialog[open]")'),'drag protection');await call('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});await call('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});await until('!document.querySelector("dialog")');

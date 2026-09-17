@@ -17,6 +17,7 @@ from .voices import VOICE_PACKS, voice_for
 def initial(table_id="main"):
     return {
         "id": table_id,
+        "game_mode": "standard",
         "version": 0,
         "owner": None,
         "members": [],
@@ -94,6 +95,7 @@ def public(db, table, user, connection=None):
         "server_time": time.time(),
         "events": table.get("events", []),
         "name": table.get("name", "50 / 100"),
+        "game_mode": table.get("game_mode", "standard"),
         "private": table.get("private", False),
         "owner": table["owner"],
         "countdown": table["countdown"],
@@ -391,6 +393,7 @@ class Transaction:
             [(m["id"], stack(self.db, m["id"])) for m in eligible],
             eligible.index(next_button),
             secrets.token_hex(16),
+            table.get("game_mode", "standard"),
         )
         table["hand"], table["countdown"] = hand, None
         self.funds(
@@ -553,6 +556,8 @@ class Tables:
             )
             accessible(table, user, invitation, spectator=True)
             state = public(db, table, user, connection)
+            # This read passed invitation authorization; command errors do not expose private metadata.
+            state.update(name=table.get("name", "50 / 100"), game_mode=table.get("game_mode", "standard"))
             return state
 
         return await self.store.run(operation)
@@ -781,7 +786,8 @@ class Tables:
                         valid = (
                             valid
                             and len(cards) == len(set(cards))
-                            and set(cards) <= set(rules.CARDS)
+                            and hand.get("game_mode", "standard") == table.get("game_mode", "standard")
+                            and set(cards) <= set(rules.deck_for(hand.get("game_mode", "standard")))
                             and 0 <= hand["actor"] < len(hand["players"])
                             and isinstance(hand["deadline"], (int, float))
                         )
@@ -793,7 +799,7 @@ class Tables:
                         street = rules.STREETS.index(hand["street"])
                         valid = (
                             valid
-                            and len(cards) == 52 - street
+                            and len(cards) == len(rules.deck_for(hand.get("game_mode", "standard"))) - street
                             and len(hand["board"]) == (0, 3, 4, 5)[street]
                         )
                         valid = (
