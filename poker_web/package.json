@@ -7,6 +7,7 @@
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
     "dev": "vite --host 127.0.0.1",
+    "test:reference": "npm run build && node tools/check_reference_table.cjs",
     "test": "node --experimental-strip-types --test src/*.test.mjs"
   },
   "dependencies": {

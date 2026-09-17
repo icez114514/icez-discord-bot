@@ -41,6 +41,7 @@ def frames(hand, user):
     awards: dict[tuple[str, str], int] = {}
     actions = []
     revealed = False
+    runout_revealed = False
     street = "preflop"
     settlement = rules.project(hand, user)["settlement"]
     for index, event in enumerate(events):
@@ -67,7 +68,7 @@ def frames(hand, user):
         elif kind == "action":
             p = players[event["user"]]
             amount = int(event["amount"])
-            if amount < 0 or int(p["stack"]) < amount or p["folded"] or revealed:
+            if amount < 0 or int(p["stack"]) < amount or p["folded"] or revealed or runout_revealed:
                 raise ValueError("invalid_action")
             p["stack"] = str(int(p["stack"]) - amount)
             p["bet"] = str(int(p["bet"]) + amount)
@@ -97,6 +98,19 @@ def frames(hand, user):
             ):
                 raise ValueError("invalid_board")
             street, board = next_street, event["board"]
+        elif kind == "all_in_reveal":
+            live = [p for p in players.values() if not p["folded"]]
+            able = [p for p in live if int(p["stack"]) > 0]
+            highest = max(int(p["bet"]) for p in live)
+            expected = {p["id"]: p["cards"] for p in hand["players"] if p["id"] in {x["id"] for x in live}}
+            if (runout_revealed or revealed or len(board) == 5 or len(live) < 2
+                    or len(able) > 1 or any(int(p["bet"]) < highest for p in able)
+                    or event.get("cards") != expected or not hand["showdown"]):
+                raise ValueError("invalid_all_in_reveal")
+            runout_revealed = True
+            public["cards"] = expected
+            for p in live:
+                p["cards"] = expected[p["id"]]
         elif kind == "showdown":
             if revealed or not hand["showdown"] or len(board) != 5:
                 raise ValueError("invalid_showdown")

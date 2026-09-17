@@ -3,7 +3,7 @@ import type { Sound, VoicePack } from './sound';
 export type PublicEvent = {
   id: string; seq: number; at: number; kind: string; hand_id?: string; user?: string;
   action?: string; bet_level?: number; amount?: string; raise_to?: string; all_in?: boolean;
-  voice_pack?: VoicePack; board?: string[];
+  voice_pack?: VoicePack; board?: string[]; cards?: Record<string, string[]>;
   amounts?: Record<string, string>; pot_id?: string; reason?: string; turn?: number;
 };
 export type EventState = { id: string; event_seq?: number; events?: PublicEvent[]; server_time?: number };

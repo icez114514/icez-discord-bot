@@ -21,7 +21,7 @@ function description(frame: Frame, name: (id: string) => string) {
   const event = frame.event;
   if (event.kind === 'action') return `${name(event.user!)} · ${actionLabel(event)}${event.automatic ? '（自動）' : ''}`;
   if (event.kind === 'payout' || event.kind === 'refund') return `${name(event.user!)} · ${event.kind === 'refund' ? '退款' : '實領'} ${chips(event.amount!)}`;
-  return ({ deal: '發牌', board: '發出公共牌', collect: '下注收池', showdown: '攤牌公開', complete: '最終結算' } as Record<string, string>)[event.kind] ?? event.kind;
+  return ({ deal: '發牌', board: '發出公共牌', collect: '下注收池', all_in_reveal: '全下鎖定攤牌', showdown: '攤牌公開', complete: '最終結算' } as Record<string, string>)[event.kind] ?? event.kind;
 }
 
 export function HandHistory({ user, ownTurn, seconds, connected, onClose }: {
@@ -120,7 +120,7 @@ export function HandHistory({ user, ownTurn, seconds, connected, onClose }: {
           const entries = replay.frames.filter(f => f.street === street);
           if (!entries.length) return null;
           const board = entries.find(f => f.event.kind === 'board')?.board;
-          return <section key={street}><h3>{label}</h3>{board ? <Cards cards={board} slots={5} /> : null}<ol>{entries.filter(f => ['action', 'showdown', 'payout', 'refund'].includes(f.event.kind)).map(f => <li key={f.step}>{description(f, name)}</li>)}</ol></section>;
+          return <section key={street}><h3>{label}</h3>{board ? <Cards cards={board} slots={5} /> : null}<ol>{entries.filter(f => ['action', 'all_in_reveal', 'showdown', 'payout', 'refund'].includes(f.event.kind)).map(f => <li key={f.step}>{description(f, name)}</li>)}</ol></section>;
         })}</div> : null}
       </> : null}
       {history ? <small className="replay-policy">{history.policy.support} {history.policy.retention} 每頁 20 手，包含離桌或斷線期間已保存的紀錄。</small> : null}

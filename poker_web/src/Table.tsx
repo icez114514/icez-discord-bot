@@ -1,3 +1,6 @@
+import { TurnProgress } from './TurnProgress';
+import { useEquity } from './useEquity';
+import { bestFive, handLabel } from './equity';
 import { TableStage } from './TableStage';
 import { collectedPot } from './chipStacks';
 import { PokerChips } from './PokerChips';
@@ -6,13 +9,13 @@ import { bbPreset, positiveInteger, ratio, readPreferences, savePreferences, sta
 import { evaluatePreselection, type Preselection } from './preselection';
 import { HandHistory } from './HandHistory';
 import { Cards } from './Cards';
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { Modal } from './Modal';
 import { ThemePicker } from './Theme';
 import { clamp, potPreset, sliderAmount } from './betting';
 import { sound } from './sound';
 import { actionLabel, useTablePresentation } from './tablePresentation';
-import { ChipFlights, SettlementDetails, type Settlement } from './TableEffects';
+import { ChipFlights, DealFlights, SettlementDetails, type Settlement } from './TableEffects';
 import { IconButton } from './IconButton';
 import { AccountTools } from './AccountTools';
 import { handPositions } from './positions';
@@ -81,7 +84,21 @@ export function Table({ user, onClose, initialHistory = false }: { user: string;
   const [log, setLog] = useState<string[]>([]);
   const prefs = useSyncExternalStore(sound.subscribe, sound.preferences);
   const muted = prefs.muted;
-  const presentation = useTablePresentation(user);
+  const presentation = useTablePresentation(user, prefs.reduced);
+  const loggedEvents = useRef(new Set<string>());
+  useEffect(() => {
+    const events = presentation.view.played.filter(event => !loggedEvents.current.has(event.id));
+    events.forEach(event => loggedEvents.current.add(event.id));
+    while (loggedEvents.current.size > 256) loggedEvents.current.delete(loggedEvents.current.values().next().value!);
+    const lines = events.flatMap(event => {
+      if (event.kind === 'action') return [(event.user === user ? '你' : '座上玩家') + ' · ' + actionLabel(event)];
+      if (event.kind === 'payout' || event.kind === 'refund') return [(event.user === user ? '你' : '座上玩家') + (event.kind === 'refund' ? ' 退款 ' : ' 派彩 ') + chips(event.amount ?? '0')];
+      if (event.kind === 'board') return ['公共牌已發出'];
+      if (event.kind === 'all_in_reveal') return ['全下鎖定攤牌'];
+      return [];
+    });
+    if (lines.length) setLog(old => [...old, ...lines].slice(-80));
+  }, [presentation.view.played, user]);
   const latest = useRef<State | null>(null);
   const scene = useRef<HTMLDivElement | null>(null);
   const tick = useRef('');
@@ -94,6 +111,7 @@ export function Table({ user, onClose, initialHistory = false }: { user: string;
     if (prior?.id === next.id && next.version < prior.version) return;
     latest.current = next;
     if (next.server_time != null) serverOffset.current = next.server_time - Date.now() / 1000;
+    setNow(clockNow());
     if (preselected.current) {
       const result = phaseRef.current === 'synced' && !replaying.current && !pending.current
         ? evaluatePreselection(preselected.current, next, user, control.current, clockNow()) : 'cancel';
@@ -106,15 +124,8 @@ export function Table({ user, onClose, initialHistory = false }: { user: string;
         });
       }
     }
-    const events = presentation.receive(next, baseline || replaying.current);
-    const lines = events.flatMap(event => {
-      if (event.kind === 'action') return [(event.user === user ? '你' : '座上玩家') + ' · ' + actionLabel(event)];
-      if (event.kind === 'payout' || event.kind === 'refund') return [(event.user === user ? '你' : '座上玩家') + (event.kind === 'refund' ? ' 退款 ' : ' 派彩 ') + chips(event.amount ?? '0')];
-      if (event.kind === 'board') return [labels[(event as { street?: string }).street ?? ''] ?? '公共牌已發出'];
-      return [];
-    });
-    if (prior && prior.id !== next.id) setLog(lines);
-    else if (lines.length) setLog(old => [...old, ...lines].slice(-80));
+    presentation.receive(next, baseline || replaying.current);
+    if (prior && prior.id !== next.id) { setLog([]); loggedEvents.current.clear(); }
     setState(next);
   }
   useEffect(() => {
@@ -151,7 +162,7 @@ export function Table({ user, onClose, initialHistory = false }: { user: string;
     const heartbeat = setInterval(() => {
       if (socketRef.current?.readyState === WebSocket.OPEN) socketRef.current.send(JSON.stringify({ type: 'heartbeat' }));
     }, 15000);
-    const clock = setInterval(() => setNow(clockNow()), 250);
+    const clock = setInterval(() => setNow(clockNow()), 1000);
     const leave = () => {
       if (socketRef.current?.readyState === WebSocket.OPEN) socketRef.current.send(JSON.stringify({ type: 'leave' }));
     };
@@ -205,7 +216,9 @@ export function Table({ user, onClose, initialHistory = false }: { user: string;
   const hand = state?.hand;
   const positions = handPositions(hand);
   const active = hand && !hand.payouts;
-  const settlement = hand?.settlement;
+  const visualHand = presentation.view.hand?.id === hand?.id ? presentation.view.hand : hand;
+  const visualPlayers = visualHand?.players ?? [];
+  const settlement = visualHand?.settlement;
   const refundTotal = Object.values(settlement?.refunds ?? {}).reduce((n, a) => n + BigInt(a), 0n);
   const awardTotal = (settlement?.pots ?? []).reduce((n, pot) => n + BigInt(pot.amount), 0n);
   const mine = state?.members?.find(m => m.id === user);
@@ -258,10 +271,25 @@ export function Table({ user, onClose, initialHistory = false }: { user: string;
   }
   const blind = state?.rules?.big_blind;
   const displayAmount = (amount: string) => stackDisplay(amount, blind, preferences.bb);
-  const potChips = collectedPot(hand?.pot ?? '0', hand?.players.map(p => p.bet) ?? [], !!hand?.payouts);
+  const potChips = collectedPot(visualHand?.pot ?? '0', visualPlayers.map(p => p.bet), !!visualHand?.payouts);
   const boardEvent = presentation.view.board;
-  const boardCards = boardEvent?.board ?? hand?.board ?? [];
-  const reveal = boardEvent?.board ? { id: boardEvent.id, count: boardEvent.board.length, from: boardEvent.board.length === 3 ? 0 : boardEvent.board.length - 1 } : undefined;
+  const boardCards = visualHand?.board ?? [];
+  const { result:equity, pending:equityPending } = useEquity(hand?.id ?? '', boardCards, visualPlayers, presentation.view.revealed);
+  const {highlight,rankLabel}=useMemo(()=>{
+    const winners=visualPlayers.filter(p=>presentation.view.wins[p.id]);
+    return {
+      highlight:presentation.view.resolved&&boardCards.length===5?[...new Set(winners.flatMap(p=>bestFive([...p.cards,...boardCards])))]:undefined,
+      rankLabel:winners[0]?.cards.length===2&&boardCards.length===5?handLabel([...winners[0].cards,...boardCards]):'',
+    };
+  },[visualHand,presentation.view.wins,presentation.view.resolved]);
+  const dealOrder = visualPlayers.map(p => p.id);
+  const button = hand?.button ?? 0;
+  const dealTiming = (id: string) => {
+    const index = (dealOrder.indexOf(id) - button - 1 + dealOrder.length) % dealOrder.length;
+    const factor = presentation.view.flightDuration / (dealOrder.length * 140 + 420);
+    return { id: presentation.view.deal!.id, duration:180*factor, delays: [index, index + dealOrder.length].map(n => (n * 70 + 220) * factor) };
+  };
+  const reveal = boardEvent?.board ? { id: boardEvent.id, duration:presentation.view.boardDuration, count: boardEvent.board.length, from: boardEvent.board.length === 3 ? 0 : boardEvent.board.length - 1 } : undefined;
   const presets = (hand?.street === 'preflop' ? preferences.preflop : preferences.postflop).map(value => {
     const parsed = ratio(value)!;
     const target = hand?.street === 'preflop' ? bbPreset(blind, value, minimum, maximum)
@@ -297,27 +325,32 @@ export function Table({ user, onClose, initialHistory = false }: { user: string;
     {state?.frozen ? <p role="alert">牌桌資金待恢復核對，暫停所有操作。</p> : null}
     {state?.closed ? <p className="table-closed">牌桌已關閉；當手完成後退回剩餘籌碼。</p> : null}
     {state?.joined ? <>
-      <TableStage><div className="table-scene" ref={scene}><ChipFlights events={presentation.view.flights} scene={scene} format={displayAmount} /><div className="felt" aria-hidden="true" />
-        <div className="board"><strong className={`pot ${chips(hand?.pot ?? '0').length > 18 ? 'long-pot' : ''}`}><span>總底池</span><b>{displayAmount(hand?.pot ?? '0')}</b></strong><Cards cards={boardCards} slots={5} reveal={reveal} /><div className="pot-chips" aria-label={`已收進底池 ${displayAmount(potChips)}`}><PokerChips amount={potChips} /></div><div className="board-phase">{state.countdown ? <IconButton icon="clock" label={`下一手倒數 ${Math.max(0, Math.ceil(state.countdown - now))} 秒`} /> : active ? <IconButton icon="info" label={labels[hand.street] ?? hand.street} onClick={() => setInfo('hand')} /> : null}{hand?.payouts ? <p role="status" className="settlement">{settlement ? `${settlement.void ? '作廢' : `派彩 ${displayAmount(awardTotal.toString())}`} · 退款 ${displayAmount(refundTotal.toString())}` : '本手已結算'}</p> : null}</div></div>
+      <TableStage><div className="table-scene" ref={scene}><ChipFlights events={presentation.view.flights} scene={scene} format={displayAmount} duration={presentation.view.flightDuration} /><DealFlights event={presentation.view.deal} players={dealOrder} button={button} scene={scene} duration={presentation.view.flightDuration} /><div className="felt" aria-hidden="true" />
+        <div className="board"><strong className={`pot ${chips(visualHand?.pot ?? '0').length > 18 ? 'long-pot' : ''}`}><span>總底池</span><b>{displayAmount(visualHand?.pot ?? '0')}</b></strong><Cards cards={boardCards} slots={5} reveal={reveal} highlight={highlight} />{rankLabel ? <strong className="hand-rank">{rankLabel}</strong> : null}<div className="pot-chips" aria-label={`已收進底池 ${displayAmount(potChips)}`}><PokerChips amount={potChips} /></div><div className="board-phase">{equity ? <IconButton icon="info" label="主池／邊池勝率" onClick={() => setInfo('hand')} /> : null}{state.countdown && !presentation.view.playing ? <IconButton icon="clock" label={`下一手倒數 ${Math.max(0, Math.ceil(state.countdown - now))} 秒`} /> : active ? <IconButton icon="info" label={labels[hand.street] ?? hand.street} onClick={() => setInfo('hand')} /> : null}{visualHand?.payouts ? <p role="status" className="settlement">{settlement ? `${settlement.void ? '作廢' : `派彩 ${displayAmount(awardTotal.toString())}`} · 退款 ${displayAmount(refundTotal.toString())}` : '本手已結算'}</p> : null}</div></div>
         {Array.from({ length: 6 }, (_, seat) => {
           const occupants = seated.filter(m => m.seat === seat);
           const m = occupants.find(m => hand?.players.some(p => p.id === m.id)) ?? occupants[0];
           if (!m) return <article key={seat} className={`seat empty ${position(seat)}`}>
             {state.owner === user ? <button className="empty-seat-button" aria-label={`在座位 ${seat + 1} 加入 Bot`} disabled={disabled} onClick={() => setAddBotSeat(seat)}><strong>{seat + 1}</strong><span aria-hidden="true">＋</span></button> : <strong className="empty-seat-number" aria-label={`座位 ${seat + 1}，尚未入座`}>{seat + 1}</strong>}
           </article>;
-          const player = hand?.players.find(p => p.id === m.id);
+          const player = visualPlayers.find(p => p.id === m.id);
+          const visibleStack = player?.stack ?? m.stack;
+          const won = !!presentation.view.wins[m.id];
+          const lost = presentation.view.resolved && !settlement?.void && player && !player.folded && !won;
+          const share = equity?.pots[0]?.shares[m.id];
           const acting = active && hand.actor !== null && hand.players[hand.actor]?.id === m.id;
           const dealer = hand?.players[hand.button]?.id === m.id;
-          return <article data-player={m.id} className={`seat ${position(seat)} ${acting ? 'acting' : ''} ${player?.folded ? 'folded' : ''} ${m.id === user ? 'hero-seat' : ''}`} key={seat} aria-label={`${playerName(m.id)}，${chips(m.stack)} 籌碼`}>
-            {player ? <div className="seat-cards"><Cards cards={player.cards} hidden={player.cards.length === 0} /></div> : null}
-            <div className="seat-plaque"><div className="portrait">{positions[m.id] ? <span className="position-badge" aria-label={`位置 ${positions[m.id]}`}>{positions[m.id]}</span> : null}{presentation.view.wins[m.id] ? <span className="winner-badge" role="status">WIN<small>派彩 {displayAmount(presentation.view.wins[m.id].amount ?? '0')}</small></span> : null}{m.id === user ? <button type="button" className="own-avatar" aria-label="我的座位選單" aria-haspopup="dialog" aria-expanded={seatMenu} onClick={() => setSeatMenu(true)}><PlayerAvatar url={profiles[m.id]?.avatar_url} npc={m.id.startsWith('npc:')} countdown={acting ? seconds : null} /></button> : <PlayerAvatar url={profiles[m.id]?.avatar_url} npc={m.id.startsWith('npc:')} countdown={acting ? seconds : null} />}{acting ? <svg className="countdown-ring" viewBox="0 0 100 100" aria-label={`剩餘 ${seconds} 秒`}><circle cx="50" cy="50" r="46" pathLength="100" /><circle cx="50" cy="50" r="46" pathLength="100" strokeDasharray={`${Math.min(100, seconds / (m.id.startsWith('npc:') ? 5 : hand?.extensions ? 5 : 20) * 100)} 100`} /></svg> : null}</div>{m.id === user ? <button type="button" className="seat-info own-stack" aria-pressed={preferences.bb} aria-label={`桌上籌碼 ${chips(m.stack)}，切換 BB／實際額`} title={`原額 ${chips(m.stack)} 籌碼；點擊切換 BB／實際額`} onClick={() => changePreferences({ ...preferences, bb: !preferences.bb })}><strong title={playerName(m.id)}>{playerName(m.id)}</strong><b className="seat-stack">{stackDisplay(m.stack, blind, preferences.bb)}</b></button> : <div className="seat-info"><strong title={playerName(m.id)}>{playerName(m.id)}</strong><b className="seat-stack">{displayAmount(m.stack)}</b></div>}</div>
+          return <article data-player={m.id} className={`seat ${position(seat)} ${acting ? 'acting' : ''} ${player?.folded ? 'folded' : ''} ${m.id === user ? 'hero-seat' : ''} ${player?.cards.length ? 'open-cards' : ''} ${won ? 'won' : lost ? 'lost' : ''}`} key={seat} aria-label={`${playerName(m.id)}，${chips(visibleStack)} 籌碼`}>
+            {player ? <div className="seat-cards"><Cards cards={player.cards} hidden={player.cards.length === 0} arrival={presentation.view.deal ? dealTiming(m.id) : undefined} /></div> : null}
+            <div className="seat-plaque"><div className="portrait">{positions[m.id] ? <span className="position-badge" aria-label={`位置 ${positions[m.id]}`}>{positions[m.id]}</span> : null}{presentation.view.celebrating && presentation.view.wins[m.id] ? <span className="winner-badge" role="status">WINNER{presentation.view.wins[m.id].amount !== '0' ? <small>派彩 {displayAmount(presentation.view.wins[m.id].amount)}</small> : null}</span> : null}{m.id === user ? <button type="button" className="own-avatar" aria-label="我的座位選單" aria-haspopup="dialog" aria-expanded={seatMenu} onClick={() => setSeatMenu(true)}><PlayerAvatar url={profiles[m.id]?.avatar_url} npc={m.id.startsWith('npc:')} countdown={null} /></button> : <PlayerAvatar url={profiles[m.id]?.avatar_url} npc={m.id.startsWith('npc:')} countdown={null} />}</div>{m.id === user ? <button type="button" className="seat-info own-stack" aria-pressed={preferences.bb} aria-label={`桌上籌碼 ${chips(visibleStack)}，切換 BB／實際額`} title={`原額 ${chips(visibleStack)} 籌碼；點擊切換 BB／實際額`} onClick={() => changePreferences({ ...preferences, bb: !preferences.bb })}><strong title={playerName(m.id)}>{playerName(m.id)}</strong><b className="seat-stack">{stackDisplay(visibleStack, blind, preferences.bb)}</b></button> : <div className="seat-info"><strong title={playerName(m.id)}>{playerName(m.id)}</strong><b className="seat-stack">{displayAmount(visibleStack)}</b></div>}{acting && hand?.deadline ? <TurnProgress deadline={hand.deadline} now={now} duration={m.id.startsWith('npc:')||hand.extensions?5:20} /> : null}</div>
+            {presentation.view.revealed && player && !player.folded ? <span className="equity-label" title="勝率採預期底池占比，包含平手分配；預設顯示主池。">{share === undefined ? (equity ? '僅參與邊池' : equityPending ? '計算勝率…' : '勝率暫不可用') : `勝率 ${equity?.approximate ? '約 ' : ''}${share.toFixed(1)}%`}</span> : null}
             {presentation.view.actions[m.id] ? <span className={`action-label ${presentation.view.actions[m.id].all_in ? 'all-in-label' : ''}`} title={actionLabel(presentation.view.actions[m.id], displayAmount)} role="status">{actionLabel(presentation.view.actions[m.id], displayAmount)}</span> : <span className="action-label empty-label" aria-hidden="true">·</span>}
             <div className="seat-status">{(!m.connected && !m.id.startsWith('npc:')) || m.leaving || m.sitout || m.mode !== 'active' || occupants.length > 1 ? <IconButton icon={m.leaving ? 'leave' : !m.connected && !m.id.startsWith('npc:') ? 'warning' : 'clock'} label={[!m.connected && !m.id.startsWith('npc:') ? '離線' : '', m.leaving ? '本手結束後離桌' : m.sitout ? '手後坐出' : labels[m.mode] ?? m.mode, occupants.length > 1 ? '真人等待接替' : ''].filter(Boolean).join(' · ')} /> : null}</div>
             {dealer ? <span className="dealer" aria-label="Dealer Button 莊位">BTN</span> : null}
-            {active && player && BigInt(player.bet) > 0n ? <span className="seat-bet"><PokerChips amount={player.bet} /><b>{displayAmount(player.bet)}</b></span> : null}
+            <span className="seat-bet" data-empty={!player || BigInt(player.bet) === 0n}><PokerChips amount={player?.bet ?? '0'} /><b>{displayAmount(player?.bet ?? '0')}</b></span>
           </article>;
         })}
-      </div></TableStage>
+      </div>
       <div className="table-action-slot" data-visible={ownTurn || canPreselect}>
       <section className={`action-panel ${ownTurn ? '' : 'action-panel-hidden'}`} aria-label="牌桌操作" aria-hidden={!ownTurn} inert={!ownTurn}>
         <div className="turn-line"><strong>輪到你行動</strong><span className="timebank" title="行動時間用盡時自動補時，每次 5 秒，每手最多 4 次">◷ 補時池 {state.time_bank ?? 0}s{active && hand.extensions > 0 ? ` · 已用 ${hand.extensions}/4` : ''}</span></div>
@@ -327,8 +360,8 @@ export function Table({ user, onClose, initialHistory = false }: { user: string;
         <div className="action-buttons"><button className="action-fold" disabled={disabled || !ownTurn} onClick={() => act('fold')}>棄牌</button><button className="action-call" disabled={disabled || !ownTurn} onClick={() => act(hand?.legal.check ? 'check' : 'call')}>{hand?.legal.check ? '過牌' : <>跟注<span>{chips(hand?.legal.call ?? '0')}</span></>}</button><button className={raiseValue === maximum && canRaise ? 'action-raise action-all-in' : 'action-raise'} disabled={!canRaise || !raiseValid} onClick={() => act('raise', raise)}>{raiseValue === maximum && canRaise ? '全下' : betLabel}<span>{chips(raiseValue.toString())}</span></button></div>
       </section>
       <section className={`preselection ${canPreselect ? '' : 'preselection-idle'}`} aria-label="下一次行動預選" aria-hidden={!canPreselect} inert={!canPreselect}><button disabled={!canPreselect} aria-pressed={selection?.action === 'check_fold'} onClick={() => choosePreselection('check_fold')}>棄牌／過牌</button><button disabled={!canPreselect} aria-pressed={selection?.action === 'call_any'} onClick={() => choosePreselection('call_any')}>跟任何注</button></section>
-      </div>
-      {info ? <Modal title={info === 'hand' ? '本手牌局' : '牌局紀錄'} onClose={() => setInfo(null)}>{info === 'hand' ? <div className="hand-info"><button onClick={() => setInfo('log')}>牌局紀錄</button><p>{hand ? `手牌 ${hand.id} · ${labels[hand.street] ?? hand.street}` : '尚未開始'} · 底池 {chips(hand?.pot ?? '0')}</p><span>你的底牌</span><Cards cards={ownPlayer?.cards ?? []} /><span>公共牌</span><Cards cards={hand?.board ?? []} slots={5} />{hand?.settlement ? <SettlementDetails settlement={hand.settlement} name={playerName} /> : null}</div> : <><button onClick={() => setInfo('hand')}>本手牌局</button><p>本次連線觀察到的公開異動，最多保留 80 筆；重連期間可能不完整。</p>{log.length ? <ol className="game-log">{log.map((entry, index) => <li key={index}>{entry}</li>)}</ol> : <p>尚無新的牌局異動。</p>}</>}</Modal> : null}
+      </div></TableStage>
+      {info ? <Modal title={info === 'hand' ? '本手牌局' : '牌局紀錄'} onClose={() => setInfo(null)}>{info === 'hand' ? <div className="hand-info"><button onClick={() => setInfo('log')}>牌局紀錄</button><p>{hand ? `手牌 ${hand.id} · ${labels[visualHand?.street ?? ''] ?? visualHand?.street}` : '尚未開始'} · 底池 {chips(visualHand?.pot ?? '0')}</p><span>你的底牌</span><Cards cards={ownPlayer?.cards ?? []} /><span>公共牌</span><Cards cards={boardCards} slots={5} />{equity && equity.pots.length > 1 ? <details className="equity-breakdown" open><summary>主池／邊池勝率</summary>{equity.pots.map((pot,index) => <p key={index}>{index ? '邊池 ' + index : '主池'} · {displayAmount(pot.amount)}<br/>{Object.entries(pot.shares).map(([id,value]) => `${playerName(id)} ${equity.approximate ? '約 ' : ''}${value.toFixed(1)}%`).join(' · ')}</p>)}</details> : null}{settlement ? <SettlementDetails settlement={settlement} name={playerName} /> : null}</div> : <><button onClick={() => setInfo('hand')}>本手牌局</button><p>本次連線觀察到的公開異動，最多保留 80 筆；重連期間可能不完整。</p>{log.length ? <ol className="game-log">{log.map((entry, index) => <li key={index}>{entry}</li>)}</ol> : <p>尚無新的牌局異動。</p>}</>}</Modal> : null}
       {options ? <Modal title="牌桌選項" onClose={() => setOptions(false)}><ThemePicker /><TablePreferences value={preferences} onChange={changePreferences} saved={preferencesSaved} /><p className="bank">補時池 {state.time_bank} / 60 秒 · 自動補時每次 +5 秒，最多 4 次</p>
         <div className="table-controls"><label>補碼金額<input inputMode="numeric" value={amount} onChange={e => setAmount(e.target.value)} /></label><button disabled={disabled || !!mine?.topup || mine?.leaving} onClick={() => command('topup', { amount })}>申請手後補碼</button><button disabled={disabled || mine?.leaving || mine?.sitout} onClick={() => command(mine?.mode === 'sitout' ? 'sit_in' : 'sitout')}>{mine?.mode === 'sitout' ? '重新坐入' : mine?.sitout ? '已排隊坐出' : '手後坐出'}</button></div>
         {mine?.expires ? <p>座位保留 {Math.max(0, Math.ceil(mine.expires - now))} 秒</p> : null}

@@ -248,6 +248,9 @@ def advance(hand, after):
     if hand["street"] == "river":
         finish(hand)
         return
+    if len(able) <= 1 and not hand.get("runout_revealed"):
+        hand["runout_revealed"] = True
+        hand_event(hand, "all_in_reveal", cards={p["id"]: list(p["cards"]) for p in alive})
     collect(hand)
     hand["street"] = STREETS[STREETS.index(hand["street"]) + 1]
     hand["deck"].pop()  # Burn before every public street.

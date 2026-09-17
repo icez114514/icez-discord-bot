@@ -42,7 +42,7 @@ async function browser(index, slow = false) {
     return result.result.value;
   };
   const wait = expr => until(() => run(expr), expr);
-  const click = async text => { const selector = "[...document.querySelectorAll('button')].find(b=>b.textContent===" + JSON.stringify(text) + "&&!b.disabled)"; await wait('!!(' + selector + ')'); await run('(' + selector + ').scrollIntoView({block:"center"})'); const rect = await run('(()=>{const r=(' + selector + ').getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2};})()'); const hit = await run('(()=>{const e=document.elementFromPoint(' + rect.x + ',' + rect.y + ');return (' + selector + ').contains(e)?null:e?.outerHTML.slice(0,250)??"outside viewport";})()'); if (hit) throw Error('Click blocked: '+text+' by '+hit); await call('Input.dispatchMouseEvent', { type:'mousePressed', button:'left', clickCount:1, ...rect }); await call('Input.dispatchMouseEvent', { type:'mouseReleased', button:'left', clickCount:1, ...rect }); };
+  const click = async text => { const selector = "[...document.querySelectorAll('button')].find(b=>(b.textContent===" + JSON.stringify(text) + "||b.getAttribute('aria-label')===" + JSON.stringify(text) + ")&&!b.disabled)"; await wait('!!(' + selector + ')'); await run('(' + selector + ').scrollIntoView({block:"center"})'); const rect = await run('(()=>{const r=(' + selector + ').getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2};})()'); const hit = await run('(()=>{const e=document.elementFromPoint(' + rect.x + ',' + rect.y + ');return (' + selector + ').contains(e)?null:e?.outerHTML.slice(0,250)??"outside viewport";})()'); if (hit) throw Error('Click blocked: '+text+' by '+hit); await call('Input.dispatchMouseEvent', { type:'mousePressed', button:'left', clickCount:1, ...rect }); await call('Input.dispatchMouseEvent', { type:'mouseReleased', button:'left', clickCount:1, ...rect }); };
   const shot = async name => fs.writeFileSync(path.join(output, name + '.png'), Buffer.from((await call('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true })).data, 'base64'));
   const page = { call, run, wait, click, shot, socket, errors }; pages.push(page);
   await call('Runtime.enable');
@@ -55,7 +55,7 @@ async function browser(index, slow = false) {
     const NativeFetch = window.fetch;
     window.fetch = async (...args) => {
       const url = String(args[0]);
-      if (url.includes('/assets/audio/') && ${slow}) await new Promise(r => setTimeout(r, 1000));
+      if (url.includes('/assets/audio/') && ${slow}) await new Promise(r => setTimeout(r, 11000));
       if (url === '/api/table/commands' && args[1]?.body && JSON.parse(args[1].body).kind === 'act') {
         window.commandCount++; return new Response(JSON.stringify({ result: { accepted: true }, state: window.testState }), { headers: { 'Content-Type':'application/json' } });
       }
@@ -111,7 +111,12 @@ function fresh(source = recordings) {
 async function feed(page, state, type = 'state') { await page.run('window.feed(' + JSON.stringify(state) + ',' + JSON.stringify(type) + ')'); }
 async function finish(page, batch, winners = 3) {
   for (const state of batch) await feed(page, state);
-  await page.wait("document.body.innerText.includes('結算明細')");
+  await page.wait("!!document.querySelector('.settlement')");
+  if(await page.run("document.querySelector('.game').classList.contains('reduced-motion')")){
+    await page.wait("document.querySelectorAll('.seat.won').length==="+winners);
+    assert.equal(await page.run("document.querySelectorAll('.chip-flight,.winner-badge').length"),0);
+    return;
+  }
   await page.wait("window.seenWins.length>=" + winners);
   const transfers = batch.at(-1).events.filter(e => e.kind === 'payout' || e.kind === 'refund').length;
   await page.wait("window.seenFlights.filter(f=>f.kind.includes('payout')||f.kind.includes('refund')).length>=" + transfers);
@@ -122,7 +127,7 @@ try {
   const page = await browser(0);
   const batch = fresh();
   for (const state of batch.slice(0, -1)) await feed(page, state);
-  await page.wait("window.seenFlights.filter(f=>f.kind.includes('action')).length===5&&!document.querySelector('.action-label:not(.empty-label)')");
+  await page.wait("window.seenFlights.filter(f=>f.kind.includes('action')).length===5&&document.querySelectorAll('.action-label:not(.empty-label)').length===4");
   await page.run('window.audioStarts=[]');
   await finish(page, [batch.at(-1)]);
   const wins = await page.run('window.seenWins');
@@ -134,11 +139,11 @@ try {
   assert(flights.some(f => f.kind.includes('payout') && f.text.includes('404')));
   const combinedAudio = await page.run('window.audioStarts');
   fs.writeFileSync(path.join(output, 'audio-starts.json'), JSON.stringify(combinedAudio, null, 2));
-  assert(combinedAudio.some(cue => cue.file?.endsWith('/deal.ogg')), 'combined snapshot must play the board');
-  assert(combinedAudio.some(cue => cue.file?.endsWith('/settle.ogg')), 'combined snapshot must play settlement');
-  assert(combinedAudio.some(cue => Math.abs(cue.rate - 1.2) < 0.001 && cue.file?.endsWith('/chips.ogg')), 'combined snapshot must play refund');
+  assert(combinedAudio.some(cue => cue.file?.split('?')[0].endsWith('/deal.ogg')), 'combined snapshot must play the board');
+  assert(combinedAudio.some(cue => cue.file?.split('?')[0].endsWith('/settle.ogg')), 'combined snapshot must play settlement');
+  assert(combinedAudio.some(cue => Math.abs(cue.rate - 1.2) < 0.001 && cue.file?.split('?')[0].endsWith('/chips.ogg')), 'combined snapshot must play refund');
   await feed(page, batch.at(-1));
-  await page.click('結算明細');
+  await page.click('主池／邊池勝率');
   await page.wait("!!document.querySelector('.settlement-details')");
   await page.run("document.querySelector('.settlement-details').open=true");
   assert((await page.run("document.querySelector('.settlement-details').innerText")).includes('合計 1,104'));
@@ -146,7 +151,7 @@ try {
   await page.click('關閉');
   assert.equal(await page.run('window.seenWins.length'), 3);
   // Every theme and mobile size, including reduced motion.
-  await page.click('牌桌選項');
+  await page.click('個人設定');
   await page.wait("!!document.querySelector('.sound-settings')");
   await page.run("[...document.querySelectorAll('.sound-settings label')].find(e=>e.textContent.includes('減少動態')).querySelector('input').click()");
   assert(await page.run("document.querySelector('.game').classList.contains('reduced-motion')"));
@@ -171,9 +176,10 @@ try {
       await page.wait("[...document.querySelectorAll('[data-player]')].find(e=>e.dataset.player==='444444444444444444')?.querySelector('.action-label')?.textContent.includes('全下')");
       await page.shot(theme + '-' + width + '-action');
       for (const state of live.slice(3)) await feed(page, state);
-      await page.wait("!!document.querySelector('.winner-badge')");
+      await page.wait("!!document.querySelector('.settlement')");
       await page.shot(theme + '-' + width);
-      await page.wait("window.seenWins.length>=3");
+      await page.wait("document.querySelectorAll('.seat.won').length===3");
+      assert.equal(await page.run("window.seenWins.length"),0);
       await page.wait("!document.querySelector('.winner-badge')&&!document.querySelector('.chip-flight')");
       assert(await page.run("[...document.querySelectorAll('.action-buttons button')].every(e=>{const r=e.getBoundingClientRect();return r.left>=0&&r.right<=innerWidth+1;})"));
     }
@@ -184,8 +190,9 @@ try {
   assert((await page.run('window.seenFlights')).every(f => f.animation === 'none'));
   await page.run('window.seenWins=[];window.seenFlights=[]');
   await finish(page, fresh(sweep), 1);
-  assert.equal(await page.run('window.seenWins.length'), 1);
-  assert.equal(await page.run("window.seenFlights.filter(f=>f.kind.includes('payout')).length"), 3);
+  assert.equal(await page.run('window.seenWins.length'), 0);
+  assert.equal(await page.run("document.querySelectorAll('.seat.won').length"), 1);
+  assert.equal(await page.run("window.seenFlights.filter(f=>f.kind.includes('payout')).length"), 0);
   // Reconnection and visibility rebaseline with a fully settled recording.
   await page.run('window.seenWins=[];window.seenFlights=[]');
   const recovered = fresh();
@@ -204,7 +211,7 @@ try {
   assert.deepEqual(page.errors, []);
   // Separate browser has cold audio buffers, so a slow load can be exercised.
   const slow = await browser(1, true);
-  await slow.click('牌桌選項');
+  await slow.click('個人設定');
   await slow.run("document.querySelector('[aria-label=試聽回合提醒]').click()");
   await slow.wait("document.querySelector('.sound-settings [role=status]').textContent.includes('過慢')");
   assert.equal(await slow.run('window.audioStarts.length'), 0);
