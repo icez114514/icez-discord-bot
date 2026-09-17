@@ -19,11 +19,14 @@ const server=http.createServer((req,res)=>{
  res.setHeader('Content-Type',({'.js':'text/javascript','.css':'text/css','.html':'text/html','.ogg':'audio/ogg','.png':'image/png'})[path.extname(file)]||'application/octet-stream');fs.createReadStream(file).pipe(res);
 });
 const fixture=`
+window.commands=[];
+const nativeFetch=window.fetch;
+window.fetch=async(url,options)=>{if(String(url).endsWith('/api/table/commands')){window.commands.push(JSON.parse(options.body));return new Response(JSON.stringify({result:{}}),{status:200,headers:{'Content-Type':'application/json'}});}return nativeFetch(url,options);};
 window.snapshot={id:'main',name:'Demo proportions',rules:{small_blind:'50',big_blind:'100'},version:1,joined:true,closed:false,control:true,owner:'${user}',event_seq:0,events:[],time_bank:60,
  members:Array.from({length:6},(_,i)=>({id:i?'npc:'+i:'${user}',seat:i,mode:'active',sitout:false,connected:true,stack:'1000',leaving:false,topup:null,notice:null,npc_failures:0})),
  hand:{id:'geometry',button:1,street:'flop',turn:1,pot:'600',call_amount:'0',actor:0,deadline:Date.now()/1000+300,extensions:0,payouts:null,board:['As','Kd','7h'],legal:{check:true,fold:true,raise:true,min_raise_to:'100',max_raise_to:'1000'},
  players:Array.from({length:6},(_,i)=>({id:i?'npc:'+i:'${user}',stack:'1000',bet:'50',paid:'100',cards:i?[]:['Ah','Kh'],folded:false}))}};
-window.feed=(s,baseline=false)=>{window.snapshot=structuredClone(s);window.socket.onmessage?.({data:JSON.stringify({type:baseline?'ready':'state',connection:'endpoint',state:window.snapshot})});};
+window.feed=(s,baseline=false)=>{const version=Math.max(s.version??0,(window.snapshot?.version??0)+1);window.snapshot=structuredClone(s);window.snapshot.version=version;window.socket.onmessage?.({data:JSON.stringify({type:baseline?'ready':'state',connection:'endpoint',state:window.snapshot})});};
 window.WebSocket=class {static OPEN=1;readyState=1;constructor(){window.socket=this;setTimeout(()=>{this.onopen?.();this.onmessage?.({data:JSON.stringify({type:'ready',connection:'endpoint',state:snapshot})});},20);}send(){}close(){this.readyState=3;}};
 `;
 const delay=ms=>new Promise(r=>setTimeout(r,ms));let chrome,ws;
@@ -49,7 +52,7 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));let chrome,ws;
  await until("[...document.images].filter(i=>i.classList.contains('casino-art')).every(i=>i.complete&&i.naturalWidth>0)");
  await run('window.geometry=structuredClone(snapshot)');
  const sizes=[];
- for(const [width,height] of [[1920,1080],[1440,900],[1280,720],[1200,800],[1399,900],[900,600],[390,844]]) {
+ for(const [width,height] of [[1920,1080],[1440,900],[1280,720],[1200,800],[1399,900],[900,600],[320,568],[360,780],[390,844],[430,932]]) {
   await resize(width,height);
   const result=await run(`(()=>{
    const rect=q=>{const r=document.querySelector(q).getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height};};
@@ -57,17 +60,77 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));let chrome,ws;
    const avatar=rect('.portrait'),card=rect('.board .card'),name=rect('.seat-info'),board=rect('.board > .cards'),panel=rect('.table-action-slot');
    const seats=[...document.querySelectorAll('.seat-plaque')].map(e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height};});
    const fan=q=>{const rs=[...document.querySelectorAll(q+' .seat-cards .card')].map(e=>e.getBoundingClientRect());return Math.max(...rs.map(r=>r.right))-Math.min(...rs.map(r=>r.left));};
-   return {avatar,card,name,board,panel,hiddenFan:fan('.seat.n'),openFan:fan('.hero-seat'),boardOverlap:seats.some(s=>intersects(s,board)),panelOverlap:seats.some(s=>intersects(s,panel)),overflow:document.documentElement.scrollWidth>innerWidth,buttons:[...document.querySelectorAll('.action-buttons button')].map(e=>e.getBoundingClientRect().height)};
+   return {avatar,card,name,board,panel,hiddenFan:fan('.seat.n'),openFan:fan('.hero-seat'),boardOverlap:seats.some(s=>intersects(s,board)),panelOverlap:seats.some(s=>intersects({...s,h:Math.min(s.h,document.querySelector('.table-viewport').getBoundingClientRect().bottom-s.y)},panel)),overflow:document.documentElement.scrollWidth>innerWidth,buttons:[...document.querySelectorAll('.action-buttons button')].map(e=>e.getBoundingClientRect().height)};
   })()`);
+  if(width>=900){
   assert(Math.abs(result.card.w/result.avatar.w-112/160)<.01,'card/avatar ratio '+width);
   assert(Math.abs(result.card.h/result.avatar.h-158/160)<.01,'card height ratio '+width);
   assert(Math.abs(result.name.w/result.avatar.w-190/160)<.01,'name/avatar ratio '+width);
   assert(Math.abs(result.hiddenFan/result.avatar.w-82/160)<.03*(82/160),'hidden fan ratio '+width);
   assert(Math.abs(result.openFan/result.avatar.w-178/160)<.03*(178/160),'open fan ratio '+width);
+  } else {
+   assert(Math.abs(result.card.w/result.avatar.w-48/64)<.01,'portrait card ratio');
+   assert(Math.abs(result.name.w/result.avatar.w-82/64)<.01,'portrait plaque ratio');
+   assert(await run(`document.querySelector('.table-scene').offsetWidth===390&&document.querySelector('.table-scene').offsetHeight===620`),'portrait canvas');
+   assert(await run(`[...document.querySelectorAll('.seat-info strong,.seat-stack')].every(e=>parseFloat(getComputedStyle(e).fontSize)*document.querySelector('.table-scene').getBoundingClientRect().width/390>=11.99)`),'readable mobile names');
+   assert(await run(`parseFloat(getComputedStyle(document.querySelector('.own-stack'),'::after').height)*document.querySelector('.table-scene').getBoundingClientRect().width/390>=43.9`),'BB touch height');
+   assert(await run(`(()=>{const a=document.querySelector('.hero-seat .seat-plaque').getBoundingClientRect(),b=document.querySelector('.table-viewport').getBoundingClientRect();return a.top>=b.top&&a.bottom<=b.bottom;})()`),'hero initially visible in portrait '+width);
+  }
   assert(!result.boardOverlap,'board overlaps seat '+width);assert(!result.panelOverlap,'panel overlaps seat '+width);
-  assert(!result.overflow,'horizontal overflow '+width); if(width>=900) assert(await run('document.documentElement.scrollHeight<=innerHeight+1'),'vertical overflow '+width);assert(result.buttons.every(h=>h>=43.9),'button hit height');
+  assert(!result.overflow,'horizontal overflow '+width); if(width>=320) assert(await run('document.documentElement.scrollHeight<=innerHeight+1'),'vertical overflow '+width);assert(result.buttons.every(h=>h>=43.9),'button hit height');
   sizes.push({width,height,...result});await shot('table-'+width);
  }
+ // Mobile action drawer sends nothing until an explicit confirmation.
+ await resize(390,844);
+ const openRaise=async()=>{await run('new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))');await until("!document.querySelector('.action-raise').disabled");await run("document.querySelector('.action-raise').focus();document.querySelector('.action-raise').click()");await until("document.querySelector('dialog.mobile-raise-dialog[open]')");};
+ await openRaise();assert.equal(await run('commands.length'),0,'opening drawer never submits');
+ await run(`(()=>{const e=document.querySelector('.mobile-raise-dialog [aria-label="加注至"]');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(e,'');e.dispatchEvent(new Event('input',{bubbles:true}));})()`);
+ await until("document.querySelector('.confirm-raise').disabled");
+ await run("document.querySelector('.mobile-raise-dialog [aria-label=\"關閉對話框\"]').click()");
+ await until("!document.querySelector('dialog[open]')");await openRaise();
+ await run(`(()=>{const e=document.querySelector('.mobile-raise-dialog [aria-label="加注至"]');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(e,'100');e.dispatchEvent(new Event('input',{bubbles:true}));})()`);
+ await until("!document.querySelector('.confirm-raise').disabled");
+
+ await run("document.querySelector('.mobile-raise-dialog [aria-label=\"增加下注\"]').click()");
+ await until("document.querySelector('.mobile-raise-dialog [aria-label=\"加注至\"]').value==='200'");
+ await shot('mobile-raise');
+ await run("Object.defineProperty(visualViewport,'height',{configurable:true,value:320});visualViewport.dispatchEvent(new Event('resize'))");
+ await until("document.querySelector('.mobile-raise-dialog').getBoundingClientRect().bottom<=320.5");
+ await run("document.querySelector('.confirm-raise').scrollIntoView({block:'nearest'})");
+ assert(await run("document.querySelector('.confirm-raise').getBoundingClientRect().bottom<=320.5"),'keyboard leaves confirmation reachable');
+ await run("delete visualViewport.height;visualViewport.dispatchEvent(new Event('resize'))");
+
+ await call('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
+ await until("!document.querySelector('dialog[open]')");
+ assert.equal(await run("document.activeElement.classList.contains('action-raise')"),true,'drawer returns focus');
+ await openRaise();assert.equal(await run("document.querySelector('.mobile-raise-dialog [aria-label=\"加注至\"]').value"),'200','draft retained');
+ await run("document.querySelector('.confirm-raise').click();document.querySelector('.confirm-raise')?.click()");
+ await until('commands.length===1');await until("!document.querySelector('dialog[open]')&&!document.querySelector('.action-raise').disabled");
+ assert.equal(await run('commands[0].amount'),'200');assert.equal(await run('commands.length'),1,'double activation submits once');
+ await openRaise();await run("snapshot.hand.turn++;snapshot.hand.legal.min_raise_to='300';window.feed(snapshot)");
+ await until("!document.querySelector('dialog[open]')");await openRaise();assert.equal(await run("document.querySelector('.mobile-raise-dialog [aria-label=\"加注至\"]').value"),'300','new turn resets minimum');
+ await run("document.querySelector('.mobile-raise-dialog [aria-label=\"關閉對話框\"]').click()");
+ await run("snapshot.hand.turn++;snapshot.hand.legal.min_raise_to='1000';window.feed(snapshot)");await openRaise();
+ await run("document.querySelector('.confirm-raise').click()");await until("document.querySelector('dialog[open]')?.textContent.includes('確認全下')");
+ assert.equal(await run('commands.length'),1,'all-in needs second confirmation');
+ await run("[...document.querySelectorAll('dialog button')].find(b=>b.textContent==='取消').click()");
+ await run("snapshot.hand.turn++;snapshot.hand.legal.min_raise_to='100';window.feed(snapshot)");await openRaise();
+ await run("snapshot.control=false;window.feed(snapshot)");await until("!document.querySelector('dialog[open]')");
+ assert.equal(await run('commands.length'),1,'control loss never submits');
+ // Every seat count uses portrait anchors, including halfway rotation.
+ for(let count=2;count<=6;count++){
+  await run(`window.mobileDeal=structuredClone(geometry);mobileDeal.members=mobileDeal.members.slice(0,${count});mobileDeal.hand.players=mobileDeal.hand.players.slice(0,${count});mobileDeal.hand.id='mobile-${count}';mobileDeal.hand.board=[];mobileDeal.hand.street='preflop';mobileDeal.events=[];mobileDeal.event_seq=0;window.feed(mobileDeal,true)`);
+  await until(`document.querySelectorAll('.seat:not(.empty)').length===${count}`);
+  await run(`mobileDeal.event_seq=1;mobileDeal.events=[{id:'deal-${count}',hand_id:mobileDeal.hand.id,seq:1,kind:'deal',at:Date.now()/1000}];window.feed(mobileDeal)`);
+  await until(`document.querySelectorAll('.deal-card').length===${count*2}`);
+  if(count===6)await shot('mobile-dealing');
+  const errors=await run(`(()=>[...document.querySelectorAll('.deal-card')].map(e=>{const a=e.getAnimations()[0],t=a.effect.getTiming();a.pause();a.currentTime=Number(t.delay)+Number(t.duration);const x=e.getBoundingClientRect(),y=document.querySelector(e.dataset.target).getBoundingClientRect();a.play();return Math.max(Math.abs(x.x-y.x),Math.abs(x.y-y.y));}))()`);
+  assert(errors.every(e=>e<1),'portrait landing '+count+': '+errors);
+  if(count===6){await resize(844,390);assert.equal(await run("document.querySelectorAll('.deal-card,.chip-flight,.hole-arrival').length"),0,'rotation cancels movement');assert.equal(await run("document.querySelectorAll('.board .card:not(.blank)').length"),0,'rotation preserves shown board');await resize(390,844);}
+  else await until("document.querySelectorAll('.deal-card').length===0");
+ }
+ await run('window.feed(geometry,true)');
+ await resize(844,390);assert.equal(await run("document.querySelector('.table-scene').offsetWidth"),1520,'landscape restored');
  await resize(1440,900);
  await run("window.savedCard=document.querySelector('.board .card');window.savedFace=window.savedCard.querySelector('.casino-art');true");
  assert.equal(await run("document.querySelectorAll('.countdown-ring,.avatar-countdown').length"),0,'portrait not obscured by clock');
@@ -116,6 +179,22 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));let chrome,ws;
  await shot('settlement');
  await run('window.feed('+JSON.stringify(rec.at(-1))+')');
  assert.equal(await run("document.querySelectorAll('.chip-flight').length"),0,'duplicate does not replay');
+ // Portrait runout, rotation halfway through, and all side-pot outcomes.
+ await resize(390,844);
+ await run('window.feed('+JSON.stringify(rec.at(-2))+',true);window.feed('+JSON.stringify(rec.at(-1))+')');
+ await until("document.querySelectorAll('.seat.open-cards').length===4");
+ assert.equal(await run("document.querySelectorAll('.board .card:not(.blank)').length"),0,'portrait reveal precedes board');
+ await shot('mobile-equity');
+ await until("document.querySelectorAll('.board .card:not(.blank)').length===3");
+ await resize(844,390);
+ assert.equal(await run("document.querySelectorAll('.board .card:not(.blank)').length"),3,'rotation does not expose river');
+ assert.equal(await run("document.querySelectorAll('.settlement').length"),0,'rotation does not expose payouts');
+ await resize(390,844);
+ await until("document.querySelector('.settlement')&&document.querySelector('.hero-seat .winner-badge')");
+ await until("document.querySelectorAll('.board-deal').length===0");
+ assert(await run(`(()=>{const a=document.querySelector('.hero-seat .equity-label').getBoundingClientRect(),b=document.querySelector('.hero-seat .winner-badge').getBoundingClientRect(),v=document.querySelector('.table-viewport').getBoundingClientRect();return b.top>=a.bottom&&b.bottom<=v.bottom;})()`),'portrait winner fits without covering equity');
+ await shot('mobile-settlement');
+
  // Reconnect uses a silent, final baseline and clears queued effects.
  await run('window.feed('+JSON.stringify(rec.at(-2))+',true);window.feed('+JSON.stringify(rec.at(-1))+');window.feed('+JSON.stringify(rec.at(-1))+',true)');
  await until("document.querySelectorAll('.board .card:not(.blank)').length===5");
@@ -138,5 +217,5 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));let chrome,ws;
  assert.deepEqual(errors,[]);
  assert(observed.some(v=>v.board.length===0&&v.shares.some(s=>s.includes('%'))),'preflop worker equity visible before flop');
  fs.writeFileSync(path.join(output,'measurements.json'),JSON.stringify({sizes,observed},null,2));
- console.log('PASS reference ratios, seven viewports, responsive controls, clean faces, timer, all-in equity/runout, payouts, duplicates, reconnect, reduced motion');
+ console.log('PASS desktop/portrait ratios, ten viewports, mobile drawer/keyboard/invalid drafts, 2-6 player landing and rotation, responsive controls, clean faces, timer, all-in equity/runout, payouts, duplicates, reconnect, reduced motion');
 })().catch(e=>{console.error(e);process.exitCode=1;}).finally(()=>{ws?.close();chrome?.kill();server.close();});

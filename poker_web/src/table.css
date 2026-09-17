@@ -17,9 +17,9 @@ main.table-mode > .message { flex:none; margin:0 0 6px; padding:6px 10px; font-s
 .game > .message,.game > [role=alert],.game > .table-closed { position:absolute; top:58px; left:12%; right:12%; z-index:10; padding:8px; margin:0; background:var(--panel); }
 .game .retry-command { position:absolute; z-index:10; top:60px; left:12px; }
 .game .table-stage { min-width:0; min-height:0; position:relative; display:grid; place-items:start center; align-content:start; }
-.game .table-frame { position:relative; width:calc(1520px * var(--table-scale)); height:calc(1024px * var(--table-scale)); }
-.game .table-canvas { position:absolute; width:1520px; height:1024px; transform:scale(var(--table-scale)); transform-origin:0 0; }
-.game .table-scene { position:relative; isolation:isolate; width:1520px; height:1024px; }
+.game .table-frame { position:relative; width:calc(var(--canvas-width) * var(--table-scale)); height:calc(var(--canvas-height) * var(--table-scale)); }
+.game .table-canvas { position:absolute; width:var(--canvas-width); height:var(--canvas-height); transform:scale(var(--table-scale)); transform-origin:0 0; }
+.game .table-scene { position:relative; isolation:isolate; width:var(--canvas-width); height:var(--canvas-height); }
 .game .felt { position:absolute; z-index:-1; inset:154px 140px 160px; border:19px solid var(--wood); border-radius:43% / 47%; background:radial-gradient(ellipse at 50% 40%,var(--felt),var(--felt-dark)); box-shadow:0 2px 0 var(--trim),0 12px 0 var(--wood),0 20px 35px #0005; }
 .game .felt::before { content:''; position:absolute; inset:20px; border:1px solid var(--trim); border-radius:inherit; opacity:.4; }
 :root[data-theme=burgundy_leather] .game .felt::before { border-style:dashed; }
@@ -96,7 +96,7 @@ main.table-mode > .message { flex:none; margin:0 0 6px; padding:6px 10px; font-s
 .game .board-deal .card-face { animation:board-face var(--flip-duration) ease-in-out both; animation-delay:var(--card-delay); }
 .game .deal-back { position:absolute; inset:0; width:100%; height:100%; animation:board-back var(--flip-duration) ease-in-out both; animation-delay:var(--card-delay); }
 @keyframes chip-travel { from { transform:translate(calc(var(--from-x) - 50%),calc(var(--from-y) - 50%)); } to { transform:translate(calc(var(--to-x) - 50%),calc(var(--to-y) - 50%)); } }
-@keyframes card-travel { 0% { opacity:0; transform:translate(730px,250px) scale(.6); } 1% { opacity:1; } 99% { opacity:1; } 100% { opacity:0; transform:translate(var(--to-x),var(--to-y)) rotate(var(--card-angle)); } }
+@keyframes card-travel { 0% { opacity:0; transform:translate(var(--deal-x,730px),var(--deal-y,250px)) scale(.6); } 1% { opacity:1; } 99% { opacity:1; } 100% { opacity:0; transform:translate(var(--to-x),var(--to-y)) rotate(var(--card-angle)); } }
 @keyframes hole-arrive { from { visibility:hidden; } to { visibility:visible; } }
 @keyframes board-arrive { from { opacity:0; transform:translateY(-28px); } 15% { opacity:1; } to { opacity:1; transform:translateY(0); } }
 @keyframes board-face { 0%,40% { opacity:0; transform:perspective(500px) rotateY(90deg); } 100% { opacity:1; transform:perspective(500px) rotateY(0); } }
@@ -191,3 +191,85 @@ main.table-mode > .message { flex:none; margin:0 0 6px; padding:6px 10px; font-s
 @media (prefers-reduced-motion:reduce) { .game .turn-progress > span { animation:none; } }
 
 .game .seat .face-rank { transform:translateX(-22px); }
+
+.game .table-viewport { width:100%; min-width:0; max-width:100%; min-height:0; display:grid; place-items:start center; }
+/* Mobile portrait has its own coordinates; controls remain outside the scaled scene. */
+@media (max-width:899px) and (orientation:portrait) {
+  main.table-mode { height:100dvh; min-height:0; padding:4px max(4px,env(safe-area-inset-right)) 0 max(4px,env(safe-area-inset-left)); overflow:hidden; }
+  .table-mode > .game.portrait-table { height:auto; min-height:0; grid-template-rows:44px minmax(0,1fr); gap:2px; }
+  .game.portrait-table .table-stage { min-height:0; display:grid; grid-template-rows:minmax(0,1fr) auto; gap:4px; overflow:hidden; }
+  .game.portrait-table .table-viewport { height:100%; overflow:auto; overscroll-behavior:contain; scrollbar-width:none; }
+  .portrait-table .table-scene { --deal-x:183px; --deal-y:210px; }
+  .game.portrait-table .felt { inset:36px 22px 31px; border-width:9px; border-radius:48% / 26%; }
+  .game.portrait-table .felt::before { inset:7px; }
+  .game.portrait-table .seat { width:82px; height:126px; }
+  .game.portrait-table .seat.n { left:195px; top:12px; --bet-x:41px; --bet-y:157px; }
+  .game.portrait-table .seat.nw { left:46px; top:145px; --bet-x:111px; --bet-y:88px; }
+  .game.portrait-table .seat.ne { left:344px; top:145px; --bet-x:-29px; --bet-y:88px; }
+  .game.portrait-table .seat.sw { left:46px; top:358px; --bet-x:115px; --bet-y:68px; }
+  .game.portrait-table .seat.se { left:344px; top:358px; --bet-x:-33px; --bet-y:68px; }
+  .game.portrait-table .seat.s { left:195px; top:470px; --bet-x:41px; --bet-y:-26px; }
+  .game.portrait-table .seat-plaque { width:82px; height:96px; }
+  .game.portrait-table .portrait { left:9px; width:64px; height:64px; }
+  .game.portrait-table .avatar { border-width:2px; }
+  .game.portrait-table .avatar > span { font-size:38px; padding-top:2px; }
+  .game.portrait-table .seat-info { top:50px; width:82px; height:46px; padding:2px 3px; border-radius:5px; }
+  .game.portrait-table .seat-info strong { height:20px; font-size:max(14px,calc(12px / var(--table-scale))); line-height:20px; }
+  .game.portrait-table .own-stack::after { content:""; position:absolute; left:0; right:0; top:50%; height:max(100%,calc(44px / var(--table-scale))); transform:translateY(-50%); }
+  .game.portrait-table .seat-stack { font-size:max(15px,calc(12px / var(--table-scale))); line-height:20px; }
+  .game.portrait-table .empty-seat-button,.game.portrait-table .empty-seat-number { width:64px; height:64px; padding:5px; font-size:23px; }
+  .game.portrait-table .empty-seat-button span { font-size:20px; }
+  .game.portrait-table .seat-cards { left:4px; top:25px; width:42px; height:32px; }
+  .game.portrait-table .seat .card { width:22px; height:32px; }
+  .game.portrait-table .seat .card + .card { margin-left:-13px; }
+  .game.portrait-table .seat.open-cards .seat-cards { left:0; top:4px; width:82px; height:68px; }
+  .game.portrait-table .seat.open-cards .cards { width:82px; }
+  .game.portrait-table .seat.open-cards .card { width:48px; height:68px; }
+  .game.portrait-table .seat.open-cards .card + .card { margin-left:-33px; }
+  .game.portrait-table .position-badge { top:-10px; font-size:10px; line-height:12px; }
+  .game.portrait-table .s .position-badge { top:10px; left:-14px; }
+  .game.portrait-table .turn-progress { top:91px; left:2px; right:2px; height:5px; }
+  .game.portrait-table .equity-label { top:100px; width:82px; font-size:12px; line-height:16px; padding:1px; }
+  .game.portrait-table .action-label { height:20px; line-height:20px; font-size:12px; }
+  .game.portrait-table .winner-badge { top:123px; left:-9px; width:82px; font-size:12px; line-height:14px; }
+  .game.portrait-table .winner-badge small { font-size:10px; line-height:12px; }
+  .game.portrait-table .seat-status { top:8px; right:auto; left:calc(100% + 4px); }
+  .game.portrait-table .ne .seat-status,.game.portrait-table .se .seat-status { right:calc(100% + 4px); left:auto; }
+  .game.portrait-table .seat-status .icon-button { width:calc(44px / var(--table-scale)); height:calc(44px / var(--table-scale)); min-height:0; padding:14px; }
+  .game.portrait-table .dealer { top:80px; left:87px; width:21px; height:21px; border-width:1px; font-size:7px; }
+  .game.portrait-table .ne .dealer,.game.portrait-table .se .dealer { left:-26px; }
+  .game.portrait-table .seat-bet { gap:3px; font-size:12px; max-width:115px; }
+  .game.portrait-table .seat-bet b { overflow:hidden; text-overflow:ellipsis; }
+  .game.portrait-table .poker-chips,.game.portrait-table .chip-pile { height:20px; }
+  .game.portrait-table .chip-pile { width:19px; }
+  .game.portrait-table .chip-pile + .chip-pile { margin-left:-11px; }
+  .game.portrait-table .chip-flight { font-size:12px; }
+  .game.portrait-table .board { top:280px; width:260px; height:68px; }
+  .game.portrait-table .board > .cards { width:260px; gap:5px; }
+  .game.portrait-table .board .card { width:48px; height:68px; }
+  .game.portrait-table .pot { top:-38px; bottom:auto; height:30px; width:230px; padding:3px 5px; gap:5px; }
+  .game.portrait-table .pot > span { font-size:12px; }
+  .game.portrait-table .pot > b { font-size:16px; }
+  .game.portrait-table .pot.long-pot > b { font-size:12px; }
+  .game.portrait-table .hand-rank { top:-61px; font-size:14px; }
+  .game.portrait-table .pot-chips { top:-84px; height:20px; min-width:24px; }
+  .game.portrait-table .board-phase { top:78px; width:200px; gap:0; flex-wrap:wrap; }
+  .game.portrait-table .board-phase .icon-button { width:calc(44px / var(--table-scale)); height:calc(44px / var(--table-scale)); min-height:0; padding:12px; }
+  .game.portrait-table .settlement { font-size:11px; padding:2px 4px; }
+  .game.portrait-table .table-action-slot { position:relative; inset:auto; width:100%; height:calc(76px + env(safe-area-inset-bottom)); margin:0; padding-bottom:env(safe-area-inset-bottom); align-self:stretch; }
+  .game.portrait-table .action-panel,.game.portrait-table .preselection { bottom:env(safe-area-inset-bottom); height:76px; }
+  .game.portrait-table .action-panel { grid-template-rows:16px 44px; gap:4px; }
+  .game.portrait-table .turn-line { font-size:11px; }
+  .game.portrait-table.large-cards .board .card { width:51px; height:72px; }
+  .game.portrait-table.large-cards .board,.game.portrait-table.large-cards .board > .cards { width:275px; }
+  .game.portrait-table.large-cards .seat.open-cards .card { width:51px; height:72px; }
+  .game.portrait-table.large-cards .seat.open-cards .card + .card { margin-left:-35px; }
+}
+dialog.mobile-raise-dialog { position:fixed; inset:auto 0 0; margin:0 auto; width:min(100%,480px); max-width:100%; max-height:calc(100dvh - 12px); overflow:auto; padding:16px 12px max(12px,env(safe-area-inset-bottom)); border-radius:16px 16px 0 0; }
+.mobile-raise-dialog .bet-sizing { display:grid; gap:12px; margin:12px 0; }
+.mobile-raise-dialog .pot-presets { display:flex; flex-wrap:wrap; gap:6px; }
+.mobile-raise-dialog .pot-presets button { flex:1; min-width:54px; min-height:44px; padding:6px; }
+.mobile-raise-dialog .bet-slider { display:grid; grid-template-columns:44px minmax(45px,1fr) 44px 84px; align-items:center; gap:5px; }
+.mobile-raise-dialog .bet-slider button,.mobile-raise-dialog .bet-slider input { min-width:0; width:100%; min-height:44px; padding:6px; font-size:16px; }
+.mobile-raise-dialog .raise-range { font-size:12px; }
+.mobile-raise-dialog .confirm-raise { width:100%; min-height:48px; }

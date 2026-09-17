@@ -102,5 +102,7 @@ export function useTablePresentation(user:string,reduced=false) {
     receipts.current.add(id);if(receipts.current.size>128)receipts.current.delete(receipts.current.values().next().value!);
     if(!document.hidden&&failed)void sound.play('error');
   }
-  return {view,receive,reset,result};
+  // Preserve the shown street and queued events when changing coordinate systems.
+  function cancelMotion(){update(v=>({...v,deal:undefined,board:undefined,flights:[]}));}
+  return {view,receive,reset,result,cancelMotion};
 }

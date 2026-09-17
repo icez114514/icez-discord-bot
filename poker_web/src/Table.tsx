@@ -1,3 +1,4 @@
+import { usePortraitTable } from './tableLayout';
 import { TurnProgress } from './TurnProgress';
 import { useEquity } from './useEquity';
 import { bestFive, handLabel } from './equity';
@@ -9,7 +10,7 @@ import { bbPreset, positiveInteger, ratio, readPreferences, savePreferences, sta
 import { evaluatePreselection, type Preselection } from './preselection';
 import { HandHistory } from './HandHistory';
 import { Cards } from './Cards';
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { Modal } from './Modal';
 import { ThemePicker } from './Theme';
 import { clamp, potPreset, sliderAmount } from './betting';
@@ -47,6 +48,8 @@ const errors: Record<string, string> = {
   topup_already_queued: '已有一筆待處理補碼。', buy_in_range: '帶入後桌上籌碼需為 2,000～10,000。',
 };
 export function Table({ user, onClose, initialHistory = false }: { user: string; onClose: () => void; initialHistory?: boolean }) {
+  const portrait=usePortraitTable();
+  const [raisePanel,setRaisePanel]=useState<string|null>(null);
   const [preferences, setPreferences] = useState(() => {
     try { return readPreferences(localStorage, user); } catch { return readPreferences(undefined, user); }
   });
@@ -85,6 +88,7 @@ export function Table({ user, onClose, initialHistory = false }: { user: string;
   const prefs = useSyncExternalStore(sound.subscribe, sound.preferences);
   const muted = prefs.muted;
   const presentation = useTablePresentation(user, prefs.reduced);
+  useLayoutEffect(()=>{presentation.cancelMotion();},[portrait]);
   const loggedEvents = useRef(new Set<string>());
   useEffect(() => {
     const events = presentation.view.played.filter(event => !loggedEvents.current.has(event.id));
@@ -232,6 +236,9 @@ export function Table({ user, onClose, initialHistory = false }: { user: string;
   const setRaise = (value: string) => setRaiseDraft({ turn: turnKey, value });
   const ownTurn = !!(active && hand.actor !== null && hand.players[hand.actor]?.id === user && hand.legal.fold && hand.deadline && hand.deadline > now);
   const canRaise = ownTurn && !!hand?.legal.raise && !disabled;
+  const raiseContext=`${state?.id}:${turnKey}`;
+  const raiseOpen=portrait&&canRaise&&raisePanel===raiseContext;
+  useEffect(()=>{if(!portrait||!canRaise||raisePanel!==raiseContext)setRaisePanel(null);},[portrait,canRaise,raiseContext,raisePanel]);
   const seconds = active && hand.deadline ? Math.max(0, Math.ceil(hand.deadline - now)) : 0;
   const ownPlayer = hand?.players.find(p => p.id === user);
   const betLabel = hand?.players.some(p => BigInt(p.bet) > 0n) ? '加注至' : '下注';
@@ -312,7 +319,10 @@ export function Table({ user, onClose, initialHistory = false }: { user: string;
   const seated = state?.members ?? [];
   const mySeat = mine?.seat ?? 0;
   const position = (seat: number) => ['s', 'sw', 'nw', 'n', 'ne', 'se'][(seat - mySeat + 6) % 6];
-  return <section className={`game ${prefs.reduced ? 'reduced-motion' : ''} ${preferences.fourColor ? 'four-color' : ''} ${preferences.large ? 'large-cards' : ''}`} aria-label="德州撲克牌桌">
+  const betSizing=(<div className="bet-sizing"><div className="pot-presets" aria-label="個人下注快捷按鈕">{presets.map(({ value, target, label }, index) => <button key={index} disabled={!canRaise || target === null} title={target === null ? '大盲資料未知，無法換算' : `${value} · 向下取整並限制合法範圍，加注至 ${chips(target)}；只填草稿`} onClick={() => { if (target !== null) setRaise(target); void sound.play('click'); }}>{label}</button>)}</div>
+        <div className="bet-slider"><button aria-label="減少下注" disabled={!canRaise || raiseValue <= minimum} onClick={() => { setRaise(clamp(raiseValue - 100n, minimum, maximum).toString()); void sound.play('click'); }}>−</button><input aria-label="下注金額滑桿" type="range" min="0" max="1000" disabled={!canRaise || minimum === maximum} value={maximum > minimum ? Number((raiseValue - minimum) * 1000n / (maximum - minimum)) : 0} onChange={e => setRaise(sliderAmount(Number(e.target.value), minimum, maximum).toString())} /><button aria-label="增加下注" disabled={!canRaise || raiseValue >= maximum} onClick={() => { setRaise(clamp(raiseValue + 100n, minimum, maximum).toString()); void sound.play('click'); }}>＋</button><input aria-label="加注至" inputMode="numeric" autoComplete="off" disabled={!canRaise} value={raise} aria-invalid={canRaise && !raiseValid} onChange={e => setRaise(e.target.value)} /></div>
+        <small className="raise-range">{canRaise ? `最低 ${chips(minimum.toString())} · 最高 ${chips(maximum.toString())}` : '等待可下注時調整金額'} · 不足一籌碼向下取整</small></div>);
+  return <section className={`game ${portrait ? 'portrait-table' : ''} ${prefs.reduced ? 'reduced-motion' : ''} ${preferences.fourColor ? 'four-color' : ''} ${preferences.large ? 'large-cards' : ''}`} aria-label="德州撲克牌桌">
     <div className="game-toolbar">
       <IconButton icon="back" label="返回大廳（保留座位）" onClick={onClose} />
       <IconButton icon={phase === 'synced' && state?.control && !state?.frozen && !state?.closed && !pending.current ? 'info' : 'warning'} label={`${state?.name ?? '牌桌'} · ${positiveInteger(state?.rules?.small_blind) && positiveInteger(blind) ? `${chips(state.rules.small_blind)} / ${chips(blind)}` : '盲注資料未知'} · 無限注德州撲克${state?.private ? ' · 私人桌' : ''} · ${connectionText}${pending.current && !connectionText.includes('結果待確認') ? pendingText : ''}`} onClick={() => setInfo('hand')} />
@@ -325,7 +335,7 @@ export function Table({ user, onClose, initialHistory = false }: { user: string;
     {state?.frozen ? <p role="alert">牌桌資金待恢復核對，暫停所有操作。</p> : null}
     {state?.closed ? <p className="table-closed">牌桌已關閉；當手完成後退回剩餘籌碼。</p> : null}
     {state?.joined ? <>
-      <TableStage><div className="table-scene" ref={scene}><ChipFlights events={presentation.view.flights} scene={scene} format={displayAmount} duration={presentation.view.flightDuration} /><DealFlights event={presentation.view.deal} players={dealOrder} button={button} scene={scene} duration={presentation.view.flightDuration} /><div className="felt" aria-hidden="true" />
+      <TableStage portrait={portrait} onLayoutChange={presentation.cancelMotion}><div className="table-scene" ref={scene}><ChipFlights events={presentation.view.flights} scene={scene} format={displayAmount} duration={presentation.view.flightDuration} /><DealFlights event={presentation.view.deal} players={dealOrder} button={button} scene={scene} duration={presentation.view.flightDuration} /><div className="felt" aria-hidden="true" />
         <div className="board"><strong className={`pot ${chips(visualHand?.pot ?? '0').length > 18 ? 'long-pot' : ''}`}><span>總底池</span><b>{displayAmount(visualHand?.pot ?? '0')}</b></strong><Cards cards={boardCards} slots={5} reveal={reveal} highlight={highlight} />{rankLabel ? <strong className="hand-rank">{rankLabel}</strong> : null}<div className="pot-chips" aria-label={`已收進底池 ${displayAmount(potChips)}`}><PokerChips amount={potChips} /></div><div className="board-phase">{equity ? <IconButton icon="info" label="主池／邊池勝率" onClick={() => setInfo('hand')} /> : null}{state.countdown && !presentation.view.playing ? <IconButton icon="clock" label={`下一手倒數 ${Math.max(0, Math.ceil(state.countdown - now))} 秒`} /> : active ? <IconButton icon="info" label={labels[hand.street] ?? hand.street} onClick={() => setInfo('hand')} /> : null}{visualHand?.payouts ? <p role="status" className="settlement">{settlement ? `${settlement.void ? '作廢' : `派彩 ${displayAmount(awardTotal.toString())}`} · 退款 ${displayAmount(refundTotal.toString())}` : '本手已結算'}</p> : null}</div></div>
         {Array.from({ length: 6 }, (_, seat) => {
           const occupants = seated.filter(m => m.seat === seat);
@@ -354,13 +364,12 @@ export function Table({ user, onClose, initialHistory = false }: { user: string;
       <div className="table-action-slot" data-visible={ownTurn || canPreselect}>
       <section className={`action-panel ${ownTurn ? '' : 'action-panel-hidden'}`} aria-label="牌桌操作" aria-hidden={!ownTurn} inert={!ownTurn}>
         <div className="turn-line"><strong>輪到你行動</strong><span className="timebank" title="行動時間用盡時自動補時，每次 5 秒，每手最多 4 次">◷ 補時池 {state.time_bank ?? 0}s{active && hand.extensions > 0 ? ` · 已用 ${hand.extensions}/4` : ''}</span></div>
-        <div className="bet-sizing"><div className="pot-presets" aria-label="個人下注快捷按鈕">{presets.map(({ value, target, label }, index) => <button key={index} disabled={!canRaise || target === null} title={target === null ? '大盲資料未知，無法換算' : `${value} · 向下取整並限制合法範圍，加注至 ${chips(target)}；只填草稿`} onClick={() => { if (target !== null) setRaise(target); void sound.play('click'); }}>{label}</button>)}</div>
-        <div className="bet-slider"><button aria-label="減少下注" disabled={!canRaise || raiseValue <= minimum} onClick={() => { setRaise(clamp(raiseValue - 100n, minimum, maximum).toString()); void sound.play('click'); }}>−</button><input aria-label="下注金額滑桿" type="range" min="0" max="1000" disabled={!canRaise || minimum === maximum} value={maximum > minimum ? Number((raiseValue - minimum) * 1000n / (maximum - minimum)) : 0} onChange={e => setRaise(sliderAmount(Number(e.target.value), minimum, maximum).toString())} /><button aria-label="增加下注" disabled={!canRaise || raiseValue >= maximum} onClick={() => { setRaise(clamp(raiseValue + 100n, minimum, maximum).toString()); void sound.play('click'); }}>＋</button><input aria-label="加注至" inputMode="numeric" autoComplete="off" disabled={!canRaise} value={raise} aria-invalid={canRaise && !raiseValid} onChange={e => setRaise(e.target.value)} /></div>
-        <small className="raise-range">{canRaise ? `最低 ${chips(minimum.toString())} · 最高 ${chips(maximum.toString())}` : '等待可下注時調整金額'} · 不足一籌碼向下取整</small></div>
-        <div className="action-buttons"><button className="action-fold" disabled={disabled || !ownTurn} onClick={() => act('fold')}>棄牌</button><button className="action-call" disabled={disabled || !ownTurn} onClick={() => act(hand?.legal.check ? 'check' : 'call')}>{hand?.legal.check ? '過牌' : <>跟注<span>{chips(hand?.legal.call ?? '0')}</span></>}</button><button className={raiseValue === maximum && canRaise ? 'action-raise action-all-in' : 'action-raise'} disabled={!canRaise || !raiseValid} onClick={() => act('raise', raise)}>{raiseValue === maximum && canRaise ? '全下' : betLabel}<span>{chips(raiseValue.toString())}</span></button></div>
+        {!portrait?betSizing:null}
+        <div className="action-buttons"><button className="action-fold" disabled={disabled || !ownTurn} onClick={() => act('fold')}>棄牌</button><button className="action-call" disabled={disabled || !ownTurn} onClick={() => act(hand?.legal.check ? 'check' : 'call')}>{hand?.legal.check ? '過牌' : <>跟注<span>{chips(hand?.legal.call ?? '0')}</span></>}</button><button className={raiseValue === maximum && canRaise ? 'action-raise action-all-in' : 'action-raise'} disabled={!canRaise || (!portrait && !raiseValid)} aria-haspopup={portrait?'dialog':undefined} aria-expanded={portrait?raiseOpen:undefined} onClick={() => portrait?setRaisePanel(raiseContext):act('raise', raise)}>{portrait?'加注':raiseValue === maximum && canRaise ? '全下' : betLabel}<span>{chips(raiseValue.toString())}</span></button></div>
       </section>
       <section className={`preselection ${canPreselect ? '' : 'preselection-idle'}`} aria-label="下一次行動預選" aria-hidden={!canPreselect} inert={!canPreselect}><button disabled={!canPreselect} aria-pressed={selection?.action === 'check_fold'} onClick={() => choosePreselection('check_fold')}>棄牌／過牌</button><button disabled={!canPreselect} aria-pressed={selection?.action === 'call_any'} onClick={() => choosePreselection('call_any')}>跟任何注</button></section>
       </div></TableStage>
+      {raiseOpen ? <Modal title="調整加注" className="mobile-raise-dialog" fitVisualViewport dismissOnBackdrop onClose={()=>setRaisePanel(null)}>{betSizing}<button className="confirm-raise" disabled={!canRaise||!raiseValid} onClick={()=>{setRaisePanel(null);act('raise',raise);}}>{raiseValue===maximum?'確認全下':'確認加注'} · {chips(raiseValue.toString())}</button></Modal> : null}
       {info ? <Modal title={info === 'hand' ? '本手牌局' : '牌局紀錄'} onClose={() => setInfo(null)}>{info === 'hand' ? <div className="hand-info"><button onClick={() => setInfo('log')}>牌局紀錄</button><p>{hand ? `手牌 ${hand.id} · ${labels[visualHand?.street ?? ''] ?? visualHand?.street}` : '尚未開始'} · 底池 {chips(visualHand?.pot ?? '0')}</p><span>你的底牌</span><Cards cards={ownPlayer?.cards ?? []} /><span>公共牌</span><Cards cards={boardCards} slots={5} />{equity && equity.pots.length > 1 ? <details className="equity-breakdown" open><summary>主池／邊池勝率</summary>{equity.pots.map((pot,index) => <p key={index}>{index ? '邊池 ' + index : '主池'} · {displayAmount(pot.amount)}<br/>{Object.entries(pot.shares).map(([id,value]) => `${playerName(id)} ${equity.approximate ? '約 ' : ''}${value.toFixed(1)}%`).join(' · ')}</p>)}</details> : null}{settlement ? <SettlementDetails settlement={settlement} name={playerName} /> : null}</div> : <><button onClick={() => setInfo('hand')}>本手牌局</button><p>本次連線觀察到的公開異動，最多保留 80 筆；重連期間可能不完整。</p>{log.length ? <ol className="game-log">{log.map((entry, index) => <li key={index}>{entry}</li>)}</ol> : <p>尚無新的牌局異動。</p>}</>}</Modal> : null}
       {options ? <Modal title="牌桌選項" onClose={() => setOptions(false)}><ThemePicker /><TablePreferences value={preferences} onChange={changePreferences} saved={preferencesSaved} /><p className="bank">補時池 {state.time_bank} / 60 秒 · 自動補時每次 +5 秒，最多 4 次</p>
         <div className="table-controls"><label>補碼金額<input inputMode="numeric" value={amount} onChange={e => setAmount(e.target.value)} /></label><button disabled={disabled || !!mine?.topup || mine?.leaving} onClick={() => command('topup', { amount })}>申請手後補碼</button><button disabled={disabled || mine?.leaving || mine?.sitout} onClick={() => command(mine?.mode === 'sitout' ? 'sit_in' : 'sitout')}>{mine?.mode === 'sitout' ? '重新坐入' : mine?.sitout ? '已排隊坐出' : '手後坐出'}</button></div>
