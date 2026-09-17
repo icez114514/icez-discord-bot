@@ -224,6 +224,17 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));let chrome,ws;
  await run('window.feed('+JSON.stringify(rec.at(-2))+',true);window.feed('+JSON.stringify(rec.at(-1))+')');
  await until("document.querySelector('.settlement')");
  assert.equal(await run("document.querySelectorAll('.chip-flight,.deal-card').length"),0,'reduced motion skips queued effects');
+ // All six public hands must retain the exact community face, including large mode.
+ const six=await run(`(()=>{const s=structuredClone(geometry);s.hand.players.forEach((p,i)=>{p.cards=[['Ah','Kh'],['2c','3c'],['4c','5c'],['6c','7c'],['8c','9c'],['Tc','Jc']][i];});s.hand.payouts={};s.hand.settlement={void:false,pots:[],refunds:{}};return s;})()`);
+ for(const [w,h] of [[1440,900],[320,568],[390,844],[430,932]]){
+  await resize(w,h);await run('window.feed('+JSON.stringify(six)+',true)');await until("document.querySelectorAll('.seat.open-cards').length===6");
+  for(const large of [false,true]){
+   await run(`document.querySelector('.game').classList.toggle('large-cards',${large})`);
+   const failures=await run(`(()=>{const errors=[],board=document.querySelector('.board .card'),bw=board.getBoundingClientRect().width,bh=board.getBoundingClientRect().height;const overlap=(a,b)=>a.left<b.right-.5&&a.right>b.left+.5&&a.top<b.bottom-.5&&a.bottom>b.top+.5;for(const seat of document.querySelectorAll('.seat.open-cards')){const cards=[...seat.querySelectorAll('.seat-cards .card')],rects=cards.map(c=>c.getBoundingClientRect()),plaque=seat.querySelector('.seat-plaque').getBoundingClientRect(),factor=seat.classList.contains('hero-seat')?1.15:1;if(overlap(rects[0],rects[1]))errors.push('overlapping cards '+seat.className);for(const [i,c] of cards.entries()){const svg=c.querySelector('svg'),expected=board.querySelector('svg');if(svg.outerHTML.replace(/>[AKQJT2-9]|>10|>[♠♥♦♣]/g,'>X')!==expected.outerHTML.replace(/>[AKQJT2-9]|>10|>[♠♥♦♣]/g,'>X')){const attrs=e=>[...e.attributes].map(a=>a.name+'='+a.value).join(',');if([...svg.querySelectorAll('text')].some((t,j)=>attrs(t)!==attrs(expected.querySelectorAll('text')[j])&&t.getAttribute('font-size')!=='54'))errors.push('face differs');}if(Math.abs(rects[i].width/bw-factor)>.01||Math.abs(rects[i].height/bh-factor)>.01)errors.push('card scale');if(overlap(rects[i],plaque))errors.push('card/plaque overlap');}}return errors;})()`);
+   assert.deepEqual(failures,[],'six-player visible cards '+w+' large='+large);
+   await shot('six-'+w+(large?'-large':''));
+  }
+ }
  assert.deepEqual(errors,[]);
  assert(observed.some(v=>v.board.length===0&&v.shares.some(s=>s.includes('%'))),'preflop worker equity visible before flop');
  fs.writeFileSync(path.join(output,'measurements.json'),JSON.stringify({sizes,observed},null,2));

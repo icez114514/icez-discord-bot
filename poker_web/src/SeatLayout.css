@@ -33,7 +33,8 @@
 .game .seat-bet{font-size:26px;z-index:6}
 .game .seat-bet .poker-chips,.game .pot-chips .poker-chips{transform:scale(1.15);transform-origin:center}
 .game .pot>b{font-size:30px}
-.game .pot-chips{top:180px}
+.game .pot-chips{top:180px;left:30%}
+.game .board-phase{top:180px;left:70%;width:260px}
 .game .board{top:515px}
 .game .felt{inset:230px 90px 160px}
 /* Avatar ring overlays only the portrait; it never changes the hit target. */
@@ -79,8 +80,8 @@
  .game.portrait-table .pot>b{font-size:18px}
  .game.portrait-table .board{top:337px}
  .game.portrait-table .pot{top:-34px}
- .game.portrait-table .pot-chips{top:80px}
- .game.portrait-table .board-phase{top:109px;width:160px}
+ .game.portrait-table .pot-chips{top:80px;left:50%}
+ .game.portrait-table .board-phase{top:109px;left:50%;width:160px}
  .game.portrait-table .felt{inset:85px 15px 52px}
  .game.portrait-table .seat-status,.game.portrait-table .seat.nw .seat-status,.game.portrait-table .seat.sw .seat-status,.game.portrait-table .ne .seat-status,.game.portrait-table .se .seat-status{left:auto;right:0;top:calc(var(--row) - 4px)}
  .game.portrait-table .seat-status .icon-button{width:28px;height:28px;padding:7px}
@@ -96,3 +97,20 @@
 }
 
 @media(max-width:899px) and (orientation:portrait){.game.portrait-table .seat .card + .card{margin-left:0;transform:none}}
+/* Large-card preference scales the same layout, without restoring the old overlap. */
+.game.large-cards .seat{--hole-w:123px;--hole-h:174px}
+.game.large-cards .seat.hero-seat{--hole-w:141.45px;--hole-h:200.1px}
+.game.large-cards .seat.open-cards .card{width:var(--hole-w);height:var(--hole-h)}
+.game.large-cards .seat.open-cards .card + .card{margin-left:0;transform:none}
+.game .seat.n{top:190px}
+.game .position-badge,.game .s .position-badge{left:var(--avatar)}
+.game .nw .position-badge,.game .sw .position-badge{left:0}
+@media(max-width:899px) and (orientation:portrait){
+ .game.portrait-table.large-cards .seat{--hole-w:51px;--hole-h:72px}
+ .game.portrait-table.large-cards .seat.hero-seat{--hole-w:58.65px;--hole-h:82.8px}
+ .game.portrait-table.large-cards .seat.open-cards .card{width:var(--hole-w);height:var(--hole-h)}
+ .game.portrait-table.large-cards .seat.open-cards .card + .card{margin-left:0;transform:none}
+ .game.portrait-table .seat.n{top:82px}
+ .game.portrait-table .position-badge,.game.portrait-table .s .position-badge{left:var(--avatar)}
+ .game.portrait-table .nw .position-badge,.game.portrait-table .sw .position-badge{left:0}
+}
