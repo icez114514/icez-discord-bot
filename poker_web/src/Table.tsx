@@ -1,4 +1,4 @@
-import { usePortraitTable } from './tableLayout';
+import { usePortraitTable, useCompactTableActions } from './tableLayout';
 import { TurnProgress } from './TurnProgress';
 import { useEquity } from './useEquity';
 import { bestFive, currentHandLabel } from './equity';
@@ -50,6 +50,7 @@ const errors: Record<string, string> = {
 };
 export function Table({ user, onClose, initialHistory = false }: { user: string; onClose: () => void; initialHistory?: boolean }) {
   const portrait=usePortraitTable();
+  const shortViewport=useCompactTableActions(), compactActions=portrait||shortViewport;
   const [raisePanel,setRaisePanel]=useState<string|null>(null);
   const [preferences, setPreferences] = useState(() => {
     try { return readPreferences(localStorage, user); } catch { return readPreferences(undefined, user); }
@@ -238,8 +239,8 @@ export function Table({ user, onClose, initialHistory = false }: { user: string;
   const ownTurn = !!(active && hand.actor !== null && hand.players[hand.actor]?.id === user && hand.legal.fold && hand.deadline && hand.deadline > now);
   const canRaise = ownTurn && !!hand?.legal.raise && !disabled;
   const raiseContext=`${state?.id}:${turnKey}`;
-  const raiseOpen=portrait&&canRaise&&raisePanel===raiseContext;
-  useEffect(()=>{if(!portrait||!canRaise||raisePanel!==raiseContext)setRaisePanel(null);},[portrait,canRaise,raiseContext,raisePanel]);
+  const raiseOpen=compactActions&&canRaise&&raisePanel===raiseContext;
+  useEffect(()=>{if(!compactActions||!canRaise||raisePanel!==raiseContext)setRaisePanel(null);},[compactActions,canRaise,raiseContext,raisePanel]);
   const seconds = active && hand.deadline ? Math.max(0, Math.ceil(hand.deadline - now)) : 0;
   const ownPlayer = hand?.players.find(p => p.id === user);
   const betLabel = hand?.players.some(p => BigInt(p.bet) > 0n) ? '加注至' : '下注';
@@ -322,7 +323,7 @@ export function Table({ user, onClose, initialHistory = false }: { user: string;
   const betSizing=(<div className="bet-sizing"><div className="pot-presets" aria-label="個人下注快捷按鈕">{presets.map(({ value, target, label }, index) => <button key={index} disabled={!canRaise || target === null} title={target === null ? '大盲資料未知，無法換算' : `${value} · 向下取整並限制合法範圍，加注至 ${chips(target)}；只填草稿`} onClick={() => { if (target !== null) setRaise(target); void sound.play('click'); }}>{label}</button>)}</div>
         <div className="bet-slider"><button aria-label="減少下注" disabled={!canRaise || raiseValue <= minimum} onClick={() => { setRaise(clamp(raiseValue - 100n, minimum, maximum).toString()); void sound.play('click'); }}>−</button><input aria-label="下注金額滑桿" type="range" min="0" max="1000" disabled={!canRaise || minimum === maximum} value={maximum > minimum ? Number((raiseValue - minimum) * 1000n / (maximum - minimum)) : 0} onChange={e => setRaise(sliderAmount(Number(e.target.value), minimum, maximum).toString())} /><button aria-label="增加下注" disabled={!canRaise || raiseValue >= maximum} onClick={() => { setRaise(clamp(raiseValue + 100n, minimum, maximum).toString()); void sound.play('click'); }}>＋</button><input aria-label="加注至" inputMode="numeric" autoComplete="off" disabled={!canRaise} value={raise} aria-invalid={canRaise && !raiseValid} onChange={e => setRaise(e.target.value)} /></div>
         <small className="raise-range">{canRaise ? `最低 ${chips(minimum.toString())} · 最高 ${chips(maximum.toString())}` : '等待可下注時調整金額'} · 不足一籌碼向下取整</small></div>);
-  return <section className={`game ${portrait ? 'portrait-table' : ''} ${prefs.reduced ? 'reduced-motion' : ''} ${preferences.fourColor ? 'four-color' : ''} ${preferences.large ? 'large-cards' : ''}`} aria-label="德州撲克牌桌">
+  return <section className={`game ${portrait ? 'portrait-table' : ''} ${compactActions ? 'compact-actions' : ''} ${prefs.reduced ? 'reduced-motion' : ''} ${preferences.fourColor ? 'four-color' : ''} ${preferences.large ? 'large-cards' : ''}`} aria-label="德州撲克牌桌">
     <div className="game-toolbar">
       <IconButton icon="back" label="返回大廳（保留座位）" onClick={onClose} />
       <IconButton icon={phase === 'synced' && state?.control && !state?.frozen && !state?.closed && !pending.current ? 'info' : 'warning'} label={`${state?.name ?? '牌桌'} · ${positiveInteger(state?.rules?.small_blind) && positiveInteger(blind) ? `${chips(state.rules.small_blind)} / ${chips(blind)}` : '盲注資料未知'} · 無限注德州撲克${state?.private ? ' · 私人桌' : ''} · ${connectionText}${pending.current && !connectionText.includes('結果待確認') ? pendingText : ''}`} onClick={() => setInfo('hand')} />
@@ -368,8 +369,8 @@ export function Table({ user, onClose, initialHistory = false }: { user: string;
       <div className="table-action-slot" data-visible={ownTurn || canPreselect}>
       <section className={`action-panel ${ownTurn ? '' : 'action-panel-hidden'}`} aria-label="牌桌操作" aria-hidden={!ownTurn} inert={!ownTurn}>
         <div className="turn-line"><strong>輪到你行動</strong><span className="timebank" title="行動時間用盡時自動補時，每次 5 秒，每手最多 4 次">◷ 補時池 {state.time_bank ?? 0}s{active && hand.extensions > 0 ? ` · 已用 ${hand.extensions}/4` : ''}</span></div>
-        {!portrait?betSizing:null}
-        <div className="action-buttons"><button className="action-fold" disabled={disabled || !ownTurn} onClick={() => act('fold')}>棄牌</button><button className="action-call" disabled={disabled || !ownTurn} onClick={() => act(hand?.legal.check ? 'check' : 'call')}>{hand?.legal.check ? '過牌' : <>跟注<span>{chips(hand?.legal.call ?? '0')}</span></>}</button><button className={raiseValue === maximum && canRaise ? 'action-raise action-all-in' : 'action-raise'} disabled={!canRaise || (!portrait && !raiseValid)} aria-haspopup={portrait?'dialog':undefined} aria-expanded={portrait?raiseOpen:undefined} onClick={() => portrait?setRaisePanel(raiseContext):act('raise', raise)}>{portrait?'加注':raiseValue === maximum && canRaise ? '全下' : betLabel}<span>{chips(raiseValue.toString())}</span></button></div>
+        {!compactActions?betSizing:null}
+        <div className="action-buttons"><button className="action-fold" disabled={disabled || !ownTurn} onClick={() => act('fold')}>棄牌</button><button className="action-call" disabled={disabled || !ownTurn} onClick={() => act(hand?.legal.check ? 'check' : 'call')}>{hand?.legal.check ? '過牌' : <>跟注<span>{chips(hand?.legal.call ?? '0')}</span></>}</button><button className={raiseValue === maximum && canRaise ? 'action-raise action-all-in' : 'action-raise'} disabled={!canRaise || (!compactActions && !raiseValid)} aria-haspopup={compactActions?'dialog':undefined} aria-expanded={compactActions?raiseOpen:undefined} onClick={() => compactActions?setRaisePanel(raiseContext):act('raise', raise)}>{compactActions?'加注':raiseValue === maximum && canRaise ? '全下' : betLabel}<span>{chips(raiseValue.toString())}</span></button></div>
       </section>
       <section className={`preselection ${canPreselect ? '' : 'preselection-idle'}`} aria-label="下一次行動預選" aria-hidden={!canPreselect} inert={!canPreselect}><button disabled={!canPreselect} aria-pressed={selection?.action === 'check_fold'} onClick={() => choosePreselection('check_fold')}>棄牌／過牌</button><button disabled={!canPreselect} aria-pressed={selection?.action === 'call_any'} onClick={() => choosePreselection('call_any')}>跟任何注</button></section>
       </div></TableStage>

@@ -8,3 +8,10 @@ export function usePortraitTable(){
 }
 
 export const TableGeometryContext=createContext('');
+
+export function useCompactTableActions(){
+  const query='(max-height: 639px)';
+  const [compact,setCompact]=useState(()=>matchMedia(query).matches);
+  useEffect(()=>{const media=matchMedia(query);const change=()=>setCompact(media.matches);media.addEventListener('change',change);return()=>media.removeEventListener('change',change);},[]);
+  return compact;
+}

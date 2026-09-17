@@ -135,7 +135,10 @@
  .game .pot-chips{left:95%}
  .game .felt{inset:170px 90px 130px}
 }
-@media (min-width:900px) and (min-height:600px){
+@media (min-width:900px), (orientation:landscape){
  .game .table-stage{grid-template-rows:minmax(0,1fr);gap:0}
  .game .table-action-slot{position:absolute;right:0;bottom:0}
 }
+/* Compact controls change only the dock, never the table's available height. */
+.game.compact-actions:not(.portrait-table) .table-action-slot{height:76px}
+.game.compact-actions:not(.portrait-table) .action-panel{grid-template-rows:16px 44px;gap:4px}

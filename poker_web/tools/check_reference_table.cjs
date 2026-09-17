@@ -51,6 +51,21 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));let chrome,ws;
  await until("document.querySelectorAll('.seat:not(.empty)').length===6");
  await until("[...document.images].filter(i=>i.classList.contains('casino-art')).every(i=>i.complete&&i.naturalWidth>0)");
  await run('window.geometry=structuredClone(snapshot)');
+ // Browser zoom changes CSS viewport dimensions, but must not switch table height allocation.
+ await resize(1280,580);
+ const normalZoomWidth=await run("document.querySelector('.felt').getBoundingClientRect().width");
+ await resize(1707,773);
+ const zoomedWidth=await run("document.querySelector('.felt').getBoundingClientRect().width");
+ assert(zoomedWidth*.75<=normalZoomWidth*1.12,'75% zoom must not unexpectedly enlarge the table: '+normalZoomWidth+' -> '+zoomedWidth*.75);
+ console.log('Zoom regression: physical table width at 100% / 75%',normalZoomWidth,zoomedWidth*.75);
+ await resize(1280,580);
+ await run("document.querySelector('.action-raise').click()");
+ await until("document.querySelector('dialog.mobile-raise-dialog[open]')");
+ assert.equal(await run('commands.length'),0,'short desktop opening raise must not submit');
+ await call('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
+ await call('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
+ await until("!document.querySelector('dialog[open]')");
+ assert.equal(await run('commands.length'),0,'closing short desktop raise must not submit');
  const sizes=[];
  for(const [width,height] of [[1920,1080],[1591,793],[1440,900],[1366,768],[1280,580],[1024,576],[853,480],[1280,720],[1200,800],[1399,900],[900,600],[320,568],[360,780],[390,844],[430,932]]) {
   await resize(width,height);
