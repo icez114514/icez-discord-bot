@@ -9,3 +9,12 @@ test('all-in runout timing survives batches without compressing awards',()=>{
  assert.equal(presentationDurations([{kind:'board'}],2).durations[0],650);
  assert.equal(RESULT_HOLD_MS,4400);
 });
+
+ test('uncontested result hold is halved, while active, showdown and void remain unchanged',async()=>{
+  const {resultHoldMs}=await import('./presentationState.ts');
+  const hand={payouts:{a:'100'},players:[{folded:false},{folded:true}],settlement:{void:false}};
+  assert.equal(resultHoldMs(hand),2200);
+  assert.equal(resultHoldMs({...hand,payouts:null}),4400);
+  assert.equal(resultHoldMs({...hand,players:[{folded:false},{folded:false}]}),4400);
+  assert.equal(resultHoldMs({...hand,settlement:{void:true}}),4400);
+ });

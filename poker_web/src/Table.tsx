@@ -307,9 +307,9 @@ export function Table({ user, onClose, initialHistory = false }: { user: string;
   const {highlight}=useMemo(()=>{
     const winners=visualPlayers.filter(p=>presentation.view.wins[p.id]);
     return {
-      highlight:presentation.view.resolved&&boardCards.length===5?[...new Set(winners.flatMap(p=>bestFive([...p.cards,...boardCards])))]:undefined,
+      highlight:presentation.view.resolved&&presentation.view.revealed&&boardCards.length===5?[...new Set(winners.flatMap(p=>bestFive([...p.cards,...boardCards])))]:undefined,
     };
-  },[visualHand,presentation.view.wins,presentation.view.resolved]);
+  },[visualHand,presentation.view.wins,presentation.view.resolved,presentation.view.revealed]);
   const dealOrder = visualPlayers.map(p => p.id);
   const button = hand?.button ?? 0;
   const dealTiming = (id: string) => {
@@ -374,7 +374,7 @@ export function Table({ user, onClose, initialHistory = false }: { user: string;
           const acting = active && hand.actor !== null && hand.players[hand.actor]?.id === m.id;
           const dealer = hand?.players[hand.button]?.id === m.id;
           return <article data-player={m.id} className={`seat ${position(seat)} ${acting ? 'acting' : ''} ${player?.folded ? 'folded' : ''} ${m.id === user ? 'hero-seat' : ''} ${player?.cards.length ? 'open-cards' : ''} ${won ? 'won' : lost ? 'lost' : ''}`} key={seat} aria-label={`${playerName(m.id)}，${chips(visibleStack)} 籌碼`}>
-            {player ? <div className="seat-cards"><Cards cards={player.cards} hidden={player.cards.length === 0} arrival={presentation.view.deal ? dealTiming(m.id) : undefined} /></div> : null}
+            {player ? <div className="seat-cards"><Cards cards={player.cards} hidden={player.cards.length === 0} highlight={presentation.view.resolved && presentation.view.revealed && !player.folded && boardCards.length === 5 && player.cards.length === 2 ? bestFive([...player.cards, ...boardCards]) : undefined} arrival={presentation.view.deal ? dealTiming(m.id) : undefined} /></div> : null}
             <div className="seat-plaque"><div className="portrait">{currentRank ? <span className="current-hand-rank" aria-label={`目前牌型：${currentRank}`}>{currentRank}</span> : null}{positions[m.id] || m.autoplay ? <span className={`position-badge ${m.autoplay ? "autoplay-indicator" : ""}`} aria-label={`${positions[m.id] ? "位置 " + positions[m.id] : ""}${m.autoplay ? " · 託管中" : ""}`}>{[positions[m.id], m.autoplay ? "託管中" : ""].filter(Boolean).join(" · ")}</span> : null}{acting && hand?.deadline ? <TurnProgress deadline={hand.deadline} now={now} duration={m.id.startsWith('npc:')||hand.extensions?5:20} /> : null}{m.id === user ? <button type="button" className="own-avatar" aria-label="我的座位選單" aria-haspopup="dialog" aria-expanded={seatMenu} onClick={() => setSeatMenu(true)}><PlayerAvatar url={profiles[m.id]?.avatar_url} npc={m.id.startsWith('npc:')} countdown={null} /></button> : <PlayerAvatar url={profiles[m.id]?.avatar_url} npc={m.id.startsWith('npc:')} countdown={null} />}</div>{m.id === user ? <button type="button" className="seat-info own-stack" aria-pressed={preferences.bb} aria-label={`桌上籌碼 ${chips(visibleStack)}，切換 BB／實際額`} title={`原額 ${chips(visibleStack)} 籌碼；點擊切換 BB／實際額`} onClick={() => changePreferences({ ...preferences, bb: !preferences.bb })}><strong title={playerName(m.id)}>{playerName(m.id)}</strong><b className="seat-stack">{stackDisplay(visibleStack, blind, preferences.bb)}</b></button> : <div className="seat-info"><strong title={playerName(m.id)}>{playerName(m.id)}</strong><b className="seat-stack">{displayAmount(visibleStack)}</b></div>}</div>
             <div className="seat-feedback">
             {presentation.view.revealed && player && !player.folded ? <span className="equity-label" title="勝率採預期底池占比，包含平手分配；預設顯示主池。">{share === undefined ? (equity ? '僅參與邊池' : equityPending ? '計算勝率…' : '勝率暫不可用') : `勝率 ${equity?.approximate ? '約 ' : ''}${share.toFixed(1)}%`}</span> : null}

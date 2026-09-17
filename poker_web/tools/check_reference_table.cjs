@@ -320,6 +320,22 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));let chrome,ws;
   assert.equal(await run("document.querySelectorAll('.chip-flight,.winner-badge').length"),0,'departure duplicate stays silent');
  }
 
+
+ // A showdown dims exactly the hole cards outside that player's best five.
+ for(const [cards,board,unused] of [
+  [['4d','2d'],['3h','6h','5h','7d','2h'],['2♦']],
+  [['2d','2s'],['3h','4h','5d','6s','7c'],['2♦','2♠']],
+  [['As','Ah'],['Ad','Ac','7h','4c','2s'],[]]
+ ]){
+  const example=await run('structuredClone(geometry)');example.hand.players[0].cards=cards;example.hand.board=board;example.hand.payouts={[user]:'600'};example.hand.settlement={void:false,pots:[{id:'main',amount:'600',winners:[user],awards:{[user]:'600'}}],refunds:{}};
+  for(const [width,height] of [[1920,1080],[390,844]]){
+   await resize(width,height);await run('window.feed('+JSON.stringify(example)+',true)');
+   await until("document.querySelector('.hero-seat .seat-cards .card')?.getAttribute('aria-label')==="+JSON.stringify(cards[0][0]+({d:'♦',s:'♠',h:'♥',c:'♣'})[cards[0][1]]));
+   assert.deepEqual(await run("[...document.querySelectorAll('.hero-seat .seat-cards .card.unused')].map(e=>e.getAttribute('aria-label'))"),unused,'unused hole cards '+width);
+   if(cards[0]==='4d')await shot('unused-hole-cards-'+width);
+  }
+ }
+
  assert.deepEqual(errors,[]);
  assert(observed.some(v=>v.board.length===0&&v.shares.some(s=>s.includes('%'))),'preflop worker equity visible before flop');
  fs.writeFileSync(path.join(output,'measurements.json'),JSON.stringify({sizes,observed},null,2));

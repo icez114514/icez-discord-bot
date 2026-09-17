@@ -21,3 +21,12 @@ class PresentationTimingTests(unittest.TestCase):
         self.assertEqual(next_hand_delay({'last':{'id':'h'}},100),105.5)
         self.assertEqual(event_duration({'kind':'board'},6),.65)
         self.assertEqual(event_duration({'kind':'board'},6,True),2)
+
+    def test_fold_finish_halves_wait_without_shortening_award_flights(self):
+        hand={'id':'h','payouts':{'a':100},'showdown':False,'players':[{'folded':False},{'folded':True}]}
+        self.assertAlmostEqual(next_hand_delay({'last':hand,'presentation_end':100.3},100),102.75)
+        self.assertAlmostEqual(next_hand_delay({'last':hand,'presentation_end':104},100),106.45)
+        hand['showdown']=True
+        self.assertAlmostEqual(next_hand_delay({'last':hand,'presentation_end':100.3},100),105.5)
+        hand['showdown']=False;hand['void']=True
+        self.assertAlmostEqual(next_hand_delay({'last':hand,'presentation_end':100.3},100),105.5)

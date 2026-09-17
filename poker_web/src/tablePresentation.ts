@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { EventCursor, eventSound, eventVoice, actorVoice, type EventState, type PublicEvent } from './tableAudio';
-import { baseline as sceneBaseline, startHand, present, presentationDurations, RESULT_HOLD_MS, type SceneState, type ShownHand } from './presentationState';
+import { baseline as sceneBaseline, startHand, present, presentationDurations, resultHoldMs, type SceneState, type ShownHand } from './presentationState';
 import { sound } from './sound';
 export const chips = (value: string) => BigInt(value).toLocaleString('zh-TW');
 const actions: Record<string, string> = { small_blind: '小盲', big_blind: '大盲', check: '過牌', fold: '棄牌', call: '跟注', bet: '下注', raise: '加注' };
@@ -94,7 +94,7 @@ export function useTablePresentation(user:string,reduced=false) {
       at+=duration;
     }
     end.current=at;
-    delay(Math.max(0,at-performance.now()),()=>{if(performance.now()+5>=end.current){update(v=>({...v,playing:false}));delay(RESULT_HOLD_MS,()=>{if(!current.current.playing&&end.current===at)update(v=>({...v,celebrating:false}));});}});
+    delay(Math.max(0,at-performance.now()),()=>{if(performance.now()+5>=end.current){update(v=>({...v,playing:false}));delay(resultHoldMs(final),()=>{if(!current.current.playing&&end.current===at)update(v=>({...v,celebrating:false}));});}});
     return events;
   }
   function result(id:string,failed:boolean) {

@@ -51,6 +51,10 @@ export function present(scene:SceneState,event:PublicEvent,final:ShownHand,user:
   return next;
 }
 export const RESULT_HOLD_MS = 4400;
+export function resultHoldMs(hand: Pick<ShownHand, "payouts" | "players" | "settlement">) {
+  const uncontested = hand.payouts !== null && !hand.settlement?.void && hand.players.filter(p=>!p.folded).length === 1;
+  return uncontested ? RESULT_HOLD_MS / 2 : RESULT_HOLD_MS;
+}
 export function eventDuration(event:PublicEvent,players:number,allInRunout=false) {
   return ({deal:players*140+420,action:120,collect:220,all_in_reveal:700,board:allInRunout?2000:650,showdown:650,payout:320,refund:320,complete:0} as Record<string,number>)[event.kind]??0;
 }

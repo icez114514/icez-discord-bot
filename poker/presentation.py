@@ -32,8 +32,14 @@ def event_duration(event, players, all_in_runout=False):
 
 def next_hand_delay(table, now):
     # Admission countdown also gives the result its full hold after queued awards.
-    minimum = 5.5 if table.get("last") else 5
-    return max(now + minimum, table.get("presentation_end", now) + RESULT_HOLD_SECONDS + 0.5)
+    hand = table.get("last") or {}
+    uncontested = (hand.get("payouts") is not None and not hand.get("void")
+                   and not hand.get("showdown")
+                   and sum(not p.get("folded", False) for p in hand.get("players", [])) == 1)
+    factor = 0.5 if uncontested else 1
+    minimum = (5.5 if hand else 5) * factor
+    # Keep all queued card/chip movement; halve only the post-hand wait.
+    return max(now + minimum, table.get("presentation_end", now) + (RESULT_HOLD_SECONDS + 0.5) * factor)
 
 
 def publish_hand(table, now, db=None):
