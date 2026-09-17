@@ -225,8 +225,6 @@ export function Table({ user, onClose, initialHistory = false }: { user: string;
   const visualHand = presentation.view.hand?.id === hand?.id ? presentation.view.hand : hand;
   const visualPlayers = visualHand?.players ?? [];
   const settlement = visualHand?.settlement;
-  const refundTotal = Object.values(settlement?.refunds ?? {}).reduce((n, a) => n + BigInt(a), 0n);
-  const awardTotal = (settlement?.pots ?? []).reduce((n, pot) => n + BigInt(pot.amount), 0n);
   const mine = state?.members?.find(m => m.id === user);
   const disabled = busy || phase !== 'synced' || !state?.control || !!pending.current || state.frozen || state.closed || historyOpen;
   const turnKey = hand ? `${hand.id}:${hand.turn}` : '';
@@ -337,7 +335,7 @@ export function Table({ user, onClose, initialHistory = false }: { user: string;
     {state?.closed ? <p className="table-closed">牌桌已關閉；當手完成後退回剩餘籌碼。</p> : null}
     {state?.joined ? <>
       <TableStage portrait={portrait} onLayoutChange={presentation.cancelMotion}><div className="table-scene" ref={scene}><ChipFlights events={presentation.view.flights} scene={scene} format={displayAmount} duration={presentation.view.flightDuration} /><DealFlights event={presentation.view.deal} players={dealOrder} button={button} scene={scene} duration={presentation.view.flightDuration} /><div className="felt" aria-hidden="true" />
-        <div className="board"><strong className={`pot ${chips(visualHand?.pot ?? '0').length > 18 ? 'long-pot' : ''}`}><span className="pot-tools"><IconButton icon="info" label="本手牌局" onClick={() => setInfo('hand')} /></span><span>總底池</span><b>{displayAmount(visualHand?.pot ?? '0')}</b></strong><Cards cards={boardCards} slots={5} reveal={reveal} highlight={highlight} /><div className="pot-chips" aria-label={`已收進底池 ${displayAmount(potChips)}`}><PokerChips amount={potChips} /></div><div className="board-phase">{state.countdown && !presentation.view.playing ? <IconButton icon="clock" label={`下一手倒數 ${Math.max(0, Math.ceil(state.countdown - now))} 秒`} /> : null}{visualHand?.payouts ? <p role="status" className="settlement">{settlement ? `${settlement.void ? '作廢' : `派彩 ${displayAmount(awardTotal.toString())}`} · 退款 ${displayAmount(refundTotal.toString())}` : '本手已結算'}</p> : null}</div></div>
+        <div className="board"><strong className={`pot ${chips(visualHand?.pot ?? '0').length > 18 ? 'long-pot' : ''}`}><span className="pot-tools"><IconButton icon="info" label="本手牌局" onClick={() => setInfo('hand')} /></span><span>總底池</span><b>{displayAmount(visualHand?.pot ?? '0')}</b></strong><Cards cards={boardCards} slots={5} reveal={reveal} highlight={highlight} /><div className="pot-chips" aria-label={`已收進底池 ${displayAmount(potChips)}`}><PokerChips amount={potChips} /></div><div className="board-phase">{state.countdown && !presentation.view.playing ? <IconButton icon="clock" label={`下一手倒數 ${Math.max(0, Math.ceil(state.countdown - now))} 秒`} /> : null}</div></div>
         {Array.from({ length: 6 }, (_, seat) => {
           const occupants = seated.filter(m => m.seat === seat);
           const m = occupants.find(m => hand?.players.some(p => p.id === m.id)) ?? occupants[0];

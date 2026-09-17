@@ -5,7 +5,7 @@ main.table-mode > .message { flex:none; margin:0 0 6px; padding:6px 10px; font-s
 .table-mode > .game { flex:1; height:auto; min-height:0; display:grid; grid-template-rows:44px minmax(0,1fr); gap:4px; position:relative; }
 .game-toolbar,.game .table-tools { display:flex; align-items:center; gap:6px; }
 .game-toolbar { position:relative; z-index:8; justify-content:space-between; pointer-events:none; }
-.game-toolbar button { pointer-events:auto; }
+.game-toolbar button,.game-toolbar dialog { pointer-events:auto; }
 .game-toolbar .icon-button { background:transparent; border-color:transparent; }
 @media (hover:hover) { .game-toolbar .icon-button:hover { background:var(--panel); border-color:var(--line); } }
 .game .table-tools { margin-left:auto; }
