@@ -142,3 +142,10 @@
 /* Compact controls change only the dock, never the table's available height. */
 .game.compact-actions:not(.portrait-table) .table-action-slot{height:76px}
 .game.compact-actions:not(.portrait-table) .action-panel{grid-template-rows:16px 44px;gap:4px}
+/* Extend the desktop felt and seat anchors without stretching cards or portraits. */
+@media (min-width:900px), (orientation:landscape){
+ .game .seat.nw,.game .seat.sw{left:12.17%}
+ .game .seat.ne,.game .seat.se{left:87.83%}
+ .game .seat.n.empty{top:90px}
+ .game .table-scene{--deal-x:calc(var(--canvas-width) / 2 - 30px)}
+}

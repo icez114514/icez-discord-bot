@@ -102,7 +102,7 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));let chrome,ws;
    assert.equal(await run("document.querySelector('.table-action-slot').getBoundingClientRect().y"),before,'preselection keeps dock position');
    await run('window.feed(geometry,true)');
   }
-  if(width>=1100 && height>=600 && width/height<=2) assert(await run("document.querySelector('.felt').getBoundingClientRect().width/innerWidth>=.65"),'desktop table must fill at least 65% of viewport width '+width+'x'+height);
+  if(width>=1100 && height>=600 && width/height<=2) assert(await run("document.querySelector('.felt').getBoundingClientRect().width/innerWidth>=.85"),'desktop table must fill at least 85% of viewport width '+width+'x'+height);
   sizes.push({width,height,...result});await shot('table-'+width);
  }
  // Mobile action drawer sends nothing until an explicit confirmation.
@@ -155,7 +155,7 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));let chrome,ws;
   else await until("document.querySelectorAll('.deal-card').length===0");
  }
  await run('window.feed(geometry,true)');
- await resize(844,390);assert.equal(await run("document.querySelector('.table-scene').offsetWidth"),1520,'landscape restored');
+ await resize(844,390);assert(await run("document.querySelector('.table-scene').offsetWidth>=1520"),'landscape restored');
  await resize(1440,900);
  await run("window.savedCard=document.querySelector('.board .card');window.savedFace=window.savedCard.querySelector('.casino-art');true");
  assert.equal(await run("document.querySelectorAll('.timer-ring').length"),1,'actor has an avatar ring');
@@ -259,6 +259,12 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));let chrome,ws;
    await shot('six-'+w+(large?'-large':''));
   }
  }
+ // Match the reported idle table: only the viewer seated, north seat on the rail.
+ await resize(1591,793);
+ await run("document.querySelector('.game').classList.remove('large-cards');const idle=structuredClone(geometry);idle.hand=null;idle.members=idle.members.filter(m=>m.id==='111111111111111111');window.feed(idle,true)");
+ await until("document.querySelector('.seat.n.empty')");
+ assert(await run(`(()=>{const r=document.querySelector('.seat.n .empty-seat-button').getBoundingClientRect(),f=document.querySelector('.felt').getBoundingClientRect(),p=document.querySelector('.pot').getBoundingClientRect();return Math.abs(r.top+r.height/2-f.top)<1&&r.bottom<p.top&&f.width/innerWidth>=.85;})()`),'idle north seat sits on rail without covering pot');
+ await shot('desktop-idle-expanded');
  assert.deepEqual(errors,[]);
  assert(observed.some(v=>v.board.length===0&&v.shares.some(s=>s.includes('%'))),'preflop worker equity visible before flop');
  fs.writeFileSync(path.join(output,'measurements.json'),JSON.stringify({sizes,observed},null,2));
