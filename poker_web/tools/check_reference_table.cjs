@@ -52,7 +52,7 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));let chrome,ws;
  await until("[...document.images].filter(i=>i.classList.contains('casino-art')).every(i=>i.complete&&i.naturalWidth>0)");
  await run('window.geometry=structuredClone(snapshot)');
  const sizes=[];
- for(const [width,height] of [[1920,1080],[1440,900],[1366,768],[1280,580],[1024,576],[853,480],[1280,720],[1200,800],[1399,900],[900,600],[320,568],[360,780],[390,844],[430,932]]) {
+ for(const [width,height] of [[1920,1080],[1591,793],[1440,900],[1366,768],[1280,580],[1024,576],[853,480],[1280,720],[1200,800],[1399,900],[900,600],[320,568],[360,780],[390,844],[430,932]]) {
   await resize(width,height);
   const result=await run(`(()=>{
    const rect=q=>{const r=document.querySelector(q).getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height};};
@@ -87,6 +87,7 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));let chrome,ws;
    assert.equal(await run("document.querySelector('.table-action-slot').getBoundingClientRect().y"),before,'preselection keeps dock position');
    await run('window.feed(geometry,true)');
   }
+  if(width>=1100 && height>=600 && width/height<=2) assert(await run("document.querySelector('.felt').getBoundingClientRect().width/innerWidth>=.65"),'desktop table must fill at least 65% of viewport width '+width+'x'+height);
   sizes.push({width,height,...result});await shot('table-'+width);
  }
  // Mobile action drawer sends nothing until an explicit confirmation.
@@ -238,7 +239,7 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));let chrome,ws;
   await resize(w,h);await run('window.feed('+JSON.stringify(six)+',true)');await until("document.querySelectorAll('.seat.open-cards').length===6 && [...document.querySelectorAll('.seat.open-cards img.casino-art')].every(i=>i.complete&&i.naturalWidth>0)");
   for(const large of [false,true]){
    await run(`document.querySelector('.game').classList.toggle('large-cards',${large})`);
-   const failures=await run(`(()=>{const errors=[],board=document.querySelector('.board .card'),bw=board.getBoundingClientRect().width,bh=board.getBoundingClientRect().height;const overlap=(a,b)=>a.left<b.right-.5&&a.right>b.left+.5&&a.top<b.bottom-.5&&a.bottom>b.top+.5;for(const seat of document.querySelectorAll('.seat.open-cards')){const cards=[...seat.querySelectorAll('.seat-cards .card')],rects=cards.map(c=>c.getBoundingClientRect()),plaque=seat.querySelector('.seat-plaque').getBoundingClientRect(),factor=seat.classList.contains('hero-seat')?1.15:1;if(overlap(rects[0],rects[1]))errors.push('overlapping cards '+seat.className);for(const [i,c] of cards.entries()){const art=c.querySelector('img.casino-art');if(!art||!art.complete||!art.naturalWidth||!new URL(art.src).pathname.startsWith('/assets/cards/casino/'))errors.push('missing casino artwork');if(Math.abs(rects[i].width/bw-factor)>.01||Math.abs(rects[i].height/bh-factor)>.01)errors.push('card scale');if(overlap(rects[i],plaque))errors.push('card/plaque overlap');}}return errors;})()`);
+   const failures=await run(`(()=>{const errors=[],board=document.querySelector('.board .card'),bw=board.getBoundingClientRect().width,bh=board.getBoundingClientRect().height;const overlap=(a,b)=>a.left<b.right-.5&&a.right>b.left+.5&&a.top<b.bottom-.5&&a.bottom>b.top+.5;for(const seat of document.querySelectorAll('.seat.open-cards')){const cards=[...seat.querySelectorAll('.seat-cards .card')],rects=cards.map(c=>c.getBoundingClientRect()),plaque=seat.querySelector('.seat-plaque').getBoundingClientRect(),factor=seat.classList.contains('hero-seat')?1.15:1;if(overlap(rects[0],rects[1]))errors.push('overlapping cards '+seat.className);for(const [i,c] of cards.entries()){const art=c.querySelector('img.casino-art');if(!art||!art.complete||!art.naturalWidth||!new URL(art.src).pathname.startsWith('/assets/cards/casino/'))errors.push('missing casino artwork');if(Math.abs(rects[i].width/bw-factor)>.01||Math.abs(rects[i].height/bh-factor)>.01)errors.push('card scale');if(overlap(rects[i],plaque))errors.push('card/plaque overlap');if(!document.querySelector('.portrait-table'))for(const label of document.querySelectorAll('.seat-feedback,.position-badge,.board-phase'))if(overlap(rects[i],label.getBoundingClientRect()))errors.push('card/info overlap '+label.className);}}return errors;})()`);
    assert.deepEqual(failures,[],'six-player visible cards '+w+' large='+large);
    await shot('six-'+w+(large?'-large':''));
   }
