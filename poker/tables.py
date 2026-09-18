@@ -61,6 +61,9 @@ def accessible(table, user, invitation=None, spectator=False):
 
 
 def save(db, table):
+    if table["closed"]:
+        table.pop("chat", None)
+        table.pop("chat_rates", None)
     db.execute(
         "INSERT INTO game_tables VALUES(?,?) ON CONFLICT(table_id) DO UPDATE SET state=excluded.state",
         (table["id"], json.dumps(table)),

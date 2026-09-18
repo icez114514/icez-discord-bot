@@ -1,0 +1,15 @@
+/* A quiet companion to the betting dock; outside the scaled table canvas. */
+.game .table-chat{position:absolute;left:0;bottom:0;width:320px;height:136px;box-sizing:border-box;z-index:9;display:flex;flex-direction:column;background:var(--panel,#334348);border:1px solid #6b7877;border-radius:12px;padding:4px 8px;gap:3px;color:#edf0e9;text-align:left}
+.table-chat header{display:flex;align-items:center;justify-content:space-between;height:24px;flex-shrink:0;font-size:13px}
+.table-chat header div{display:flex;gap:4px}.game .table-chat header button{padding:0;width:32px;min-height:24px;height:24px;background:transparent;color:inherit;border:0;font-size:20px}
+.chat-messages{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;font-size:14px;line-height:1.4;text-align:left}
+.chat-messages p{margin:2px 0;overflow-wrap:anywhere;white-space:pre-wrap}.chat-messages strong{color:#efdaa1;margin-right:8px;font-size:13px}.chat-empty{color:#bdc7c4}
+.chat-compose{display:flex;gap:6px;flex-shrink:0;margin:0!important}.chat-compose input{min-width:0;width:0;flex:1;font-size:16px;margin:0!important;padding:6px 8px!important;height:44px;box-sizing:border-box}.chat-compose button{min-height:44px;min-width:56px;padding:4px 8px;font-size:14px;flex-shrink:0}
+.chat-error{font-size:12px;line-height:1.2;margin:0;color:#ffd2b5}.table-chat .chat-error{position:absolute;bottom:100%;left:0;background:#263236;padding:6px;border-radius:6px}
+.chat-new{position:absolute;bottom:52px;right:12px;font-size:12px;padding:4px 8px;min-height:24px}
+.game .table-chat-toggle{position:absolute;left:0;bottom:0;z-index:9;min-height:44px;padding:8px 14px;font-size:14px;background:#334348;color:#edf0e9;border:1px solid #6b7877;border-radius:12px}.table-chat-toggle b{margin-left:6px;color:#ffdfa0}
+dialog.table-chat-dialog{width:min(480px,calc(100vw - 24px));height:min(520px,80dvh);box-sizing:border-box;overflow:hidden;padding:14px}
+dialog.table-chat-dialog[open]{display:flex;flex-direction:column;gap:10px}.table-chat-dialog .panel-top{flex-shrink:0}.table-chat-dialog .chat-messages{font-size:16px}.table-chat-dialog .chat-new{bottom:76px}.table-chat-dialog .chat-error{flex-shrink:0}
+@media(max-width:899px){.game .table-chat-toggle{left:8px;bottom:calc(84px + env(safe-area-inset-bottom,0px))}.table-chat-dialog{position:fixed;margin:auto;top:auto;bottom:8px}.chat-compose button{min-width:64px}}
+
+.table-chat .chat-compose button,.table-chat-dialog .chat-compose button{width:auto;flex:0 0 auto}

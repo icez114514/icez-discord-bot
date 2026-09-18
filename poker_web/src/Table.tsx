@@ -3,6 +3,8 @@ import { TurnProgress } from './TurnProgress';
 import { useEquity } from './useEquity';
 import { bestFive, currentHandLabel } from './equity';
 import { modeLabel, wildBest, cardLabel, type GameMode } from './wildcards';
+import { TableChat } from './TableChat';
+import { mergeChat, type ChatUpdate } from './chatState';
 import { TableStage } from './TableStage';
 import { collectedPot } from './chipStacks';
 import { PokerChips } from './PokerChips';
@@ -52,6 +54,7 @@ const errors: Record<string, string> = {
   topup_already_queued: '已有一筆待處理補碼。', buy_in_range: '帶入後桌上籌碼需為 2,000～10,000。',
 };
 export function Table({ user, onClose, initialHistory = false }: { user: string; onClose: () => void; initialHistory?: boolean }) {
+  const [chat, setChat] = useState<ChatUpdate | null>(null);
   const portrait=usePortraitTable();
   const shortViewport=useCompactTableActions(), compactActions=portrait||shortViewport;
   const [raisePanel,setRaisePanel]=useState<string|null>(null);
@@ -161,12 +164,13 @@ export function Table({ user, onClose, initialHistory = false }: { user: string;
     let stopped = false;
     let retry: ReturnType<typeof setTimeout> | undefined;
     const attach = () => {
-      const socket = new WebSocket(`${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/ws/table${watchedTable.current ? "?table_id=" + encodeURIComponent(watchedTable.current) : ""}`);
+      const socket = new WebSocket(`${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/ws/table?chat=1${watchedTable.current ? "&table_id=" + encodeURIComponent(watchedTable.current) : ""}`);
       socketRef.current = socket;
       socket.onopen = () => { if (!stopped && socketRef.current === socket && socket.readyState === WebSocket.OPEN && !['revoked', 'stopped'].includes(phaseRef.current)) connectionPhase('syncing'); };
       socket.onmessage = event => {
         if (stopped || socketRef.current !== socket || socket.readyState !== WebSocket.OPEN || ['revoked', 'stopped'].includes(phaseRef.current)) return;
         const message = JSON.parse(event.data);
+        if (message.type === 'chat') { setChat(previous => mergeChat(previous, message)); return; }
         if (message.connection) control.current = message.connection;
         if (message.state && control.current && (message.type === 'ready' || phaseRef.current === 'synced')) {
           connectionPhase('synced');
@@ -396,7 +400,7 @@ export function Table({ user, onClose, initialHistory = false }: { user: string;
         <div className="action-buttons"><button className="action-fold" disabled={disabled || !ownTurn} onClick={() => act('fold')}>棄牌</button><button className="action-call" disabled={disabled || !ownTurn} onClick={() => act(hand?.legal.check ? 'check' : 'call')}>{hand?.legal.check ? '過牌' : <>跟注<span>{chips(hand?.legal.call ?? '0')}</span></>}</button><button className={raiseValue === maximum && canRaise ? 'action-raise action-all-in' : 'action-raise'} disabled={!canRaise || (!compactActions && !raiseValid)} aria-haspopup={compactActions?'dialog':undefined} aria-expanded={compactActions?raiseOpen:undefined} onClick={() => compactActions?setRaisePanel(raiseContext):act('raise', raise)}>{compactActions?'加注':raiseValue === maximum && canRaise ? '全下' : betLabel}<span>{chips(raiseValue.toString())}</span></button></div>
       </section>
       <section className={`preselection ${canPreselect ? '' : 'preselection-idle'}`} aria-label="下一次行動預選" aria-hidden={!canPreselect} inert={!canPreselect}><button disabled={!canPreselect} aria-pressed={selection?.action === 'check_fold'} onClick={() => choosePreselection('check_fold')}>棄牌／過牌</button><button disabled={!canPreselect} aria-pressed={selection?.action === 'call_any'} onClick={() => choosePreselection('call_any')}>跟任何注</button></section>
-      </div></TableStage>
+      </div><TableChat key={state.id} tableId={state.id} user={user} connected={connected} update={chat?.table_id === state.id ? chat : null} /></TableStage>
       {raiseOpen ? <Modal title="調整加注" className="mobile-raise-dialog" fitVisualViewport dismissOnBackdrop onClose={()=>setRaisePanel(null)}>{betSizing}<button className="confirm-raise" disabled={!canRaise||!raiseValid} onClick={()=>{setRaisePanel(null);act('raise',raise);}}>{raiseValue===maximum?'確認全下':'確認加注'} · {chips(raiseValue.toString())}</button></Modal> : null}
       {info ? <Modal title={info === 'hand' ? '本手牌局' : '牌局紀錄'} onClose={() => setInfo(null)}>{info === 'hand' ? <div className="hand-info"><p className="game-mode-label">{modeLabel(state.game_mode)}{state.game_mode === "double_joker" ? " · 54 張 · 鬼牌自動補成最佳牌型" : ""}</p>{visualPlayers.filter(p=>p.cards.length===2 && [...p.cards,...boardCards].some(c=>c.startsWith("X")) && boardCards.length>=3).map(p=><p key={p.id}>{playerName(p.id)} · {currentHandLabel(p.cards,boardCards)}<br/>{Object.entries(wildBest([...p.cards,...boardCards]).substitutions).map(([from,to])=>`${cardLabel(from)} → ${cardLabel(to)}`).join("、") || "最佳五張未使用鬼牌"}</p>)}<button onClick={() => setInfo('log')}>牌局紀錄</button><p>{hand ? `手牌 ${hand.id} · ${labels[visualHand?.street ?? ''] ?? visualHand?.street}` : '尚未開始'} · 底池 {chips(visualHand?.pot ?? '0')}</p><span>你的底牌</span><Cards cards={ownPlayer?.cards ?? []} /><span>公共牌</span><Cards cards={boardCards} slots={5} />{equity && equity.pots.length > 1 ? <details className="equity-breakdown" open><summary>主池／邊池勝率</summary>{equity.pots.map((pot,index) => <p key={index}>{index ? '邊池 ' + index : '主池'} · {displayAmount(pot.amount)}<br/>{Object.entries(pot.shares).map(([id,value]) => `${playerName(id)} ${equity.approximate ? '約 ' : ''}${value.toFixed(1)}%`).join(' · ')}</p>)}</details> : null}{settlement ? <SettlementDetails settlement={settlement} name={playerName} /> : null}</div> : <><button onClick={() => setInfo('hand')}>本手牌局</button><p>本次連線觀察到的公開異動，最多保留 80 筆；重連期間可能不完整。</p>{log.length ? <ol className="game-log">{log.map((entry, index) => <li key={index}>{entry}</li>)}</ol> : <p>尚無新的牌局異動。</p>}</>}</Modal> : null}
       {options ? <Modal title="牌桌選項" onClose={() => setOptions(false)}><ThemePicker /><TablePreferences value={preferences} onChange={changePreferences} saved={preferencesSaved} /><p className="bank">補時池 {state.time_bank} / 60 秒 · 自動補時每次 +5 秒，最多 4 次</p>

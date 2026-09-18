@@ -79,6 +79,12 @@ def install(app, config, cookie):
     from .replay import install as install_replay
     install_replay(app, cookie)
 
+    from . import chat
+
+    @app.post("/api/table/chat")
+    async def send_chat(data: chat.ChatInput, request: Request):
+        return await chat.send(app.state.store, app.state.profiles, request.cookies.get(cookie, ""), data)
+
     @app.get("/api/table")
     async def table(request: Request, table_id: str | None = None):
         return await app.state.tables.view(
@@ -121,7 +127,16 @@ def install(app, config, cookie):
             await socket.send_json(
                 {"type": "ready", "connection": connection, "state": state}
             )
+            chat_enabled = socket.query_params.get("chat") == "1"
+            chat_cursor = -1
+            chat_closed = False
             while True:
+                if chat_enabled:
+                    update = await chat.history(app.state.store, token, table_id, max(0, chat_cursor))
+                    if chat_cursor < 0 or update["sequence"] != chat_cursor or update["closed"] != chat_closed:
+                        update["initial"] = chat_cursor < 0
+                        await socket.send_json(update)
+                        chat_cursor, chat_closed = update["sequence"], update["closed"]
                 try:
                     message = await asyncio.wait_for(socket.receive_json(), 0.5)
                 except asyncio.TimeoutError:
