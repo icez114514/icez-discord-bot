@@ -1,4 +1,4 @@
-import { clamp } from './betting.ts';
+import { raiseAmount } from './betting.ts';
 
 export function positiveInteger(value: unknown): value is string {
   return typeof value === 'string' && /^[0-9]+$/.test(value) && BigInt(value) > 0n;
@@ -23,7 +23,7 @@ export function ratio(value: string): [number, number] | null {
 export function bbPreset(blind: string | undefined, multiple: string, minimum: bigint, maximum: bigint) {
   const parsed = ratio(multiple);
   if (!positiveInteger(blind) || !parsed) return null;
-  return clamp(BigInt(blind) * BigInt(parsed[0]) / BigInt(parsed[1]), minimum, maximum).toString();
+  return raiseAmount(BigInt(blind) * BigInt(parsed[0]) / BigInt(parsed[1]), minimum, maximum).toString();
 }
 
 export type Preferences = { bb: boolean; fourColor: boolean; large: boolean; preflop: string[]; postflop: string[] };

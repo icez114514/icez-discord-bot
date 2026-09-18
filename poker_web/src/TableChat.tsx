@@ -1,18 +1,15 @@
-import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Modal } from './Modal';
 import { chatLength, type ChatUpdate } from './chatState';
 import './TableChat.css';
-const query = '(max-width: 899px), (max-height: 650px)';
-const subscribe = (fn: () => void) => { const m = matchMedia(query); m.addEventListener('change',fn); return () => m.removeEventListener('change',fn); };
 type Pending = { client_message_id: string; text: string };
 export function TableChat({ tableId, user, connected, update }: { tableId: string; user: string; connected: boolean; update: ChatUpdate | null }) {
-  const compact = useSyncExternalStore(subscribe, () => matchMedia(query).matches);
-  const [collapsed,setCollapsed] = useState(false), [expanded,setExpanded] = useState(false);
+  const [expanded,setExpanded] = useState(false);
   const [draft,setDraft] = useState(''), [pending,setPending] = useState<Pending | null>(null), [busy,setBusy] = useState(false), [error,setError] = useState('');
   const acknowledged = useRef<string | null>(null);
   const sending = useRef(false), alive = useRef(true), bottom = useRef(true), list = useRef<HTMLDivElement>(null), initialized = useRef(false);
   const [seen,setSeen] = useState(0), [newBelow,setNewBelow] = useState(false);
-  const messages = update?.messages ?? [], visible = expanded || (!compact && !collapsed);
+  const messages = update?.messages ?? [], visible = expanded;
   const unread = messages.filter(m => m.sequence > seen && m.author.id !== user).length;
   const disabled = !connected || !update || update.closed || busy;
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
@@ -59,7 +56,7 @@ export function TableChat({ tableId, user, connected, update }: { tableId: strin
     {chatLength(draft)>200 && <p className="chat-error">最多 200 字（目前 {chatLength(draft)} 字）</p>}
   </>;
   return <>
-    {(compact || collapsed) ? <button className="table-chat-toggle" onClick={() => compact ? setExpanded(true) : setCollapsed(false)}>聊天{unread>0 && <b>{unread}</b>}</button> : <section className="table-chat" aria-label="牌桌聊天"><header><strong>同桌聊天</strong><div><button aria-label="放大聊天" onClick={() => setExpanded(true)}>↗</button><button aria-label="收合聊天" onClick={() => setCollapsed(true)}>−</button></div></header>{!expanded && body}</section>}
+    <button className="table-chat-preview" aria-label={`開啟聊天${unread ? `，${unread} 則未讀` : ''}`} onClick={() => setExpanded(true)}><span className="chat-preview-heading">聊天 {unread>0 && <b>{unread}</b>}<span aria-hidden="true">↗</span></span><span className="chat-preview-lines">{messages.length ? messages.slice(-3).map(m=><span key={m.id}><strong>{m.author.display_name}</strong> {m.text}</span>) : <span>{update?.closed ? '牌桌已關閉' : '尚無訊息'}</span>}</span></button>
     {expanded && <Modal title="同桌聊天" className="table-chat-dialog" fitVisualViewport onClose={() => setExpanded(false)}>{body}</Modal>}
   </>;
 }

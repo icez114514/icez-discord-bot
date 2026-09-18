@@ -11,8 +11,8 @@ test('BB display preserves huge integers and marks only rounded values', () => {
   }
 });
 
-test('fractional BB raise-to floors integer chips then respects server limits', () => {
-  assert.equal(bbPreset('101', '2.5', 202n, 1000n), '252');
+test('fractional BB raise-to floors to 50 chips then respects server limits', () => {
+  assert.equal(bbPreset('101', '2.5', 202n, 1000n), '250');
   assert.equal(bbPreset('101', '2.5', 300n, 1000n), '300');
   assert.equal(bbPreset('101', '2.5', 150n, 150n), '150');
   assert.equal(bbPreset(undefined, '2.5', 200n, 1000n), null);
@@ -36,5 +36,5 @@ test('preferences isolate accounts and survive unavailable or corrupt storage', 
 
 test('rounded BB values and extreme raise presets remain exact', () => {
   assert.equal(stackDisplay('900719925474099312345', '1000', true), '≈900719925474099312.35 BB');
-  assert.equal(bbPreset('900719925474099312345', '2.5', 0n, 9999999999999999999999n), '2251799813685248280862');
+  assert.equal(bbPreset('900719925474099312345', '2.5', 0n, 9999999999999999999999n), '2251799813685248280850');
 });

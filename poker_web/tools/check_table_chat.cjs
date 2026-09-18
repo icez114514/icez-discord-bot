@@ -53,21 +53,21 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));let chrome,ws;
  // Chat runs outside the poker snapshot and keeps the game geometry unchanged.
  await resize(1920,1080);
  await run(`window.chatRequests=[];window.chatFail=false;window.chatSeq=0;const oldChatFetch=window.fetch;window.fetch=async(url,opts)=>{if(String(url).endsWith('/api/table/chat')){const p=JSON.parse(opts.body);chatRequests.push(p);if(chatFail)throw Error('lost acknowledgement');return new Response(JSON.stringify({receipt:{id:'sent',sequence:++chatSeq,table_id:p.table_id}}),{status:200});}return oldChatFetch(url,opts);};window.feedChat=(messages,initial=false)=>socket.onmessage({data:JSON.stringify({type:'chat',table_id:'main',sequence:messages.at(-1)?.sequence??0,messages,initial,closed:false})});window.chatMessage=n=>({id:'chat'+n,sequence:n,author:{id:'peer',display_name:'同桌玩家'},created_at:0,text:n===1?'<img src=x onerror=alert(1)> https://example.com':'訊息 '+n,client_message_id:'chat'+n});window.feedChat([chatMessage(1)],true);`);
- await until("document.querySelector('.chat-messages')?.textContent.includes('<img')");
- assert.equal(await run("document.querySelectorAll('.chat-messages img,.chat-messages a').length"),0,'chat remains plain text');
+ await until("document.querySelector('.chat-preview-lines')?.textContent.includes('<img')");
+ assert.equal(await run("document.querySelectorAll('.chat-preview-lines img,.chat-preview-lines a').length"),0,'chat remains plain text');
  const gameBefore=await run("JSON.stringify([document.querySelector('.felt').getBoundingClientRect().toJSON(),document.querySelector('.hero-seat').getBoundingClientRect().toJSON()])");
- await run("document.querySelector('[aria-label=\"收合聊天\"]').click();feedChat([chatMessage(2)])");
- await until("document.querySelector('.table-chat-toggle b')?.textContent==='1'");
- await run("document.querySelector('.table-chat-toggle').click()");
+ await run("feedChat([chatMessage(2),chatMessage(3),chatMessage(4)])");
+ await until("document.querySelector('.table-chat-preview b')?.textContent==='3'");
  assert.equal(await run("JSON.stringify([document.querySelector('.felt').getBoundingClientRect().toJSON(),document.querySelector('.hero-seat').getBoundingClientRect().toJSON()])"),gameBefore,'chat does not resize table');
  for(const [w,h] of [[1920,1080],[1280,580],[853,480],[320,568],[360,780],[390,844],[430,932]]){
   await resize(w,h);
-  const bounds=await run(`(()=>{const e=document.querySelector('.table-chat')||document.querySelector('.table-chat-toggle'),a=e.getBoundingClientRect(),b=document.querySelector('.table-action-slot').getBoundingClientRect(),hero=document.querySelector('.hero-seat .seat-info').getBoundingClientRect();return {visible:a.x>=0&&a.y>=0&&a.right<=innerWidth&&a.bottom<=innerHeight,overlap:Math.min(a.right,b.right)>Math.max(a.left,b.left)&&Math.min(a.bottom,b.bottom)>Math.max(a.top,b.top)};})()`);
+  const bounds=await run(`(()=>{const e=document.querySelector('.table-chat-preview'),a=e.getBoundingClientRect(),b=document.querySelector('.table-action-slot').getBoundingClientRect(),hero=document.querySelector('.hero-seat .seat-info').getBoundingClientRect();return {visible:a.x>=0&&a.y>=0&&a.right<=innerWidth&&a.bottom<=innerHeight,overlap:Math.min(a.right,b.right)>Math.max(a.left,b.left)&&Math.min(a.bottom,b.bottom)>Math.max(a.top,b.top)};})()`);
   assert(bounds.visible,'chat in viewport '+w);assert(!bounds.overlap,'chat avoids betting dock '+w);
+  assert.equal(await run("document.querySelectorAll('.chat-preview-lines>span').length"),3,'three preview rows');
   await shot('chat-'+w);
-  if(w<900||h<=650){await run("document.querySelector('.table-chat-toggle').click()");await until("document.querySelector('dialog.table-chat-dialog[open]')");assert(await run("document.querySelector('.chat-compose input').getBoundingClientRect().width>150"),'readable input '+w);await shot('chat-expanded-'+w);await call('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});await until("!document.querySelector('dialog[open]')");}
+  if(w<900||h<=650){await run("document.querySelector('.table-chat-preview').click()");await until("document.querySelector('dialog.table-chat-dialog[open]')");assert(await run("document.querySelector('.chat-compose input').getBoundingClientRect().width>150"),'readable input '+w);await shot('chat-expanded-'+w);await call('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});await until("!document.querySelector('dialog[open]')");}
  }
- await resize(390,844);await run("document.querySelector('.table-chat-toggle').focus();document.querySelector('.table-chat-toggle').click()");
+ await resize(390,844);await run("document.querySelector('.table-chat-preview').focus();document.querySelector('.table-chat-preview').click()");
  await run("feedChat(Array.from({length:100},(_,i)=>chatMessage(i+3)))");
  await until("document.querySelectorAll('.chat-messages p').length===100");
  await run("document.querySelector('.chat-messages').scrollTop=0;document.querySelector('.chat-messages').dispatchEvent(new Event('scroll',{bubbles:true}))");
@@ -78,13 +78,13 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));let chrome,ws;
  await call('Input.dispatchMouseEvent',{type:'mousePressed',x:3,y:200,button:'left',clickCount:1});
  await call('Input.dispatchMouseEvent',{type:'mouseReleased',x:3,y:200,button:'left',clickCount:1});
  await until("!document.querySelector('dialog[open]')");
- assert(await run("document.activeElement===document.querySelector('.table-chat-toggle')"),'focus returns to chat button');
- await run("document.querySelector('.table-chat-toggle').click()");
+ assert(await run("document.activeElement===document.querySelector('.table-chat-preview')"),'focus returns to chat button');
+ await run("document.querySelector('.table-chat-preview').click()");
  await run(`const input=document.querySelector('[aria-label="聊天訊息"]');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'草稿 😀');input.dispatchEvent(new Event('input',{bubbles:true}));`);
  await until("document.querySelector('[aria-label=\"聊天訊息\"]').value==='草稿 😀'");
  assert(await run(`(()=>{const e=new KeyboardEvent('keydown',{key:'Enter',isComposing:true,bubbles:true,cancelable:true});document.querySelector('[aria-label="聊天訊息"]').dispatchEvent(e);return e.defaultPrevented;})()`),'IME Enter prevented');
  await call('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
- await run("document.querySelector('.table-chat-toggle').click()");
+ await run("document.querySelector('.table-chat-preview').click()");
  assert.equal(await run("document.querySelector('[aria-label=\"聊天訊息\"]').value"),'草稿 😀','draft survives closing');
  await run("chatFail=true;document.querySelector('.chat-compose').requestSubmit()");
  await until("document.querySelector('.chat-error')?.textContent.includes('尚未確認')");

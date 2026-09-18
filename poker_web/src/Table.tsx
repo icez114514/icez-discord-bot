@@ -16,7 +16,7 @@ import { Cards } from './Cards';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { Modal } from './Modal';
 import { ThemePicker } from './Theme';
-import { clamp, potPreset, sliderAmount } from './betting';
+import { clamp, potPreset, sliderAmount, raiseAmount, validRaise, stepRaise } from './betting';
 import { sound } from './sound';
 import { actionLabel, useTablePresentation } from './tablePresentation';
 import { ChipFlights, DealFlights, SettlementDetails, type Settlement } from './TableEffects';
@@ -256,9 +256,9 @@ export function Table({ user, onClose, initialHistory = false }: { user: string;
   const disabled = busy || phase !== 'synced' || !state?.control || !!pending.current || state.frozen || state.closed || historyOpen;
   const turnKey = hand ? `${hand.id}:${hand.turn}` : '';
   const maximum = BigInt(hand?.legal.max_raise_to ?? '0');
-  const minimum = clamp(BigInt(hand?.legal.min_raise_to ?? '0'), 0n, maximum);
+  const minimum = raiseAmount(0n, clamp(BigInt(hand?.legal.min_raise_to ?? '0'), 0n, maximum), maximum);
   const raise = raiseDraft.turn === turnKey ? raiseDraft.value : minimum.toString();
-  const raiseValid = /^[0-9]+$/.test(raise) && BigInt(raise) >= minimum && BigInt(raise) <= maximum;
+  const raiseValid = /^[0-9]+$/.test(raise) && validRaise(BigInt(raise), minimum, maximum);
   const raiseValue = raiseValid ? BigInt(raise) : minimum;
   const setRaise = (value: string) => setRaiseDraft({ turn: turnKey, value });
   const ownTurn = !!(active && hand.actor !== null && hand.players[hand.actor]?.id === user && hand.legal.fold && hand.deadline && hand.deadline > now);
@@ -345,9 +345,9 @@ export function Table({ user, onClose, initialHistory = false }: { user: string;
   const seated = state?.members ?? [];
   const mySeat = mine?.seat ?? 0;
   const position = (seat: number) => ['s', 'sw', 'nw', 'n', 'ne', 'se'][(seat - mySeat + 6) % 6];
-  const betSizing=(<div className="bet-sizing"><div className="pot-presets" aria-label="個人下注快捷按鈕">{presets.map(({ value, target, label }, index) => <button key={index} disabled={!canRaise || target === null} title={target === null ? '大盲資料未知，無法換算' : `${value} · 向下取整並限制合法範圍，加注至 ${chips(target)}；只填草稿`} onClick={() => { if (target !== null) setRaise(target); void sound.play('click'); }}>{label}</button>)}</div>
-        <div className="bet-slider"><button aria-label="減少下注" disabled={!canRaise || raiseValue <= minimum} onClick={() => { setRaise(clamp(raiseValue - 100n, minimum, maximum).toString()); void sound.play('click'); }}>−</button><input aria-label="下注金額滑桿" type="range" min="0" max="1000" disabled={!canRaise || minimum === maximum} value={maximum > minimum ? Number((raiseValue - minimum) * 1000n / (maximum - minimum)) : 0} onChange={e => setRaise(sliderAmount(Number(e.target.value), minimum, maximum).toString())} /><button aria-label="增加下注" disabled={!canRaise || raiseValue >= maximum} onClick={() => { setRaise(clamp(raiseValue + 100n, minimum, maximum).toString()); void sound.play('click'); }}>＋</button><input aria-label="加注至" inputMode="numeric" autoComplete="off" disabled={!canRaise} value={raise} aria-invalid={canRaise && !raiseValid} onChange={e => setRaise(e.target.value)} /></div>
-        <small className="raise-range">{canRaise ? `最低 ${chips(minimum.toString())} · 最高 ${chips(maximum.toString())}` : '等待可下注時調整金額'} · 不足一籌碼向下取整</small></div>);
+  const betSizing=(<div className="bet-sizing"><div className="pot-presets" aria-label="個人下注快捷按鈕">{presets.map(({ value, target, label }, index) => <button key={index} disabled={!canRaise || target === null} title={target === null ? '大盲資料未知，無法換算' : `${value} · 以 50 為單位並限制合法範圍，加注至 ${chips(target)}；只填草稿`} onClick={() => { if (target !== null) setRaise(target); void sound.play('click'); }}>{label}</button>)}</div>
+        <div className="bet-slider"><button aria-label="減少下注" disabled={!canRaise || raiseValue <= minimum} onClick={() => { setRaise(stepRaise(raiseValue, -1, minimum, maximum).toString()); void sound.play('click'); }}>−</button><input aria-label="下注金額滑桿" type="range" min="0" max="1000" disabled={!canRaise || minimum === maximum} value={maximum > minimum ? Number((raiseValue - minimum) * 1000n / (maximum - minimum)) : 0} onChange={e => setRaise(sliderAmount(Number(e.target.value), minimum, maximum).toString())} /><button aria-label="增加下注" disabled={!canRaise || raiseValue >= maximum} onClick={() => { setRaise(stepRaise(raiseValue, 1, minimum, maximum).toString()); void sound.play('click'); }}>＋</button><input aria-label="加注至" title="以 50 為單位；全下可使用全部剩餘籌碼" inputMode="numeric" autoComplete="off" disabled={!canRaise} value={raise} aria-invalid={canRaise && !raiseValid} onChange={e => setRaise(e.target.value)} /></div>
+        <small className="raise-range">{canRaise ? `最低 ${chips(minimum.toString())} · 最高 ${chips(maximum.toString())}` : '等待可下注時調整金額'} · 以 50 為單位（全下除外）</small></div>);
   return <section className={`game ${portrait ? 'portrait-table' : ''} ${compactActions ? 'compact-actions' : ''} ${prefs.reduced ? 'reduced-motion' : ''} ${preferences.fourColor ? 'four-color' : ''} ${preferences.large ? 'large-cards' : ''}`} aria-label="德州撲克牌桌">
     <div className="game-toolbar">
       <IconButton icon="back" label="返回大廳（保留座位）" onClick={onClose} />
