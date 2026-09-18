@@ -4,6 +4,7 @@ import { baseline as sceneBaseline, startHand, present, presentationDurations, r
 import { sound } from './sound';
 export const chips = (value: string) => BigInt(value).toLocaleString('zh-TW');
 const actions: Record<string, string> = { small_blind: '小盲', big_blind: '大盲', check: '過牌', fold: '棄牌', call: '跟注', bet: '下注', raise: '加注' };
+export function compactActionLabel(event: PublicEvent) { return event.all_in ? '全下' : actions[event.action ?? ''] ?? ''; }
 export function actionLabel(event: PublicEvent, format = chips) {
   const label = event.all_in ? 'ALL-IN 全下' : event.action === 'raise' && (event.bet_level ?? 0) >= 3 ? `${event.bet_level}-BET 再加注` : actions[event.action ?? ''] ?? '';
   if (!event.amount || event.amount === '0') return label;

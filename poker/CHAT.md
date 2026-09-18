@@ -17,8 +17,9 @@ receipt even after a message leaves the retention window. Closing a table
 clears its chat and rate timestamps. Limits are one message per second and
 ten per minute per user/table; they survive reconnects and service restarts.
 
-Chat always shows a three-message preview in the bottom-left corner.
-Clicking it opens the full history and input in an accessible dialog. Uncertain sends
+Desktop chat shows a three-message preview without a heading in the bottom-left
+corner. Viewports below 900px show a collapsed chat icon and unread badge instead.
+Clicking either opens the full history and input in an accessible dialog. Uncertain sends
 retain their original ID for explicit retry. Drafts survive closing the dialog
 and connection loss, and table changes unmount the previous draft/pending UI.
 

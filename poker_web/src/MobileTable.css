@@ -1,0 +1,53 @@
+/* Final portrait geometry: all six seats fit the measured stage, without scrolling. */
+@media(max-width:899px){
+ html:has(main.table-mode),body:has(main.table-mode){height:100dvh;overflow:hidden;overscroll-behavior:none}
+ main.table-mode{height:100dvh;min-height:0;overflow:hidden}
+ .seat-details .cards{justify-content:center}.seat-details .card{width:70px;height:99px}
+}
+@media(max-width:899px) and (orientation:portrait){
+ .game.portrait-table .table-viewport{overflow:hidden;place-items:center}
+ .game.portrait-table .table-frame{flex:none}
+ .game.portrait-table .table-scene{--deal-x:183px;--deal-y:245px}
+ .game.portrait-table .felt{inset:58px 14px 32px;border-radius:48% / 24%;border-width:8px}
+ .game.portrait-table .seat,.game.portrait-table.large-cards .seat{--avatar:48px;--row:50px;--name:124px;--column-gap:-4px;--info-x:44px;--avatar-x:0px;--hole-w:38px;--hole-h:53.6px;--status-font:max(14px,calc(12px / var(--table-scale)));--status-row:max(23px,calc(16px / var(--table-scale)));width:168px;height:80px}
+ .game.portrait-table .seat.hero-seat,.game.portrait-table.large-cards .seat.hero-seat{--avatar:52px;--row:50px;--name:124px;--info-x:48px;--hole-w:43.7px;--hole-h:61.6px;width:172px}
+ .game.portrait-table .seat.n{left:195px;top:76px;--bet-x:-46px;--bet-y:24px}
+ .game.portrait-table .seat.nw{left:88px;top:184px;--info-x:0px;--avatar-x:120px;--bet-x:38px;--bet-y:131px}
+ .game.portrait-table .seat.ne{left:302px;top:184px;--bet-x:128px;--bet-y:131px}
+ .game.portrait-table .seat.sw{left:88px;top:413px;--info-x:0px;--avatar-x:120px;--bet-x:38px;--bet-y:-73px}
+ .game.portrait-table .seat.se{left:302px;top:413px;--bet-x:128px;--bet-y:-73px}
+ .game.portrait-table .seat.s{left:195px;top:540px;--bet-x:216px;--bet-y:24px}
+ .game.portrait-table .seat .seat-info{top:0;height:var(--row);padding:2px 4px 2px 10px}
+ .game.portrait-table .seat:is(.nw,.sw) .seat-info{padding:2px 10px 2px 4px}
+ .game.portrait-table .seat-info strong,.game.portrait-table .seat-stack{font-size:max(14px,calc(12px / var(--table-scale)));line-height:calc(var(--row) / 2 - 2px);height:calc(var(--row) / 2 - 2px)}
+ .game.portrait-table .seat .seat-feedback{top:calc(var(--row) + 3px);height:var(--status-row);grid-template-rows:var(--status-row);gap:0}
+ .game.portrait-table .seat .portrait .current-hand-rank{display:none}
+ .game.portrait-table .seat .seat-feedback .winner-badge{position:absolute;right:auto;grid-area:auto;bottom:auto;top:calc(-1 * var(--row) - 34px);animation:none;left:calc(var(--avatar-x) - var(--info-x) + var(--avatar)/2);transform:translateX(-50%);width:auto;font-size:calc(12px / var(--table-scale));line-height:1.1;padding:2px 4px}
+ .game.portrait-table .winner-badge small{display:none}
+ .game.portrait-table .seat.open-cards .seat-cards{top:calc(-1 * var(--hole-h) - 7px)}
+ .game.portrait-table .seat:is(.nw,.sw).open-cards .seat-cards{left:0}
+ .game.portrait-table .seat:is(.ne,.se).open-cards .seat-cards{left:calc(168px - 2 * var(--hole-w) - 4px)}
+ .game.portrait-table .seat .seat-cards{top:-34px}
+ .game.portrait-table .seat-bet{font-size:max(14px,calc(12px / var(--table-scale)));gap:4px;max-width:100px}
+ .game.portrait-table .board{top:302px;left:50%;width:210px;height:53.6px}
+ .game.portrait-table .board>.cards{width:210px;gap:5px}
+ .game.portrait-table .board .card,.game.portrait-table.large-cards .board .card{width:38px;height:53.6px}
+ .game.portrait-table .pot{top:-35px;bottom:auto;left:50%;width:230px;height:29px}
+ .game.portrait-table .pot>b{font-size:max(18px,calc(12px / var(--table-scale)))}
+ .game.portrait-table .pot-chips{top:59px;left:50%}
+ .game.portrait-table .board-phase{top:76px;left:76%;width:44px}
+ .game.portrait-table .empty-seat-button,.game.portrait-table .empty-seat-number{width:48px;height:48px;font-size:20px}
+ .game.portrait-table .seat-status{top:0;right:0;left:auto;transform:translateY(-100%)}
+ .game.portrait-table .seat-status .icon-button{width:24px;height:24px;padding:4px}
+ .game.portrait-table .table-chat-toggle{bottom:calc(84px + env(safe-area-inset-bottom,0px));left:4px}
+}
+
+@media(max-width:899px) and (orientation:portrait){.game.portrait-table .seat.hero-seat.open-cards .seat-cards{left:calc(var(--info-x) + var(--name)/2 - var(--hole-w) - 7px)}}
+
+@media(max-width:899px) and (orientation:portrait){.game.portrait-table .seat-bet{line-height:1}.game.portrait-table .seat-bet .poker-chips{transform:none}}
+
+@media(max-width:899px) and (orientation:portrait){.game.portrait-table .hero-seat .seat-feedback .winner-badge{margin-left:-20px}}
+
+@media(max-width:899px) and (orientation:portrait){.game.portrait-table.large-cards .board,.game.portrait-table.large-cards .board>.cards{width:210px}}
+
+@media(max-width:899px) and (orientation:portrait){.game.portrait-table .seat.n .winner-badge{margin-left:-14px}}

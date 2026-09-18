@@ -20,3 +20,7 @@ dialog.table-chat-dialog[open]{display:flex;flex-direction:column;gap:10px}.tabl
 @media(max-width:899px){.game .table-chat-preview{left:8px;bottom:calc(84px + env(safe-area-inset-bottom,0px));width:28vw;max-width:160px;padding:6px;font-size:12px}}
 
 @media(max-width:899px){.game .table-chat-preview{bottom:calc(80px + env(safe-area-inset-bottom,0px));height:62px;padding:4px 6px}.table-chat-preview .chat-preview-heading{display:none}}
+
+.game .table-chat-preview{height:66px;padding:5px 10px}
+.game .table-chat-toggle{width:44px;height:44px;padding:10px;display:grid;place-items:center}
+.table-chat-toggle b{position:absolute;right:-4px;top:-5px;min-width:16px;border-radius:10px;background:var(--panel);border:1px solid var(--line);font-size:11px;line-height:16px;text-align:center;margin:0}

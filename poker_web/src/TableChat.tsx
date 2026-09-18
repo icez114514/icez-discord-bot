@@ -1,9 +1,12 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Modal } from './Modal';
 import { chatLength, type ChatUpdate } from './chatState';
 import './TableChat.css';
+const chatQuery = '(max-width: 899px)';
+const subscribeChat = (fn: () => void) => { const media=matchMedia(chatQuery); media.addEventListener('change',fn); return () => media.removeEventListener('change',fn); };
 type Pending = { client_message_id: string; text: string };
 export function TableChat({ tableId, user, connected, update }: { tableId: string; user: string; connected: boolean; update: ChatUpdate | null }) {
+  const compact = useSyncExternalStore(subscribeChat, () => matchMedia(chatQuery).matches);
   const [expanded,setExpanded] = useState(false);
   const [draft,setDraft] = useState(''), [pending,setPending] = useState<Pending | null>(null), [busy,setBusy] = useState(false), [error,setError] = useState('');
   const acknowledged = useRef<string | null>(null);
@@ -56,7 +59,7 @@ export function TableChat({ tableId, user, connected, update }: { tableId: strin
     {chatLength(draft)>200 && <p className="chat-error">最多 200 字（目前 {chatLength(draft)} 字）</p>}
   </>;
   return <>
-    <button className="table-chat-preview" aria-label={`開啟聊天${unread ? `，${unread} 則未讀` : ''}`} onClick={() => setExpanded(true)}><span className="chat-preview-heading">聊天 {unread>0 && <b>{unread}</b>}<span aria-hidden="true">↗</span></span><span className="chat-preview-lines">{messages.length ? messages.slice(-3).map(m=><span key={m.id}><strong>{m.author.display_name}</strong> {m.text}</span>) : <span>{update?.closed ? '牌桌已關閉' : '尚無訊息'}</span>}</span></button>
+    <button className={compact ? 'table-chat-toggle' : 'table-chat-preview'} aria-label={`開啟聊天${unread ? `，${unread} 則未讀` : ''}`} onClick={() => setExpanded(true)}>{compact ? <><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M4 4h16v12H9l-5 4V4Z"/><path d="M8 8h8M8 12h5"/></svg>{unread>0 && <b>{unread}</b>}</> : <span className="chat-preview-lines">{messages.length ? messages.slice(-3).map(m=><span key={m.id}><strong>{m.author.display_name}</strong> {m.text}</span>) : <span>{update?.closed ? '牌桌已關閉' : '尚無訊息'}</span>}</span>}</button>
     {expanded && <Modal title="同桌聊天" className="table-chat-dialog" fitVisualViewport onClose={() => setExpanded(false)}>{body}</Modal>}
   </>;
 }
