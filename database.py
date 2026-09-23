@@ -75,7 +75,7 @@ class CrystalStore:
         self.schema = schema
         self.table = sql.Identifier(schema, "crystal_accounts")
         self._pool = AsyncConnectionPool(
-            kwargs=self._params, min_size=1, max_size=4, timeout=5,
+            kwargs=self._params, min_size=0, max_size=4, max_idle=60, timeout=5,
             open=False, name="crystal-db",
         )
         self._open_lock = asyncio.Lock()
