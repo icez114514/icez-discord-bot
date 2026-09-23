@@ -8,13 +8,11 @@ import secrets
 import time
 from weakref import WeakValueDictionary
 from functools import lru_cache
-from dataclasses import dataclass
 from pathlib import Path
 from uuid import UUID
 
 import discord
 from discord import app_commands
-from discord.ext import tasks
 
 from casino_rules import CasinoError, InsufficientBalance, dice_points, parse_integer
 from blackjack import total
@@ -45,14 +43,6 @@ def money(value: int) -> str:
 @lru_cache(maxsize=16)
 def dealer_bytes(path: str) -> bytes:
     return Path(path).read_bytes()
-
-
-@dataclass(frozen=True)
-class ActiveMessage:
-    game_id: UUID
-    interaction: discord.Interaction
-    shown_at: float
-    version: int
 
 
 class Delivery:
@@ -266,7 +256,7 @@ def paigow_description(game):
     if game.status == 'active':
         lines.append('莊家：七張暗牌，確認後揭曉。')
         if game.deadline is not None:
-            lines.append(f'期限：<t:{int(game.deadline.timestamp())}:R>（固定 120 秒，到期自動分牌結算）')
+            lines.append(f'期限：<t:{int(game.deadline.timestamp())}:R>（固定 120 秒；到期後請重新 /賭場結算）')
     else:
         low, high = paigow.split(game.dealer, game.dealer_front)
         player_low, player_high = paigow.split(game.player, game.front)
@@ -311,7 +301,6 @@ class CasinoFeature:
         self.asset_directory = os.getenv('CASINO_ASSET_DIR') or str(Path(__file__).with_name('casino_assets'))
         self.deliveries: WeakValueDictionary[int, Delivery] = WeakValueDictionary()
         self.owner_locks: WeakValueDictionary[int, asyncio.Lock] = WeakValueDictionary()
-        self.active_messages: dict[int, ActiveMessage] = {}
         self.pending_actions: set[int] = set()
         self.image_tasks: set[asyncio.Task] = set()
 
@@ -325,50 +314,18 @@ class CasinoFeature:
                 logging.warning('Casino dealer preload failed; text fallback remains available.')
 
     async def start_background(self):
-        if self.store is not None and not self.expiry_loop.is_running():
+        if self.store is not None:
             try:
                 await asyncio.to_thread(self.preload)
             except Exception:
                 logging.warning('Casino asset preload failed; text fallback remains available.')
-            self.expiry_loop.start()
 
     async def stop_background(self):
-        task = self.expiry_loop.get_task()
-        self.expiry_loop.cancel()
-        if task is not None:
-            try:
-                await task
-            except asyncio.CancelledError:
-                pass
-        self.active_messages.clear()
         images = list(self.image_tasks)
         for image_task in images:
             image_task.cancel()
         await asyncio.gather(*images, return_exceptions=True)
         self.image_tasks.clear()
-
-    @tasks.loop(seconds=2)
-    async def expiry_loop(self):
-        try:
-            await self.expire_once()
-        except Exception:
-            logging.warning('Casino expiry check failed; will retry from persisted state.')
-
-    @operation("casino.expire_once")
-    async def expire_once(self):
-        results = await self.storage().expire_pending()
-        for game in results:
-            async with measured_lock(self.owner_lock(game.user_id)):
-                target = self.active_messages.get(game.user_id)
-                if target is not None and target.game_id == game.id:
-                    try:
-                        await self.show_result(target.interaction, game)
-                    except discord.HTTPException:
-                        mark_status("delivery_error")
-                        logging.warning('Casino expiry delivery failed; settlement is durable.')
-        for user_id, target in list(self.active_messages.items()):
-            if time.monotonic() - target.shown_at > 600:
-                self.active_messages.pop(user_id, None)
 
     def owner_lock(self, user_id):
         lock = self.owner_locks.get(user_id)
@@ -672,7 +629,7 @@ class CasinoFeature:
             embed.description = '水晶餘額不足，請修改下注金額。'
         embed.set_footer(text="設定與返回不扣款。豹子＝骰值×10、456＝7、對子取單點、123＝0、散骰＝−1；同點比總和，不重擲、不抽水。")
         if game_type == 'blackjack':
-            embed.set_footer(text='首兩張可加倍；軟 17 停牌；120 秒無有效操作自動停牌。天然勝利返還 2.5 倍，普通勝利 2 倍。')
+            embed.set_footer(text='首兩張可加倍；軟 17 停牌；120 秒無有效操作後，重新 /賭場時自動停牌結算。天然勝利返還 2.5 倍，普通勝利 2 倍。')
         if game_type == 'paigow':
             embed.set_footer(text='Joker 可當任意牌，五條最大')
         await self.render(interaction, embed, SettingsView(self, interaction.user.id, prefs, game_type))
@@ -686,7 +643,7 @@ class CasinoFeature:
             embed.description = (f"玩家：{' · '.join(map(card_text, game.player))}（{total(game.player)} 點）\n"
                                  f"莊家：{' · '.join(map(card_text, game.dealer))}（{dealer_total} 點）")
             if game.deadline is not None:
-                embed.description += f'\n期限：<t:{int(game.deadline.timestamp())}:R>（到期自動停牌）'
+                embed.description += f'\n期限：<t:{int(game.deadline.timestamp())}:R>（到期後重新 /賭場結算）'
         elif game.game == 'paigow' and game.status != 'void':
             embed.description = paigow_description(game)
         elif game.game == 'dice' and game.status != "void":
@@ -705,17 +662,7 @@ class CasinoFeature:
         embed.set_footer(text=f"牌局 {game.id} · 版本 {game.version}")
         view = (PaiGowView(self, game.user_id, game) if game.game == 'paigow' else
                 PlayView(self, game.user_id, game)) if game.status == 'active' else ResultView(self, game.user_id, game)
-        shown = await self.render(interaction, embed, view, game=game)
-        if not shown:
-            return
-        if game.status == 'active':
-            current = self.active_messages.get(game.user_id)
-            if current is None or current.game_id != game.id or current.version <= game.version:
-                self.active_messages[game.user_id] = ActiveMessage(game.id, interaction, time.monotonic(), game.version)
-        else:
-            current = self.active_messages.get(game.user_id)
-            if current is not None and current.game_id == game.id:
-                self.active_messages.pop(game.user_id, None)
+        await self.render(interaction, embed, view, game=game)
 
     async def table_image(self, game):
         return await asyncio.to_thread(lambda: renderer(self.asset_directory).render(game))

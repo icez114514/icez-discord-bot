@@ -71,19 +71,14 @@ class BlackjackUITests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(all('?' not in url and url.startswith('https://cdn.discordapp.com/attachments/') for url in captured))
         self.assertTrue(all(choice == DEALER_IMAGE_URLS for choice in selections))
 
-    async def test_background_expiry_updates_original_message_once(self):
-        game = hand()
-        result = replace(game, status='settled', outcome='tie', returned=100, dealer=(8, 20), version=2, deadline=None)
-        store = SimpleNamespace(expire_pending=AsyncMock(return_value=[result]))
+    async def test_idle_casino_does_not_poll_database(self):
+        store = SimpleNamespace(expire_pending=AsyncMock(return_value=[]))
         feature = CasinoFeature(store)
-        event = interaction()
-        await feature.show_result(event, game)
-        event.edit_original_response.reset_mock()
-        await feature.expire_once()
-        self.assertEqual(event.edit_original_response.call_args.kwargs['view'].game, result)
-        store.expire_pending.return_value = []
-        await feature.expire_once()
-        self.assertEqual(event.edit_original_response.await_count, 1)
+        with patch.object(feature, 'preload'):
+            await feature.start_background()
+            await asyncio.sleep(0.05)
+            await feature.stop_background()
+        store.expire_pending.assert_not_awaited()
 
     async def test_slow_old_image_cannot_overwrite_new_result(self):
         feature = CasinoFeature(None)
