@@ -9,7 +9,7 @@
     "dev": "vite --host 127.0.0.1",
     "test:homepage": "npm run build && node tools/check_homepage.cjs",
     "test:reference": "npm run build && node tools/check_reference_table.cjs",
-    "test": "node --experimental-strip-types --test src/*.test.mjs"
+    "test": "node --experimental-strip-types --test src/*.test.mjs tools/*.test.mjs"
   },
   "dependencies": {
     "react": "19.3.0",
@@ -18,7 +18,7 @@
   "devDependencies": {
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
-    "typescript": "7.0.2",
+    "typescript": "6.0.3",
     "vite": "8.3.0"
   }
 }

@@ -3,6 +3,8 @@
 安裝目標為原生 Termux、ARM64、Python 3.14。使用同一個系統 Python，
 德撲套件放在 `poker/.venv`，既有水晶 bot 使用專案根目錄的 `.venv`。
 Node 只用來建置前端；網站啟動後由 Python 提供頁面與 WebSocket。
+前端使用 JavaScript 版 TypeScript 6.0.3，讓 Android 可執行型別檢查；
+升級編譯器時，需保留 Android ARM64 的 CLI 啟動檢查。
 
 目前手機提供的版本為 Python 3.14.6、SQLite 3.53.4、Node 26.4.0。
 Windows 的獨立 Python 3.12.14 與 3.14.6 環境各通過 152 項德撲測試；
