@@ -1,0 +1,5 @@
+-r requirements.txt
+
+# CPython 3.14 / Android API 24+ / ARM64, published by the Termux User Repository.
+# Use this exact artifact instead of adding an index for unrelated dependencies.
+pydantic-core @ https://github.com/tur-pypi-dists/python3.14-pydantic_core/releases/download/v2.50.1/pydantic_core-2.50.1-cp314-cp314-android_24_arm64_v8a.whl#sha256=fe42631897c1afe1f9cbad38a30ae16bc5ef0cf36532a37750099cdb5da0e839

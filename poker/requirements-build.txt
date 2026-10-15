@@ -1,0 +1,4 @@
+# Used only when compiling eval7 from its original Cython sources.
+Cython==3.3.0
+setuptools==84.0.0
+wheel==0.48.0

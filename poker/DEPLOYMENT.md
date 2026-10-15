@@ -9,6 +9,10 @@ phone evidence worksheet, see [WINDOWS_ACCEPTANCE.md](WINDOWS_ACCEPTANCE.md).
 
 ## Runtime and configuration
 
+For native Termux ARM64 / Python 3.14 installation, use
+[TERMUX.md](TERMUX.md) and the repository-root `install_poker_termux.sh`.
+It uses the same system Python as the crystal Bot with a separate poker venv.
+
 Use the separate poker environment; never migrate the crystal Bot database.
 The desktop deployment runtime is Python 3.12.14 / SQLite 3.53.1.
 Production check/migrate/serve reject known pre-fix WAL builds. Accepted lines:

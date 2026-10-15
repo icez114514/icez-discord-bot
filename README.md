@@ -208,6 +208,12 @@ API 依據：[discord.py Intents](https://discordpy.readthedocs.io/en/stable/int
 公開 /賭場 已提供 18 豆仔；21 點入口暫時停用。啟用前請執行增量遷移，詳見 [賭場操作與故障恢復](docs/casino.md)。
 
 
+## 手機上的德撲網站
+
+原生 Termux ARM64／Python 3.14 的首次安裝、Discord 登入與網站設定，見
+[德撲手機設定指南](poker/TERMUX.md)。使用同一個系統 Python，德撲套件另存於
+`poker/.venv`；安裝指令是 `bash install_poker_termux.sh`。
+
 ## Termux 一鍵更新與重啟
 
 從另一個 Termux 分頁執行，勿在 `discordbot` tmux 工作階段內執行：

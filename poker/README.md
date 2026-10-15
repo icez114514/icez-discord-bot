@@ -18,6 +18,9 @@ The game runs in one process on the phone; the desktop builds static frontend fi
 
 ## Install and run
 
+Native Termux ARM64 / Python 3.14: follow [TERMUX.md](TERMUX.md) and run
+`bash install_poker_termux.sh` from the repository root.
+
 From the repository root, create a separate environment:
 
 ```sh
@@ -34,8 +37,9 @@ On Windows, use `poker\.venv\Scripts\python.exe` instead of
 Copy `poker_web/dist` to the same relative path on the phone with the Python source.
 The service serves these files itself; no Node development server runs on the phone.
 
-Set environment variables in your service manager or private shell environment.
-This service deliberately does not read the existing Bot's `.env`.
+The CLI reads the repository-root `.env`; explicit environment variables take
+precedence. It can share the existing Bot's credentials as documented in
+[DEPLOYMENT.md](DEPLOYMENT.md).
 
 | Variable | Required value |
 | --- | --- |
