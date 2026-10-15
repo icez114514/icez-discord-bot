@@ -1,0 +1,232 @@
+{
+  "documentType": "codex-security.findings",
+  "findings": [
+    {
+      "attackPath": {
+        "dataflow": {
+          "summary": "CLI bot_path -> _resolve_submission -> check_static -> load_bot -> spec.loader.exec_module."
+        },
+        "reachability": {
+          "summary": "Reachable through validator CLI/validate API when used on another party's submission. Fixed bundled model-only integration does not require this path."
+        },
+        "summary": "An attacker supplies a bot for validation; operator invokes the optional validator; module import executes the attacker's top-level code with validator privileges."
+      },
+      "codeEvidence": [
+        {
+          "code": "        if results[\"errors\"]:\n            return results\n\n        try:\n            bot = load_bot(bot_py)",
+          "endLine": 534,
+          "explanation": "After a submission passes the denylist, its resolved path is forwarded to the host importer.",
+          "id": "v-entry",
+          "label": "Validation imports submitted source after static checks",
+          "path": "engine_vendored/sandbox/validator.py",
+          "role": "entrypoint",
+          "startLine": 530
+        },
+        {
+          "code": "    for node in ast.walk(tree):\n        # Direct calls to banned builtins: __import__(...), eval(...), exec(...), compile(...)\n        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in BANNED_CALL_NAMES:",
+          "endLine": 260,
+          "explanation": "Calls via names imported from permitted os are not in the banned builtin list; os is explicitly allowed at lines 42-56.",
+          "id": "v-check",
+          "label": "Only selected direct call names are blocked",
+          "path": "engine_vendored/sandbox/validator.py",
+          "role": "root_control",
+          "startLine": 258
+        },
+        {
+          "code": "def load_bot(path: str):\n    spec   = importlib.util.spec_from_file_location(\"bot_under_test\", path)\n    module = importlib.util.module_from_spec(spec)\n    spec.loader.exec_module(module)",
+          "endLine": 347,
+          "explanation": "exec_module evaluates arbitrary top-level submission Python without an isolation boundary.",
+          "id": "v-sink",
+          "label": "Submission module executes in validator process",
+          "path": "engine_vendored/sandbox/validator.py",
+          "role": "sink",
+          "startLine": 344
+        }
+      ],
+      "confidence": {
+        "level": "high",
+        "rationale": "Independent source review confirms both bypassable checks and unsandboxed exec_module; no exploit was executed."
+      },
+      "findingId": "csf_ea82125f59410d90e6c14ee3",
+      "fingerprints": {
+        "algorithm": "codex-security/v1",
+        "primary": "codex-security/v1:sha256:c5b4e4a6bb85a98caea222daacadc0c9632ef7df6dcecb337bd65400d7a68bf6"
+      },
+      "identity": {
+        "anchor": "bot"
+      },
+      "locations": [
+        {
+          "endLine": 347,
+          "path": "engine_vendored/sandbox/validator.py",
+          "role": "root_control",
+          "startLine": 344
+        },
+        {
+          "endLine": 534,
+          "path": "engine_vendored/sandbox/validator.py",
+          "role": "entrypoint",
+          "startLine": 523
+        }
+      ],
+      "occurrenceId": "occ_61cccec480109c15ddb51db0",
+      "provenance": {
+        "candidateId": "validator-host-code-execution",
+        "originalCandidates": [
+          {
+            "confidence": "high",
+            "control": "bot submission author controls bot.py passed to validate/CLI",
+            "counterevidence": "Requires operator passing attacker-controlled submission; tests/test_smoke.py uses fixed repository bot. Docker controls in match.py do not cover validator. No public remote submission endpoint identified.",
+            "cwe": "CWE-94/CWE-693",
+            "evidence": "check_static lines221-227 allows from os import system because os is permitted; lines258-280 only reject selected Name calls and attributes spelled os.*. A top-level system(...) via imported alias passes these checks. validate lines523-534 then load_bot exec_module line347 executes it directly in host process, before any Docker sandbox. CLI570 and Makefile19 reach this path.",
+            "id": "validator-host-code-execution",
+            "impact": "An operator validating an untrusted bot grants host-user code execution, files/environment/network access; this is a validator vulnerability, not evidence shipped bot is malware.",
+            "location": "engine_vendored/sandbox/validator.py:344-347",
+            "remediation": "Do not treat AST blacklist as security boundary; run import and decide validation only inside independently killed isolated worker/container without host secrets or writable host mounts; keep static checks as lint only.",
+            "severity": "high"
+          }
+        ],
+        "source": "local_plugin"
+      },
+      "remediation": "Run all import-time and decision-time validation in a separate restricted process/container without host credentials or writable host mounts. Treat AST checks as lint, not isolation.",
+      "rootCause": {
+        "evidenceRefs": [
+          "v-entry",
+          "v-check",
+          "v-sink"
+        ],
+        "summary": "The CLI accepts an external bot path. check_static allows os imports and matches only specific names or literal os attributes, so an imported system alias is not rejected. validate then calls load_bot, whose exec_module executes submission code inside the host validator."
+      },
+      "ruleId": "code-execution.submission-validation",
+      "severity": {
+        "level": "medium",
+        "rationale": "Host code execution has high impact, but requires an operator to run the optional local validator on an attacker-supplied submission; no remote submission endpoint is present."
+      },
+      "summary": "\u53ef\u9078\u7684\u6bd4\u8cfd\u9a57\u8b49\u5668\u4ee5\u53ef\u7e5e\u904e\u7684 AST \u9ed1\u540d\u55ae\u6aa2\u67e5\u5916\u4f86 bot.py\uff0c\u96a8\u5f8c\u76f4\u63a5\u5728\u9a57\u8b49\u7a0b\u5e8f\u532f\u5165\u5b83\u3002\u60e1\u610f\u63d0\u4ea4\u8005\u53ef\u85c9\u7531\u672a\u88ab\u8b58\u5225\u7684\u532f\u5165\u5225\u540d\u53d6\u5f97\u9a57\u8b49\u4e3b\u6a5f\u4f7f\u7528\u8005\u7684\u7a0b\u5f0f\u57f7\u884c\u6b0a\u9650\uff1b\u9019\u4e0d\u662f\u56fa\u5b9a\u4e3b\u6a21\u578b\u542b\u6709\u60e1\u610f\u7a0b\u5f0f\u7684\u8b49\u64da\u3002",
+      "taxonomy": {
+        "category": "code-injection",
+        "cwe": [
+          "CWE-94",
+          "CWE-693"
+        ]
+      },
+      "title": "\u9a57\u8b49\u5916\u4f86 Bot \u53ef\u5728\u4e3b\u6a5f\u76f4\u63a5\u57f7\u884c\u5176\u7a0b\u5f0f",
+      "validation": {
+        "method": "static",
+        "summary": "Source trace confirms a submission using a from-os import can pass the denylist and execute at module import. Docker controls exist only in the separate match launcher, not this validator. No target code or payload was executed."
+      }
+    },
+    {
+      "attackPath": {
+        "dataflow": {
+          "summary": "bot_paths -> BotProcess -> runner.load_bot -> import-time nontermination -> parent warmup stdout.readline."
+        },
+        "reachability": {
+          "summary": "Optional run_match/CLI accept bot paths; default local mode and Docker mode both share the unbounded parent wait. Fixed main model has no observed malicious trigger."
+        },
+        "summary": "Operator includes an attacker-supplied bot in a match. Its import does not return or emit a response; the parent remains blocked waiting for warmup."
+      },
+      "codeEvidence": [
+        {
+          "code": "        try:\n            self._proc.stdin.write(json.dumps({\"type\": \"warmup\"}) + \"\\n\")\n            self._proc.stdin.flush()\n            self._proc.stdout.readline()  # discard",
+          "endLine": 187,
+          "explanation": "If the child remains alive but produces no newline, the parent cannot advance or reach cleanup.",
+          "id": "d-read",
+          "label": "Parent warmup waits without a deadline",
+          "path": "engine_vendored/sandbox/match.py",
+          "role": "root_control",
+          "startLine": 184
+        },
+        {
+          "code": "def main():\n    try:\n        bot = load_bot(BOT_PATH)",
+          "endLine": 76,
+          "explanation": "Attacker-controlled module import happens before the timeout call at line 103, outside its enforcement.",
+          "id": "d-import",
+          "label": "Child imports bot before timed decisions",
+          "path": "engine_vendored/sandbox/runner.py",
+          "role": "entrypoint",
+          "startLine": 74
+        }
+      ],
+      "confidence": {
+        "level": "high",
+        "rationale": "The parent readline has no deadline and child module import precedes the timeout; source path independently confirmed."
+      },
+      "findingId": "csf_b3be946e315cea9f66b934b3",
+      "fingerprints": {
+        "algorithm": "codex-security/v1",
+        "primary": "codex-security/v1:sha256:4654055ece868678ff50e9d151c73f6e56671dae08368d658d4625fabf58199f"
+      },
+      "identity": {
+        "anchor": "bot"
+      },
+      "locations": [
+        {
+          "endLine": 187,
+          "path": "engine_vendored/sandbox/match.py",
+          "role": "root_control",
+          "startLine": 184
+        },
+        {
+          "endLine": 161,
+          "path": "engine_vendored/sandbox/match.py",
+          "role": "sink",
+          "startLine": 158
+        },
+        {
+          "endLine": 76,
+          "path": "engine_vendored/sandbox/runner.py",
+          "role": "entrypoint",
+          "startLine": 74
+        }
+      ],
+      "occurrenceId": "occ_ef1ce47fd9d02d0b33664d82",
+      "provenance": {
+        "candidateId": "sandbox-unbounded-parent-wait",
+        "originalCandidates": [
+          {
+            "confidence": "high",
+            "control": "untrusted submitted bot controls import-time behavior and stdout/stderr in runner",
+            "counterevidence": "Ordinary decide exceptions/timeouts are handled by runner103-123. Fixed trusted runtime does not expose arbitrary submission author capability; no claim of container escape.",
+            "cwe": "CWE-400/CWE-835",
+            "evidence": "Parent warmup/read and act use blocking readline without deadline (187,161). runner main76 imports bot before timed _call_with_timeout103; top-level loop/sleep never reaches warmup timeout. run_match239-240 invokes warmup before try/finally242, so cleanup is not reached. Docker CPU/memory limits121-129 do not impose wall-clock deadline.",
+            "id": "sandbox-unbounded-parent-wait",
+            "impact": "A submitted bot can hang a match indefinitely even with USE_DOCKER=true; CLI360 and demo.py286/341 have no outer timeout. Unconsumed stderr PIPE also permits backpressure; primary finding is import/warmup boundary.",
+            "location": "engine_vendored/sandbox/match.py:184-187",
+            "remediation": "Enforce host-side startup and per-response wall-clock deadlines; bounded framed output and drained capped stderr; kill/reap container using owned ID, and include startup/warmup inside cleanup finally.",
+            "severity": "medium"
+          }
+        ],
+        "source": "local_plugin"
+      },
+      "remediation": "Enforce host-side startup and per-response deadlines, bounded output and drained stderr, and kill/reap the owned process or container on timeout. Cover startup and warmup with cleanup finally.",
+      "rootCause": {
+        "evidenceRefs": [
+          "d-read",
+          "d-import"
+        ],
+        "summary": "run_match warms each subprocess before its cleanup try/finally. warmup and act block on stdout.readline without an external deadline. The child imports bot source before starting the timed decision loop, so import-time nontermination never reaches the timer."
+      },
+      "ruleId": "denial-of-service.bot-startup",
+      "severity": {
+        "level": "low",
+        "rationale": "Availability impact is limited to optional local tournament jobs, requires running an attacker-supplied bot, and does not establish remote exposure or container escape."
+      },
+      "summary": "\u53ef\u9078\u7684\u6bd4\u8cfd\u5de5\u5177\u5728\u4e3b\u6a5f\u7aef\u7121\u671f\u9650\u7b49\u5f85 Bot \u7684\u555f\u52d5\u8207\u52d5\u4f5c\u56de\u8986\u3002Bot \u532f\u5165\u767c\u751f\u65bc\u8a08\u6642\u63a7\u5236\u4e4b\u524d\uff0c\u56e0\u6b64\u60e1\u610f\u63d0\u4ea4\u53ef\u5728\u532f\u5165\u968e\u6bb5\u5361\u4f4f\u6bd4\u8cfd\uff0c\u5373\u4f7f\u555f\u7528 Docker \u4ecd\u7136\u5982\u6b64\u3002",
+      "taxonomy": {
+        "category": "denial-of-service",
+        "cwe": [
+          "CWE-400",
+          "CWE-835"
+        ]
+      },
+      "title": "\u5916\u4f86 Bot \u53ef\u8b93\u6bd4\u8cfd\u7a0b\u5e8f\u7121\u9650\u7b49\u5f85",
+      "validation": {
+        "method": "static",
+        "summary": "Reviewed parent and child control flow: no deadline surrounds parent I/O; Docker only constrains CPU/memory/network and does not set a runtime limit. Ordinary decide timeouts do not cover import. No hanging payload was run."
+      }
+    }
+  ],
+  "scanId": "19bbb4a2-5d2d-4d38-88c3-27cf135040ed",
+  "schemaVersion": "1.0"
+}

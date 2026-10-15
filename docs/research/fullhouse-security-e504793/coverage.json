@@ -1,0 +1,743 @@
+{
+  "completeness": "partial",
+  "deferred": [
+    {
+      "id": "deferred-2caab795eee3f3ce",
+      "path": "bots/extra/cfr_kmeans_router/data/opponent_classifier.pkl",
+      "reason": "Nested Joblib representation not fully decoded. Opcode prefix and strings reviewed; no source consumer and not included in main runtime package."
+    },
+    {
+      "id": "deferred-87a7ad4d4289be74",
+      "path": "bots/extra/cfr_kmeans_router/data/opponent_classifier.pkl",
+      "reason": "Nested Joblib contents not completely decoded; no runtime consumer, prefix and strings only."
+    },
+    {
+      "id": "deferred-00401c5e8978d8a7",
+      "reason": "Final documentation and data static checks."
+    },
+    {
+      "id": "deferred-2c056fbb6d8ef8ea",
+      "reason": "Final inventory reconciliation and vendored bots still in progress."
+    },
+    {
+      "id": "deferred-217ff6e994e0a27a",
+      "reason": "Remaining source groups still under review."
+    },
+    {
+      "id": "deferred-ec22cb4ee6144d24",
+      "reason": "Remaining source groups still undergoing full review."
+    },
+    {
+      "id": "baseline",
+      "reason": "Independent full source audit in progress"
+    },
+    {
+      "id": "sandbox",
+      "reason": "Independent investigation of validator host execution and match I/O blocking in progress"
+    },
+    {
+      "id": "classifier",
+      "reason": "Joblib classifier contains embedded pickle; prefix statically disassembled, remainder not yet fully parsed. No source consumer found."
+    }
+  ],
+  "documentType": "codex-security.coverage",
+  "excludePaths": [],
+  "explicitExclusions": [
+    {
+      "pattern": "external dependency distributions and services",
+      "reason": "Outside immutable repository; not downloaded or executed."
+    }
+  ],
+  "fully_reviewed_files": [
+    "training/__init__.py",
+    "training/_hand_eval_lut.py",
+    "training/_hand_eval.py",
+    "training/worker.py",
+    "training/traverse_numba.py",
+    "training/traverse_fast.py",
+    "training/train.py",
+    "training/network.py",
+    "training/game_numba.py",
+    "training/game.py",
+    "training/features.py",
+    "training/buffer.py",
+    "tooling/__init__.py",
+    "tooling/watcher/__init__.py",
+    "tooling/watcher/utils.py",
+    "tooling/watcher/sync.py",
+    "tooling/watcher/state.py",
+    "tooling/watcher/runner.py",
+    "tooling/watcher/cli.py",
+    "tooling/watcher/analysis.py",
+    "tooling/runtime_data.py",
+    "tooling/release/__init__.py",
+    "tooling/release/submission.py",
+    "tooling/harness/__init__.py",
+    "tooling/harness/engine.py",
+    "tooling/harness/diagnostics.py",
+    "tooling/harness/bot_registry.py",
+    "tooling/harness/benchmarks.py",
+    "tooling/data_tools/__init__.py",
+    "tooling/data_tools/preflop_equity.py",
+    "tooling/cluster/submit.py",
+    "tooling/cluster/common.py",
+    "tooling/cluster/aggregate.py",
+    "tooling/cluster/sync.py",
+    "tooling/cluster/worker.py",
+    "LICENSE",
+    "pyproject.toml",
+    "pytest.ini",
+    "requirements.txt",
+    "README.md",
+    "tooling/cluster/__init__.py",
+    "bot/features.py",
+    "bot/deep_cfr_lookup.py",
+    "bot/bot.py",
+    ".gitignore",
+    "tests/test_strategy_weights.py",
+    "tests/test_smoke.py",
+    "tests/test_package.py",
+    "tests/test_numba_parity.py",
+    "tests/test_integration.py",
+    "tests/test_encoding.py",
+    "tests/test_bot_scenarios.py",
+    "tests/test_bot.py",
+    "tests/fixtures/bot_scenarios.json",
+    ".github/workflows/ci.yml",
+    "engine_vendored/UPSTREAM_SYNC.json",
+    "scripts/_bootstrap.py",
+    "scripts/watch_training.py",
+    "scripts/plot_benchmark.py",
+    "scripts/cluster_worker.py",
+    "scripts/cluster_deploy.sh",
+    "scripts/cluster_build_venv.sh",
+    "scripts/cluster.py",
+    "scripts/build_submission.py",
+    "scripts/build_preflop_equity.py",
+    "scripts/bench.py",
+    "engine_vendored/Makefile",
+    "bots/strong/bot.py",
+    "bots/README.md",
+    "docs/research/runtime-contract.md",
+    "bots/adversarial/tournament_specialist.py",
+    "bots/adversarial/station.py",
+    "docs/research/experiments.md",
+    "bots/adversarial/solver_like.py",
+    "bots/adversarial/random_bot.py",
+    "bots/adversarial/nit.py",
+    "bots/adversarial/maniac.py",
+    "data/deep_cfr_model.npz",
+    "engine_vendored/demo.py",
+    "engine_vendored/requirements.txt",
+    "engine_vendored/README.md",
+    "data/preflop_equity.npz",
+    "docs/assets/leaderboard.png",
+    "docs/assets/benchmark.png",
+    "engine_vendored/tests/test_engine.py",
+    "engine_vendored/sandbox/validator.py",
+    "engine_vendored/sandbox/runner.py",
+    "engine_vendored/sandbox/match.py",
+    "engine_vendored/sandbox/Dockerfile",
+    "engine_vendored/engine/tournament.py",
+    "engine_vendored/engine/game.py",
+    "engine_vendored/bots/template/bot.py",
+    "bots/extra/cfr_opp_profiler/bot.py",
+    "bots/extra/cfr_variance_guard/bot.py",
+    "bots/extra/cfr_kmeans_router/bot.py",
+    "engine_vendored/bots/shark/bot.py",
+    "engine_vendored/bots/mathematician/bot.py",
+    "bots/extra/mc_equity/bot.py",
+    "bots/extra/cfr_variance_guard/data/removal_weights.npy",
+    "bots/extra/cfr_opp_profiler/data/removal_weights.npy",
+    "bots/extra/cfr_variance_guard/data/preflop_cfr_strategy.npz",
+    "bots/extra/cfr_opp_profiler/data/preflop_cfr_strategy.npz",
+    "bots/extra/cfr_variance_guard/data/equity_matrix.npy",
+    "bots/extra/cfr_opp_profiler/data/preflop_cfr_strategy.json",
+    "bots/extra/cfr_opp_profiler/data/equity_matrix.npy",
+    "bots/extra/cfr_kmeans_router/data/cfr_vs_maniac.npz",
+    "bots/extra/cfr_kmeans_router/data/cfr_base.npz",
+    "bots/competitors/solver_hybrid/bot.py",
+    "bots/extra/cfr_kmeans_router/data/cfr_vs_nit.npz",
+    "bots/extra/cfr_kmeans_router/data/equity_matrix.npy",
+    "bots/competitors/adaptive_hydra/bot.py",
+    "bots/extra/cfr_kmeans_router/data/removal_weights.npy",
+    "bots/extra/cfr_kmeans_router/data/preflop_cfr_strategy.npz",
+    "bots/competitors/equity_table/bot.py",
+    "bots/competitors/cfr_lite/data/strategy_config.json",
+    "bots/competitors/cfr_lite/data/preflop_equity.json",
+    "bots/competitors/cfr_lite/bot.py",
+    "bots/competitors/cfr_equity_v28/bot.py",
+    "engine_vendored/bots/ref_bot_2/bot.py",
+    "bots/competitors/cfr_equity_v28/data/preflop_cfr_strategy.json",
+    "bots/competitors/cfr_equity_v28/data/equity_matrix.npy",
+    "bots/competitors/cfr_equity_v28/data/preflop_cfr_strategy.npz",
+    "bots/competitors/cfr_equity_v28/data/removal_weights.npy",
+    "bots/competitors/equity_table/data/equity_table.npy",
+    "bots/competitors/bayesian_exploiter/bot.py",
+    "bots/competitors/solver_hybrid/data/preflop_blueprint.json",
+    "bots/competitors/solver_hybrid/data/postflop_solver_digest.json",
+    "bots/competitors/solver_hybrid/data/OPEN_SOURCE_NOTES.txt",
+    "bots/competitors/solver_hybrid/data/cfr_action_profile.json",
+    "engine_vendored/bots/aggressor/bot.py",
+    "bots/competitors/equity_balanced/bot.py"
+  ],
+  "includePaths": [
+    "."
+  ],
+  "inventoryStrategy": "repository",
+  "mode": "repository",
+  "openQuestions": [
+    {
+      "question": "Future Android integration must provide host permissions and startup deadlines; no deployed Discord integration exists in this target to audit."
+    }
+  ],
+  "scanId": "19bbb4a2-5d2d-4d38-88c3-27cf135040ed",
+  "schemaVersion": "1.0",
+  "surfaces": [
+    {
+      "disposition": "no_issue_found",
+      "id": "runtime",
+      "label": "Fixed NPC runtime and main NPZ model",
+      "receiptRefs": [],
+      "summary": "No observed malware, credential collection, covert network calls, persistence or system command execution. Model SHA256 1102326b68da95564de147106612df71cb891b42f0726ba0212d3b9a5bcae295. Main NPZ and preflop tables contain only float32 numerical arrays."
+    },
+    {
+      "disposition": "no_issue_found",
+      "id": "baseline",
+      "label": "Independent baseline: runtime, opponents, packaging and tooling",
+      "receiptRefs": [],
+      "result": {
+        "findings": [],
+        "fully_reviewed_files": [
+          "bot/bot.py",
+          "bot/features.py",
+          "bot/deep_cfr_lookup.py",
+          "bots/adversarial/maniac.py",
+          "bots/adversarial/nit.py",
+          "bots/adversarial/random_bot.py",
+          "bots/adversarial/solver_like.py",
+          "bots/adversarial/station.py",
+          "bots/adversarial/tournament_specialist.py",
+          "bots/competitors/adaptive_hydra/bot.py",
+          "bots/competitors/bayesian_exploiter/bot.py",
+          "bots/competitors/cfr_equity_v28/bot.py",
+          "bots/competitors/cfr_lite/bot.py",
+          "bots/competitors/equity_balanced/bot.py",
+          "bots/competitors/equity_table/bot.py",
+          "bots/competitors/solver_hybrid/bot.py",
+          "bots/extra/cfr_kmeans_router/bot.py",
+          "bots/extra/cfr_opp_profiler/bot.py",
+          "bots/extra/cfr_variance_guard/bot.py",
+          "bots/extra/mc_equity/bot.py",
+          "bots/strong/bot.py",
+          "training/__init__.py",
+          "training/train.py",
+          "training/worker.py",
+          "training/network.py",
+          "training/buffer.py",
+          "training/features.py",
+          "tooling/runtime_data.py",
+          "tooling/release/submission.py",
+          "tooling/harness/bot_registry.py",
+          "tooling/harness/engine.py",
+          "tooling/cluster/common.py",
+          "tooling/cluster/worker.py",
+          "tooling/cluster/submit.py",
+          "tooling/watcher/sync.py",
+          "tooling/watcher/cli.py",
+          "scripts/cluster_build_venv.sh",
+          "scripts/cluster_deploy.sh",
+          "engine_vendored/sandbox/runner.py",
+          "engine_vendored/sandbox/match.py",
+          "engine_vendored/sandbox/validator.py",
+          "engine_vendored/sandbox/Dockerfile"
+        ],
+        "resolved_questions": [
+          "No malicious behavior found in fully reviewed fixed-bot runtime, all 18 benchmark/opponent bots, packaging, and reviewed training/tooling modules. No credential harvesting, covert exfiltration, persistence, mining, or obfuscated executable payload found.",
+          "Main runtime loads local NPZ files through numpy.load without enabling pickle, performs numerical inference, and returns poker actions. BOT_DATA_DIR is an owner-controlled environment setting.",
+          "All bots/**/*.py received full coverage through direct source reads or a fully reviewed base plus complete variant diffs. A truncated equity_balanced diff was supplemented by direct reading of the missing prefix.",
+          "bots/extra/cfr_kmeans_router/bot.py assigns loaded NPZ objects through globals()[_global], but _global comes exclusively from three hardcoded model names. No classifier pickle is loaded.",
+          "training/train.py:532 explicitly uses torch.load(weights_only=False) when --resume is requested and configured checkpoint_dir/latest.pt exists. This requires trusting the checkpoint, is not part of fixed-bot runtime, and is not evidence of malware. No remote-download-to-resume chain found.",
+          "Reviewed cluster and watcher process/network calls implement explicit owner-operated deployment, checkpoint pulling, local benchmarking, and HTCondor submission. The uv installer downloads from the named Astral URL only in the explicitly invoked environment setup script.",
+          "Optional vendored validator host-execution and match timeout weaknesses were handed to the separate focused reviewer; findings are omitted here to avoid duplicate reporting.",
+          "This review did not execute repository code, load pickle artifacts, install dependencies, or make network requests. Unlisted files have not received full review by this agent."
+        ]
+      }
+    },
+    {
+      "disposition": "no_issue_found",
+      "id": "training",
+      "label": "Training and watcher source",
+      "receiptRefs": [],
+      "result": {
+        "findings": [],
+        "fully_reviewed_files": [
+          "training/__init__.py",
+          "training/_hand_eval.py",
+          "training/_hand_eval_lut.py",
+          "training/buffer.py",
+          "training/features.py",
+          "training/game.py",
+          "training/game_numba.py",
+          "training/network.py",
+          "training/train.py",
+          "training/traverse_fast.py",
+          "training/traverse_numba.py",
+          "training/worker.py",
+          "tooling/watcher/runner.py",
+          "tooling/watcher/analysis.py",
+          "tooling/watcher/state.py",
+          "tooling/watcher/utils.py",
+          "scripts/_bootstrap.py",
+          "scripts/bench.py",
+          "scripts/build_preflop_equity.py",
+          "scripts/build_submission.py",
+          "scripts/cluster.py",
+          "scripts/cluster_build_venv.sh",
+          "scripts/cluster_deploy.sh",
+          "scripts/cluster_worker.py",
+          "scripts/plot_benchmark.py",
+          "scripts/watch_training.py"
+        ],
+        "resolved_questions": [
+          {
+            "evidence": [
+              "training/train.py:236",
+              "training/train.py:255",
+              "tooling/watcher/runner.py:99",
+              "tooling/watcher/runner.py:151",
+              "tooling/watcher/utils.py:22"
+            ],
+            "question": "Do training or watcher files contain covert credential collection, network access, persistence, or payload execution?",
+            "resolution": "No such behavior found in the 26 completely reviewed files. Training kernels implement numerical poker simulation and optimization. Watcher operations stage model files, invoke the benchmark harness, synchronize through its explicit checkpoint-sync helper, and maintain local JSON/log/plot outputs."
+          },
+          {
+            "evidence": [
+              "training/train.py:443",
+              "training/train.py:529",
+              "training/train.py:532",
+              "training/train.py:760",
+              "training/train.py:800"
+            ],
+            "question": "Is unrestricted PyTorch deserialization reachable during bot-plus-NPZ use?",
+            "resolution": "No connection to bot-only execution was found. training.train explicitly loads <checkpoint-dir>/latest.pt with weights_only=False only when resume is true and the file exists. Default resume is false; command-line --resume is an opt-in training operation. An untrusted latest.pt would be dangerous, but attacker-controlled checkpoint provenance is not established, and this is not evidence of malware."
+          },
+          {
+            "evidence": [
+              "training/train.py:70",
+              "training/train.py:93",
+              "training/train.py:265",
+              "training/train.py:712",
+              "training/_hand_eval_lut.py:154",
+              "tooling/watcher/analysis.py:227",
+              "tooling/watcher/utils.py:22",
+              "tooling/watcher/utils.py:66"
+            ],
+            "question": "What other deserialization and file changes occur?",
+            "resolution": "The trainer reads or generates repo/data/hand_eval_lut.npz and exports numeric model NPZ arrays and PT checkpoints under the operator-selected checkpoint directory. Watcher analysis uses np.load without allow_pickle=True. Watcher state uses JSON and atomic tempfile replacement, local logs, and flock locks. No unrelated personal-file enumeration or credential-file reads were present."
+          },
+          {
+            "evidence": [
+              "scripts/cluster.py:10",
+              "scripts/plot_benchmark.py:20",
+              "scripts/cluster_deploy.sh:6",
+              "scripts/cluster_deploy.sh:16",
+              "scripts/cluster_build_venv.sh:9",
+              "scripts/cluster_build_venv.sh:13"
+            ],
+            "question": "Do the scripts perform hidden external actions?",
+            "resolution": "Python wrappers dispatch fixed repository modules. plot_benchmark.py writes a local documentation image. cluster_deploy.sh visibly sends code and selected checkpoints to its SSH argument, default yew11. cluster_build_venv.sh conditionally downloads the public Astral installer and pipes it to sh, then installs Python/dependencies. These are explicit cluster setup/deployment scripts, not imported runtime behavior. No digest verification is shown for the installer; no malicious destination or payload is established."
+          },
+          {
+            "question": "Does this establish every dependency and incoming model is safe?",
+            "resolution": "No. This packet is offline source review, without execution or dependency implementation inspection. Numeric routines assume trainer-generated shapes and valid game arrays; malformed imported lookup arrays may crash numerical/native consumers, but no exploit or untrusted remote route was established. Baseline review owns imported benchmark, cluster and watcher CLI/sync implementations."
+          }
+        ]
+      }
+    },
+    {
+      "disposition": "reported",
+      "id": "sandbox",
+      "label": "Optional submission validation and match execution",
+      "originalCandidates": [
+        {
+          "confidence": "high",
+          "control": "bot submission author controls bot.py passed to validate/CLI",
+          "counterevidence": "Requires operator passing attacker-controlled submission; tests/test_smoke.py uses fixed repository bot. Docker controls in match.py do not cover validator. No public remote submission endpoint identified.",
+          "cwe": "CWE-94/CWE-693",
+          "evidence": "check_static lines221-227 allows from os import system because os is permitted; lines258-280 only reject selected Name calls and attributes spelled os.*. A top-level system(...) via imported alias passes these checks. validate lines523-534 then load_bot exec_module line347 executes it directly in host process, before any Docker sandbox. CLI570 and Makefile19 reach this path.",
+          "id": "validator-host-code-execution",
+          "impact": "An operator validating an untrusted bot grants host-user code execution, files/environment/network access; this is a validator vulnerability, not evidence shipped bot is malware.",
+          "location": "engine_vendored/sandbox/validator.py:344-347",
+          "remediation": "Do not treat AST blacklist as security boundary; run import and decide validation only inside independently killed isolated worker/container without host secrets or writable host mounts; keep static checks as lint only.",
+          "severity": "high"
+        },
+        {
+          "confidence": "high",
+          "control": "untrusted submitted bot controls import-time behavior and stdout/stderr in runner",
+          "counterevidence": "Ordinary decide exceptions/timeouts are handled by runner103-123. Fixed trusted runtime does not expose arbitrary submission author capability; no claim of container escape.",
+          "cwe": "CWE-400/CWE-835",
+          "evidence": "Parent warmup/read and act use blocking readline without deadline (187,161). runner main76 imports bot before timed _call_with_timeout103; top-level loop/sleep never reaches warmup timeout. run_match239-240 invokes warmup before try/finally242, so cleanup is not reached. Docker CPU/memory limits121-129 do not impose wall-clock deadline.",
+          "id": "sandbox-unbounded-parent-wait",
+          "impact": "A submitted bot can hang a match indefinitely even with USE_DOCKER=true; CLI360 and demo.py286/341 have no outer timeout. Unconsumed stderr PIPE also permits backpressure; primary finding is import/warmup boundary.",
+          "location": "engine_vendored/sandbox/match.py:184-187",
+          "remediation": "Enforce host-side startup and per-response wall-clock deadlines; bounded framed output and drained capped stderr; kill/reap container using owned ID, and include startup/warmup inside cleanup finally.",
+          "severity": "medium"
+        }
+      ],
+      "receiptRefs": [],
+      "result": {
+        "findings": [
+          {
+            "confidence": "high",
+            "control": "bot submission author controls bot.py passed to validate/CLI",
+            "counterevidence": "Requires operator passing attacker-controlled submission; tests/test_smoke.py uses fixed repository bot. Docker controls in match.py do not cover validator. No public remote submission endpoint identified.",
+            "cwe": "CWE-94/CWE-693",
+            "evidence": "check_static lines221-227 allows from os import system because os is permitted; lines258-280 only reject selected Name calls and attributes spelled os.*. A top-level system(...) via imported alias passes these checks. validate lines523-534 then load_bot exec_module line347 executes it directly in host process, before any Docker sandbox. CLI570 and Makefile19 reach this path.",
+            "id": "validator-host-code-execution",
+            "impact": "An operator validating an untrusted bot grants host-user code execution, files/environment/network access; this is a validator vulnerability, not evidence shipped bot is malware.",
+            "location": "engine_vendored/sandbox/validator.py:344-347",
+            "remediation": "Do not treat AST blacklist as security boundary; run import and decide validation only inside independently killed isolated worker/container without host secrets or writable host mounts; keep static checks as lint only.",
+            "severity": "high"
+          },
+          {
+            "confidence": "high",
+            "control": "untrusted submitted bot controls import-time behavior and stdout/stderr in runner",
+            "counterevidence": "Ordinary decide exceptions/timeouts are handled by runner103-123. Fixed trusted runtime does not expose arbitrary submission author capability; no claim of container escape.",
+            "cwe": "CWE-400/CWE-835",
+            "evidence": "Parent warmup/read and act use blocking readline without deadline (187,161). runner main76 imports bot before timed _call_with_timeout103; top-level loop/sleep never reaches warmup timeout. run_match239-240 invokes warmup before try/finally242, so cleanup is not reached. Docker CPU/memory limits121-129 do not impose wall-clock deadline.",
+            "id": "sandbox-unbounded-parent-wait",
+            "impact": "A submitted bot can hang a match indefinitely even with USE_DOCKER=true; CLI360 and demo.py286/341 have no outer timeout. Unconsumed stderr PIPE also permits backpressure; primary finding is import/warmup boundary.",
+            "location": "engine_vendored/sandbox/match.py:184-187",
+            "remediation": "Enforce host-side startup and per-response wall-clock deadlines; bounded framed output and drained capped stderr; kill/reap container using owned ID, and include startup/warmup inside cleanup finally.",
+            "severity": "medium"
+          }
+        ],
+        "fully_reviewed_files": [
+          "engine_vendored/sandbox/validator.py",
+          "engine_vendored/sandbox/match.py",
+          "engine_vendored/sandbox/runner.py",
+          "engine_vendored/sandbox/Dockerfile",
+          "engine_vendored/Makefile",
+          "engine_vendored/demo.py",
+          "engine_vendored/tests/test_engine.py",
+          "tooling/harness/engine.py",
+          "tests/test_smoke.py",
+          "tests/test_package.py",
+          "tests/test_integration.py",
+          "tests/test_bot_scenarios.py",
+          "tests/test_bot.py",
+          "tests/test_strategy_weights.py",
+          "tests/test_encoding.py",
+          "tests/test_numba_parity.py",
+          "tests/fixtures/bot_scenarios.json"
+        ],
+        "resolved_questions": [
+          "All review was offline source reading; no target code, tests or models executed.",
+          "Both findings belong to optional vendored submission/competition tooling; fixed trusted NPC use does not expose third-party submission.",
+          "All tests Python files and fixtures/bot_scenarios.json fully read; no credential theft, exfiltration, persistence or hidden malicious side effects.",
+          "test_package.py runs local scripts/build_submission.py, writes build/test.zip/build/bot.py and imports generated bot; expected test behavior.",
+          "test_integration.py enumerates and executes adversarial and competitor bots; they require independent source review.",
+          "test_strategy_weights.py torch.load(weights_only=False) reads a checkpoint written by same test under pytest tmp_path, no untrusted boundary.",
+          "test_numba_parity.py calls load_or_generate(data/hand_eval_lut.npz); training implementations audited separately."
+        ]
+      },
+      "validationDisposition": "Parent confirmed both paths; calibrated severity medium for optional operator-mediated host execution, low for local match availability."
+    },
+    {
+      "disposition": "no_issue_found",
+      "id": "vendored-bots",
+      "label": "Five vendored example bots",
+      "receiptRefs": [],
+      "result": {
+        "findings": [],
+        "fully_reviewed_files": [
+          "engine_vendored/bots/aggressor/bot.py",
+          "engine_vendored/bots/mathematician/bot.py",
+          "engine_vendored/bots/ref_bot_2/bot.py",
+          "engine_vendored/bots/shark/bot.py",
+          "engine_vendored/bots/template/bot.py"
+        ],
+        "results": [
+          "Five vendored bot files fully statically read; no network, filesystem writes/reads, subprocess, dynamic execution, secret collection, persistence or obfuscated payload.",
+          "Executable content is random imports, constants, game-state calculations and returned poker actions.",
+          "Dangerous API terms in template bot are documentation strings only; no target execution or edits."
+        ]
+      }
+    },
+    {
+      "disposition": "no_issue_found",
+      "id": "docs",
+      "label": "Documentation, initializers and metadata",
+      "receiptRefs": [],
+      "result": {
+        "findings": [],
+        "fully_reviewed_files": [
+          "tooling/__init__.py",
+          "tooling/watcher/__init__.py",
+          "tooling/release/__init__.py",
+          "tooling/harness/__init__.py",
+          "tooling/data_tools/__init__.py",
+          "tooling/cluster/__init__.py",
+          "LICENSE",
+          "pytest.ini",
+          "README.md",
+          ".gitignore",
+          "engine_vendored/UPSTREAM_SYNC.json",
+          "engine_vendored/requirements.txt",
+          "engine_vendored/README.md",
+          "bots/README.md",
+          "docs/research/runtime-contract.md",
+          "docs/research/experiments.md",
+          "bots/competitors/solver_hybrid/data/OPEN_SOURCE_NOTES.txt"
+        ],
+        "resolutions": [
+          "All requested files fully read; README.md fully read during architecture pass.",
+          "Five tooling package initializers contain only docstrings. tooling/harness/__init__.py:3-4 re-exports expected benchmark/engine functions.",
+          "Documentation commands are ordinary dependency/local demo/benchmark/training/packaging workflows; no concealed download/execution or credential collection.",
+          "Metadata/license/ignore rules/pytest markers/solver attribution contain no executable payload.",
+          "engine_vendored/README.md:99 claims signal cancellation but runner.py:48-68 uses daemon threads and cannot terminate timed-out work.",
+          "docs/research/runtime-contract.md:11 describes one packaged model, while bot/bot.py:73-79 and tooling/runtime_data.py:24-30 consume/package all matches; descriptive drift."
+        ]
+      }
+    },
+    {
+      "disposition": "no_issue_found",
+      "id": "data",
+      "label": "JSON and 18 numerical NPY/NPZ artifacts",
+      "receiptRefs": [],
+      "summary": "JSON parsed as data; source consumers use json.load, not execution. All NPY/NPZ arrays have float16/float32 descriptors and exact expected payload lengths; no object dtype."
+    },
+    {
+      "disposition": "no_issue_found",
+      "id": "image-data",
+      "label": "Two documentation PNG files",
+      "receiptRefs": [],
+      "summary": "Standard PNG containers, valid chunk CRCs and no trailing data; not consumed as executable code. Image-decoder implementation and hidden image content not audited."
+    },
+    {
+      "disposition": "needs_follow_up",
+      "id": "unused-joblib",
+      "label": "Unused opponent_classifier.pkl",
+      "receiptRefs": [],
+      "summary": "1992-byte Joblib artifact inspected via opcode prefix and all printable strings, consistent with StandardScaler/KMeans data. Nested Joblib structure not completely decoded. No repository source loads this file and it is excluded from main runtime package."
+    },
+    {
+      "disposition": "no_issue_found",
+      "files": [
+        "bot/bot.py",
+        "bot/deep_cfr_lookup.py",
+        "requirements.txt",
+        "pyproject.toml",
+        ".github/workflows/ci.yml",
+        "scripts/cluster_deploy.sh",
+        "scripts/cluster_build_venv.sh",
+        "tooling/cluster/common.py",
+        "tooling/cluster/sync.py",
+        "tooling/cluster/aggregate.py",
+        "tooling/harness/diagnostics.py",
+        "tooling/harness/benchmarks.py",
+        "tooling/data_tools/preflop_equity.py",
+        "engine_vendored/engine/game.py",
+        "engine_vendored/engine/tournament.py"
+      ],
+      "id": "parent-source",
+      "label": "Additional parent-reviewed engine and tooling",
+      "receiptRefs": [],
+      "summary": "Expected in-memory poker calculations, local benchmark outputs and explicit operator cluster commands; no covert malicious behavior."
+    },
+    {
+      "disposition": "reported",
+      "id": "tests",
+      "label": "Tests and optional sandbox",
+      "receiptRefs": [],
+      "result": {
+        "findings": [
+          {
+            "confidence": "high",
+            "control": "bot submission author controls bot.py passed to validate/CLI",
+            "counterevidence": "Requires operator passing attacker-controlled submission; tests/test_smoke.py uses fixed repository bot. Docker controls in match.py do not cover validator. No public remote submission endpoint identified.",
+            "cwe": "CWE-94/CWE-693",
+            "evidence": "check_static lines221-227 allows from os import system because os is permitted; lines258-280 only reject selected Name calls and attributes spelled os.*. A top-level system(...) via imported alias passes these checks. validate lines523-534 then load_bot exec_module line347 executes it directly in host process, before any Docker sandbox. CLI570 and Makefile19 reach this path.",
+            "id": "validator-host-code-execution",
+            "impact": "An operator validating an untrusted bot grants host-user code execution, files/environment/network access; this is a validator vulnerability, not evidence shipped bot is malware.",
+            "location": "engine_vendored/sandbox/validator.py:344-347",
+            "remediation": "Do not treat AST blacklist as security boundary; run import and decide validation only inside independently killed isolated worker/container without host secrets or writable host mounts; keep static checks as lint only.",
+            "severity": "high"
+          },
+          {
+            "confidence": "high",
+            "control": "untrusted submitted bot controls import-time behavior and stdout/stderr in runner",
+            "counterevidence": "Ordinary decide exceptions/timeouts are handled by runner103-123. Fixed trusted runtime does not expose arbitrary submission author capability; no claim of container escape.",
+            "cwe": "CWE-400/CWE-835",
+            "evidence": "Parent warmup/read and act use blocking readline without deadline (187,161). runner main76 imports bot before timed _call_with_timeout103; top-level loop/sleep never reaches warmup timeout. run_match239-240 invokes warmup before try/finally242, so cleanup is not reached. Docker CPU/memory limits121-129 do not impose wall-clock deadline.",
+            "id": "sandbox-unbounded-parent-wait",
+            "impact": "A submitted bot can hang a match indefinitely even with USE_DOCKER=true; CLI360 and demo.py286/341 have no outer timeout. Unconsumed stderr PIPE also permits backpressure; primary finding is import/warmup boundary.",
+            "location": "engine_vendored/sandbox/match.py:184-187",
+            "remediation": "Enforce host-side startup and per-response wall-clock deadlines; bounded framed output and drained capped stderr; kill/reap container using owned ID, and include startup/warmup inside cleanup finally.",
+            "severity": "medium"
+          }
+        ],
+        "fully_reviewed_files": [
+          "engine_vendored/sandbox/validator.py",
+          "engine_vendored/sandbox/match.py",
+          "engine_vendored/sandbox/runner.py",
+          "engine_vendored/sandbox/Dockerfile",
+          "engine_vendored/Makefile",
+          "engine_vendored/demo.py",
+          "engine_vendored/tests/test_engine.py",
+          "tooling/harness/engine.py",
+          "tests/test_smoke.py",
+          "tests/test_package.py",
+          "tests/test_integration.py",
+          "tests/test_bot_scenarios.py",
+          "tests/test_bot.py",
+          "tests/test_strategy_weights.py",
+          "tests/test_encoding.py",
+          "tests/test_numba_parity.py",
+          "tests/fixtures/bot_scenarios.json"
+        ],
+        "resolved_questions": [
+          "All review was offline source reading; no target code, tests or models executed.",
+          "Both findings belong to optional vendored submission/competition tooling; fixed trusted NPC use does not expose third-party submission.",
+          "All tests Python files and fixtures/bot_scenarios.json fully read; no credential theft, exfiltration, persistence or hidden malicious side effects.",
+          "test_package.py runs local scripts/build_submission.py, writes build/test.zip/build/bot.py and imports generated bot; expected test behavior.",
+          "test_integration.py enumerates and executes adversarial and competitor bots; they require independent source review.",
+          "test_strategy_weights.py torch.load(weights_only=False) reads a checkpoint written by same test under pytest tmp_path, no untrusted boundary.",
+          "test_numba_parity.py calls load_or_generate(data/hand_eval_lut.npz); training implementations audited separately."
+        ]
+      }
+    },
+    {
+      "disposition": "no_issue_found",
+      "id": "training-review",
+      "label": "Training and watcher full source audit",
+      "receiptRefs": [],
+      "result": {
+        "findings": [],
+        "fully_reviewed_files": [
+          "training/__init__.py",
+          "training/_hand_eval.py",
+          "training/_hand_eval_lut.py",
+          "training/buffer.py",
+          "training/features.py",
+          "training/game.py",
+          "training/game_numba.py",
+          "training/network.py",
+          "training/train.py",
+          "training/traverse_fast.py",
+          "training/traverse_numba.py",
+          "training/worker.py",
+          "tooling/watcher/runner.py",
+          "tooling/watcher/analysis.py",
+          "tooling/watcher/state.py",
+          "tooling/watcher/utils.py",
+          "scripts/_bootstrap.py",
+          "scripts/bench.py",
+          "scripts/build_preflop_equity.py",
+          "scripts/build_submission.py",
+          "scripts/cluster.py",
+          "scripts/cluster_build_venv.sh",
+          "scripts/cluster_deploy.sh",
+          "scripts/cluster_worker.py",
+          "scripts/plot_benchmark.py",
+          "scripts/watch_training.py"
+        ],
+        "resolved_questions": [
+          {
+            "evidence": [
+              "training/train.py:236",
+              "training/train.py:255",
+              "tooling/watcher/runner.py:99",
+              "tooling/watcher/runner.py:151",
+              "tooling/watcher/utils.py:22"
+            ],
+            "question": "Do training or watcher files contain covert credential collection, network access, persistence, or payload execution?",
+            "resolution": "No such behavior found in the 26 completely reviewed files. Training kernels implement numerical poker simulation and optimization. Watcher operations stage model files, invoke the benchmark harness, synchronize through its explicit checkpoint-sync helper, and maintain local JSON/log/plot outputs."
+          },
+          {
+            "evidence": [
+              "training/train.py:443",
+              "training/train.py:529",
+              "training/train.py:532",
+              "training/train.py:760",
+              "training/train.py:800"
+            ],
+            "question": "Is unrestricted PyTorch deserialization reachable during bot-plus-NPZ use?",
+            "resolution": "No connection to bot-only execution was found. training.train explicitly loads <checkpoint-dir>/latest.pt with weights_only=False only when resume is true and the file exists. Default resume is false; command-line --resume is an opt-in training operation. An untrusted latest.pt would be dangerous, but attacker-controlled checkpoint provenance is not established, and this is not evidence of malware."
+          },
+          {
+            "evidence": [
+              "training/train.py:70",
+              "training/train.py:93",
+              "training/train.py:265",
+              "training/train.py:712",
+              "training/_hand_eval_lut.py:154",
+              "tooling/watcher/analysis.py:227",
+              "tooling/watcher/utils.py:22",
+              "tooling/watcher/utils.py:66"
+            ],
+            "question": "What other deserialization and file changes occur?",
+            "resolution": "The trainer reads or generates repo/data/hand_eval_lut.npz and exports numeric model NPZ arrays and PT checkpoints under the operator-selected checkpoint directory. Watcher analysis uses np.load without allow_pickle=True. Watcher state uses JSON and atomic tempfile replacement, local logs, and flock locks. No unrelated personal-file enumeration or credential-file reads were present."
+          },
+          {
+            "evidence": [
+              "scripts/cluster.py:10",
+              "scripts/plot_benchmark.py:20",
+              "scripts/cluster_deploy.sh:6",
+              "scripts/cluster_deploy.sh:16",
+              "scripts/cluster_build_venv.sh:9",
+              "scripts/cluster_build_venv.sh:13"
+            ],
+            "question": "Do the scripts perform hidden external actions?",
+            "resolution": "Python wrappers dispatch fixed repository modules. plot_benchmark.py writes a local documentation image. cluster_deploy.sh visibly sends code and selected checkpoints to its SSH argument, default yew11. cluster_build_venv.sh conditionally downloads the public Astral installer and pipes it to sh, then installs Python/dependencies. These are explicit cluster setup/deployment scripts, not imported runtime behavior. No digest verification is shown for the installer; no malicious destination or payload is established."
+          },
+          {
+            "question": "Does this establish every dependency and incoming model is safe?",
+            "resolution": "No. This packet is offline source review, without execution or dependency implementation inspection. Numeric routines assume trainer-generated shapes and valid game arrays; malformed imported lookup arrays may crash numerical/native consumers, but no exploit or untrusted remote route was established. Baseline review owns imported benchmark, cluster and watcher CLI/sync implementations."
+          }
+        ]
+      }
+    },
+    {
+      "disposition": "no_issue_found",
+      "id": "runtime-model",
+      "label": "Three runtime modules and numeric model data",
+      "receiptRefs": [],
+      "summary": "No exfiltration, process execution or credential access in inspected runtime. 18 NPY/NPZ files have float16/float32 arrays."
+    },
+    {
+      "disposition": "no_issue_found",
+      "id": "baseline-interim",
+      "label": "Independent baseline interim result",
+      "receiptRefs": [],
+      "result": {
+        "findings": [],
+        "fully_reviewed_files": [
+          "bot/bot.py",
+          "bot/features.py",
+          "bot/deep_cfr_lookup.py",
+          "tooling/runtime_data.py",
+          "tooling/release/submission.py",
+          "engine_vendored/sandbox/runner.py",
+          "engine_vendored/sandbox/match.py",
+          "engine_vendored/sandbox/validator.py",
+          "engine_vendored/sandbox/Dockerfile",
+          "tooling/harness/bot_registry.py",
+          "tooling/harness/engine.py",
+          "tooling/cluster/common.py",
+          "tooling/cluster/worker.py",
+          "tooling/cluster/submit.py",
+          "tooling/watcher/sync.py",
+          "tooling/watcher/cli.py",
+          "scripts/cluster_build_venv.sh",
+          "scripts/cluster_deploy.sh"
+        ],
+        "resolved_questions": [
+          "No malicious behavior in fully audited fixed bot runtime and packaging. Network/process searches elsewhere resolve to explicit owner-operated training/cluster/harness functionality; no exfiltration or obfuscated-execution indicators found. Optional validator/match weaknesses handed to focused reviewer.",
+          "training/train.py:532 uses torch.load(weights_only=False) only for explicit --resume from configured checkpoint/latest.pt; no remote checkpoint downloader on this path identified; not main runtime."
+        ]
+      }
+    }
+  ]
+}

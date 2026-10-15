@@ -1,0 +1,108 @@
+{
+  "documentType": "codex-security.scan-manifest",
+  "scan": {
+    "artifacts": [
+      {
+        "mediaType": "application/json",
+        "path": "findings.json",
+        "sha256": "d4a8c231a0a12d319c9bb01c5ddd4f661ff5a98ad6b2e9aaa52af95d0e423880"
+      },
+      {
+        "mediaType": "application/json",
+        "path": "coverage.json",
+        "sha256": "23a46e5ae83fc62ca4059aa8489a58584d4e95475e6bbbd4664d86ef234e235f"
+      }
+    ],
+    "completedAt": "2026-09-15T03:27:32.232087Z",
+    "coverageRef": "coverage.json",
+    "findingsRef": "findings.json",
+    "id": "19bbb4a2-5d2d-4d38-88c3-27cf135040ed",
+    "preservedSources": {
+      "checkpoints/0d9a6b2636383cfb7d5d3ebc158c73f7a01a1f2cdefc17f219a311d6ec7a76c1.json": "a195777c9994567f28e3cbadbadda4fd73c3fc59e9ff5a69d07452b0f9d5075c",
+      "checkpoints/118c755562aae0f9b93b96a2298b69ceaa3503237d21e5ab0e6f1845ab2bec50.json": "118c755562aae0f9b93b96a2298b69ceaa3503237d21e5ab0e6f1845ab2bec50",
+      "checkpoints/1e600b1525d1c3905df4511b39e98070ad2a9aff8d36ffb4ab3608e4a87dc87d.json": "fc54d525e4753a20b5d7c44af696a19efeab2431a28f850c6866e5bd357d6d94",
+      "checkpoints/1f188ce0407d10a490dd678f66b8c5b2e0dab15b67bba42eb97ec2057951af68.json": "c630cd1c5efb3a5de591a8cfc6a0205f02e348e19d3739bca95bc983a48ef95a",
+      "checkpoints/452eb717f103afef4320d4c3b715c568942ab910f9bed3d8148b1978e763ed90.json": "b8cf1b5e138471d2048aa61c5fa0fad3252614fe012aeb3c842860636f35b022",
+      "checkpoints/801571e926ae0dda548e595969812edd58fb4f09554ac1f72a4e681c94beb5c9.json": "182b64ced624956815f8f61adcc644f676a6cecb22522b513e54636e4ce53d75",
+      "checkpoints/9b45caa066eae075609a2d471f59606a6fa27d8d118a7c153595e973fa2c1d94.json": "e606b122481ef2cbc31323f3365454920ee1e25529ba9432e4c82780d35895c7",
+      "checkpoints/a54428d3b59b62423a896822032833f1c2ee429833f59769d8f813cf3a7e88a0.json": "d3ccf1dc35e4083b4ab7e24ca4ce97b29368c1f486cdec513d910dc70474ffec",
+      "checkpoints/a5ff80d818a7c6c11c2c42e012b13fbd0381fdca65bb88361226a11d58d96137.json": "573591b52fc0ce58e95efe1d53cf373b2882b2dae03261044fce924f90ae6e46"
+    },
+    "producer": {
+      "name": "codex-security-plugin",
+      "version": "0.1.24"
+    },
+    "scope": {
+      "artifactsReviewed": [
+        "bot/bot.py",
+        "bot/features.py",
+        "bot/deep_cfr_lookup.py",
+        "data/deep_cfr_model.npz",
+        "data/preflop_equity.npz",
+        "requirements.txt",
+        ".github/workflows/ci.yml",
+        "engine_vendored/sandbox/validator.py",
+        "engine_vendored/sandbox/match.py"
+      ],
+      "context": "\u5176\u4ed6\u91d1\u984d\u4e5fx5 \n\u7136\u5f8c\u6aa2\u67e5fullhouse-bot \u88e1\u9762\u6709\u6c92\u6709\u60e1\u610f\u7a0b\u5f0f",
+      "excludePaths": [],
+      "includePaths": [
+        "."
+      ],
+      "limitations": [
+        "Static only: no target code, tests, training, installers or pickle/joblib loads executed during scan.",
+        "132 archive files inventoried; 131 received source or data-format review. Unused opponent_classifier.pkl only partially inspected; nested Joblib representation not fully decoded.",
+        "External dependency distributions/native implementations, CI actions, base images and remote installers not audited. No certification of future revisions or installations.",
+        "PNG review covered container structure/CRCs, not decoder security or hidden image content.",
+        "Phone/Termux compatibility and poker-strength validation not performed.",
+        "Workbench targetRevision is parent workspace 92724c2c1039dae4a4d9f3fb21d68e8efbd76cc2; audited upstream commit is e504793d480b1b975f25258d25939b45c6dbd5a4. Archive SHA256 772d2110c7e44675ee33d7fbcb0e605846e78532ecf8e511dd85be9a3d42d48a.",
+        "Fresh architecture spawn hit thread cap, so a completed preflight worker performed architecture review. Independent fresh-context baseline and separate focused audit were available."
+      ],
+      "runtimeStatus": "Read-only offline static scan; target not executed.",
+      "summary": "Offline static malware/security review of advitrocks9/fullhouse-bot upstream commit e504793d480b1b975f25258d25939b45c6dbd5a4. All Python source reviewed; no observed malware in fixed NPC runtime. Two vulnerabilities in optional vendored submission/match tooling.",
+      "validationMode": "static-source-tracing"
+    },
+    "sealedAt": "2026-09-15T03:27:32.232087Z",
+    "startedAt": "2026-09-15T03:07:06.080890Z",
+    "status": "completed",
+    "target": {
+      "displayName": "fullhouse-bot-e504793d480b1b975f25258d25939b45c6dbd5a4",
+      "kind": "git_worktree",
+      "revision": "92724c2c1039dae4a4d9f3fb21d68e8efbd76cc2",
+      "snapshotDigest": "codex-security-snapshot/v1:sha256:58f52425c8391a1cc70e7ae508d9c82411b55e7e38562bce9b2c2a440f10be63",
+      "targetId": "target_sha256_9f49538d95e1d08ac35ab8c4b0d48e46ceca1d15e55c6e09389e5416f3be19ec"
+    },
+    "threatModel": {
+      "assets": [
+        "Android host files, permissions and process authority: Python imports execute bot source directly; containment must come from the hosting application or OS (engine_vendored/sandbox/runner.py:31).",
+        "Runtime model integrity and decision availability: BOT_DATA_DIR controls the directory supplying all matching model NPZs and preflop_equity.npz (bot/bot.py:39, bot/bot.py:73, bot/features.py:49, bot/features.py:65).",
+        "Optional developer assets include checkpoint state, repository contents and existing SSH authority used by cluster synchronization (training/train.py:529, scripts/cluster_deploy.sh:16, tooling/watcher/sync.py:18)."
+      ],
+      "assumptions": [
+        "The README's no-network/read-only sandbox description concerns the competition environment (README.md:6, README.md:72). Local vendored execution defaults to USE_DOCKER=false and inherits the host environment (engine_vendored/sandbox/match.py:32, engine_vendored/sandbox/match.py:136, engine_vendored/sandbox/match.py:139). Android execution does not inherit those Docker guarantees automatically.",
+        "Runtime NPZ loading does not request allow_pickle=True (bot/deep_cfr_lookup.py:39, bot/features.py:71). Installed NumPy/native dependency implementations and actual supplied NPZ contents were not inspected in this architecture pass.",
+        "Training, cluster synchronization, installation and publication packaging are separate opt-in developer workflows; their operations are not evidence of runtime malware (README.md:99, scripts/cluster_deploy.sh:3).",
+        "No source-backed Android wrapper, permission model or installed dependency versions were established. This is architecture mapping, not complete audit coverage."
+      ],
+      "attackerCapabilities": [
+        "A bot or model distributor can supply Python source or NPZ files the user elects to install. Malicious Python already receives the host interpreter's authority when imported; NPZ-only attacker control must be evaluated separately against NumPy parsing (engine_vendored/sandbox/runner.py:34, bot/deep_cfr_lookup.py:39).",
+        "Game-state producers supply dictionaries through decide or newline JSON through the runner; no network listener is established by this interface (bot/bot.py:353, engine_vendored/sandbox/runner.py:84).",
+        "Conditional training attacker: an actor able to replace the selected latest.pt can reach unrestricted PyTorch deserialization only when the operator enables resume (training/train.py:529, training/train.py:532). Do not assume this actor controls normal bot-only execution."
+      ],
+      "securityObjectives": [
+        "For the user's Android deployment, establish that the exact bot and NPZ artifacts perform only requested inference and that host permissions limit unintended filesystem/network access; competition documentation alone cannot establish containment (README.md:72, engine_vendored/sandbox/match.py:116).",
+        "Keep numeric model loading distinct from executable checkpoint deserialization, and require trusted provenance for optional latest.pt resume files (bot/deep_cfr_lookup.py:39, training/train.py:532).",
+        "Preserve model/data selection integrity and maintain bounded decision/resource behavior for potentially malformed state or weights (bot/bot.py:73, bot/deep_cfr_lookup.py:32)."
+      ],
+      "summary": "fullhouse-bot is a six-player poker inference bot, with separate training, benchmark, cluster and release tooling (README.md:19, README.md:77). Runtime decide(state) invokes NumPy Deep CFR inference (bot/bot.py:353, bot/bot.py:366). Packaging concatenates features.py, deep_cfr_lookup.py and bot.py and includes data/preflop_equity.npz plus deep_cfr_model*.npz (tooling/release/submission.py:19, tooling/runtime_data.py:13). User context: intended use is only bot plus NPZ on Android; the Android host integration is unspecified.",
+      "trustBoundaries": [
+        "Source import to host execution: BOT_PATH defaults to /bot/bot.py and importlib executes its module; checking for decide happens afterward (engine_vendored/sandbox/runner.py:26, engine_vendored/sandbox/runner.py:31).",
+        "Data files to numeric inference: BOT_DATA_DIR overrides a sibling data directory, falling back to the parent data directory; consumers load deep_cfr_model*.npz and preflop_equity.npz with np.load, then access arrays (bot/features.py:40, bot/features.py:49, bot/features.py:65, bot/bot.py:73, bot/deep_cfr_lookup.py:38).",
+        "Docker execution boundary: explicit USE_DOCKER=true enables network none, memory/CPU limits, read-only root, UID 1000, no-new-privileges and read-only /bot mount; /tmp is writable tmpfs (engine_vendored/sandbox/match.py:116). Local mode runs the same runner directly without these container controls (engine_vendored/sandbox/match.py:135).",
+        "Game state to decision: runner parses stdin JSON and calls bot.decide on daemon threads with a wait timeout; timeout does not terminate an executing thread (engine_vendored/sandbox/runner.py:48, engine_vendored/sandbox/runner.py:63, engine_vendored/sandbox/runner.py:89, engine_vendored/sandbox/runner.py:103).",
+        "Optional development boundaries: SSH/scp/rsync exchange checkpoints and repository files with configured hosts; training resume passes local latest.pt to torch.load(weights_only=False); cluster environment setup downloads an HTTPS installer and pipes it to sh (tooling/watcher/sync.py:18, scripts/cluster_deploy.sh:16, training/train.py:532, scripts/cluster_build_venv.sh:9)."
+      ]
+    }
+  },
+  "schemaVersion": "1.0"
+}

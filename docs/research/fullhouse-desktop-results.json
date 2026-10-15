@@ -1,0 +1,139 @@
+{
+  "commit": "e504793d480b1b975f25258d25939b45c6dbd5a4",
+  "python": "3.10.6",
+  "numpy": "2.2.6",
+  "eval7": "0.1.11",
+  "model_sha256": "1102326b68da95564de147106612df71cb891b42f0726ba0212d3b9a5bcae295",
+  "model_file_bytes": 590758,
+  "model_array_bytes": 586776,
+  "arrays": {
+    "trunk_w0": {
+      "shape": [
+        256,
+        51
+      ],
+      "dtype": "float32"
+    },
+    "trunk_b0": {
+      "shape": [
+        256
+      ],
+      "dtype": "float32"
+    },
+    "trunk_ln0_g": {
+      "shape": [
+        256
+      ],
+      "dtype": "float32"
+    },
+    "trunk_ln0_b": {
+      "shape": [
+        256
+      ],
+      "dtype": "float32"
+    },
+    "trunk_w1": {
+      "shape": [
+        256,
+        256
+      ],
+      "dtype": "float32"
+    },
+    "trunk_b1": {
+      "shape": [
+        256
+      ],
+      "dtype": "float32"
+    },
+    "trunk_ln1_g": {
+      "shape": [
+        256
+      ],
+      "dtype": "float32"
+    },
+    "trunk_ln1_b": {
+      "shape": [
+        256
+      ],
+      "dtype": "float32"
+    },
+    "val_w0": {
+      "shape": [
+        128,
+        256
+      ],
+      "dtype": "float32"
+    },
+    "val_b0": {
+      "shape": [
+        128
+      ],
+      "dtype": "float32"
+    },
+    "val_w1": {
+      "shape": [
+        1,
+        128
+      ],
+      "dtype": "float32"
+    },
+    "val_b1": {
+      "shape": [
+        1
+      ],
+      "dtype": "float32"
+    },
+    "adv_w0": {
+      "shape": [
+        128,
+        256
+      ],
+      "dtype": "float32"
+    },
+    "adv_b0": {
+      "shape": [
+        128
+      ],
+      "dtype": "float32"
+    },
+    "adv_w1": {
+      "shape": [
+        5,
+        128
+      ],
+      "dtype": "float32"
+    },
+    "adv_b1": {
+      "shape": [
+        5
+      ],
+      "dtype": "float32"
+    }
+  },
+  "import_and_model_load_ms": 102.09060000488535,
+  "rss_before_runtime_mib": 27.34765625,
+  "rss_after_mib": 35.49609375,
+  "synthetic_cases": 60,
+  "timed_calls": 3000,
+  "elapsed_s": 0.29937449999852106,
+  "decision_ms": {
+    "p50": 0.09935,
+    "p95": 0.10730499999999998,
+    "p99": 0.1311209999999995,
+    "max": 0.4831
+  },
+  "fallback_count": 0,
+  "money_normalization": {
+    "raw_400_chips_20bb_push_fold": {
+      "action": "all_in"
+    },
+    "normalized_2000_units_20bb_push_fold": null
+  },
+  "extra_unknown_card_fields_ignored_in_one_case": true,
+  "limitations": [
+    "Windows desktop only, not Termux.",
+    "Synthetic states, no complete hands, winrate or equilibrium test.",
+    "One sequential process with BLAS threads=1; not five simultaneous tables.",
+    "No side-pot payout or authoritative engine test."
+  ]
+}
