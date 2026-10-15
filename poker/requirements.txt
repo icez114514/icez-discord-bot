@@ -1,27 +1,7 @@
-annotated-doc==0.0.5
-annotated-types==0.8.0
-anyio==4.15.1
-certifi==2026.7.22
-click==8.5.0
-exceptiongroup==1.3.1
-fastapi==0.136.1
-h11==0.16.0
-httpcore==1.0.9
-httpx==0.28.1
-idna==3.19
-pydantic==2.14.1
-pydantic_core==2.50.1
-starlette==1.0.0
-typing-inspection==0.4.4
-typing_extensions==4.16.0
-uvicorn==0.47.0
-websockets==15.0.1
+# Desktop native pins. Termux uses requirements-termux.txt and pkg libraries.
+-r requirements-common.txt
 numpy==2.2.6; python_version < "3.14"
 numpy==2.5.4; python_version >= "3.14"
-eval7==0.1.10
-future==1.0.0
-pyparsing==3.3.2
-python-dotenv==1.2.3
 cryptography==50.0.2
 cffi==2.1.1
 pycparser==3.0

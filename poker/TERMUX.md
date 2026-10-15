@@ -21,7 +21,9 @@ bash install_poker_termux.sh
 ```
 
 腳本會安裝 Termux 的 `python-numpy`、`python-cryptography` 與 C 編譯工具，
-建立可讀取系統套件的 `poker/.venv`，以固定 Cython 工具鏈重新編譯 eval7，
+建立可讀取系統套件的 `poker/.venv`。NumPy、cryptography 與 CFFI 使用 Termux
+提供的版本，不套用桌面環境的版本釘選；腳本會印出實際版本並檢查原生模組。
+接著以固定 Cython 工具鏈重新編譯 eval7，
 再執行原生套件／NPC 啟動檢查及 `npm ci`、`npm run build`。
 後續步驟以看到 `Poker dependencies and website build ready.` 為準；失敗時先處理錯誤。
 
@@ -31,7 +33,8 @@ Pydantic 核心使用 [Termux User Repository](https://termux-user-repository.gi
 這個來源是 Termux 社群的編譯版本，不是 Pydantic 上游提供的 Android wheel。
 腳本不會加入全域 pip index，也不會執行資料庫初始化或啟動服務。
 
-桌面仍使用 `requirements.txt`。Python 3.14 若需要從原始碼安裝 eval7，
+共用套件固定於 `requirements-common.txt`，桌面的原生套件版本另由
+`requirements.txt` 固定。Python 3.14 若需要從原始碼安裝 eval7，
 先安裝 `requirements-build.txt`，並以 `--no-build-isolation` 編譯 eval7；
 Windows 額外需要 Visual C++ Build Tools。
 

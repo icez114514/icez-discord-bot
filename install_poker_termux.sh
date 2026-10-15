@@ -33,13 +33,16 @@ main() {
     version="$("$poker_python" -c 'import sys; print("%s.%s" % sys.version_info[:2])')"
     [[ "$version" == 3.14 ]] || { echo 'Existing poker/.venv uses another Python version.' >&2; return 1; }
 
+    echo 'Checking the native packages provided by Termux...'
+    "$poker_python" -I -c 'import numpy, cryptography, cffi; from cryptography.hazmat.primitives.ciphers import Cipher; assert numpy.dot([1, 2], [3, 4]) == 11; print("Termux native packages: numpy=" + numpy.__version__ + " cryptography=" + cryptography.__version__ + " cffi=" + cffi.__version__)'
+
     echo 'Installing poker dependencies in poker/.venv...'
     "$poker_python" -m pip install -r "$root/poker/requirements-build.txt"
     # Regenerate eval7's bundled C code for 3.14 instead of using an old wheel.
     # Explicit libpython linkage is needed for native extensions on Android.
     LDFLAGS="${LDFLAGS:-} -L$PREFIX/lib -lpython3.14" \
         "$poker_python" -m pip install --no-build-isolation --no-deps --no-binary=eval7 eval7==0.1.10
-    "$poker_python" -m pip install --only-binary=numpy,cryptography,pydantic-core -r "$root/poker/requirements-termux.txt"
+    "$poker_python" -m pip install --only-binary=:all: -r "$root/poker/requirements-termux.txt"
     "$poker_python" -m pip check
 
     echo 'Checking native imports and the actual fixed NPC subprocess...'
